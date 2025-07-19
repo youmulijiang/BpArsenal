@@ -1,0 +1,285 @@
+# Montoya API 使用规范
+
+## 核心API参考
+API文档位置: [apiDoc/montoya](mdc:apiDoc/montoya)
+
+## 插件初始化
+
+### 标准插件入口
+```java
+import burp.api.montoya.BurpExtension;
+import burp.api.montoya.MontoyaApi;
+
+public class MyBurpExtension implements BurpExtension {
+    
+    private MontoyaApi api;
+    
+    @Override
+    public void initialize(MontoyaApi api) {
+        this.api = api;
+        
+        // 设置插件名称
+        api.extension().setName("我的Burp插件");
+        
+        // 注册各种处理器
+        registerHandlers();
+        
+        // 创建UI组件
+        createUserInterface();
+        
+        // 记录插件加载成功
+        api.logging().logToOutput("插件加载成功！");
+    }
+    
+    private void registerHandlers() {
+        // 注册HTTP处理器
+        api.http().registerHttpHandler(new MyHttpHandler());
+        
+        // 注册扫描检查
+        api.scanner().registerScanCheck(new MyScanCheck());
+        
+        // 注册上下文菜单
+        api.userInterface().registerContextMenuItemsProvider(new MyContextMenuProvider());
+    }
+}
+```
+
+## HTTP请求/响应处理
+
+### HTTP处理器实现
+```java
+import burp.api.montoya.http.handler.*;
+import burp.api.montoya.http.message.requests.HttpRequest;
+import burp.api.montoya.http.message.responses.HttpResponse;
+
+public class MyHttpHandler implements HttpHandler {
+    
+    @Override
+    public RequestToBeSentAction handleHttpRequestToBeSent(HttpRequestToBeSent requestToBeSent) {
+        HttpRequest request = requestToBeSent.httpRequest();
+        
+        // 分析请求
+        String url = request.url();
+        String method = request.method();
+        
+        // 记录请求信息
+        api.logging().logToOutput(String.format("请求: %s %s", method, url));
+        
+        // 修改请求（如果需要）
+        if (shouldModifyRequest(request)) {
+            HttpRequest modifiedRequest = request.withAddedHeader("X-Custom-Header", "MyValue");
+            return RequestToBeSentAction.continueWith(modifiedRequest);
+        }
+        
+        return RequestToBeSentAction.continueWith(request);
+    }
+    
+    @Override
+    public ResponseReceivedAction handleHttpResponseReceived(HttpResponseReceived responseReceived) {
+        HttpResponse response = responseReceived.httpResponse();
+        
+        // 分析响应
+        int statusCode = response.statusCode();
+        String body = response.bodyToString();
+        
+        // 检查敏感信息
+        if (containsSensitiveData(body)) {
+            api.logging().logToError("发现敏感信息: " + responseReceived.httpRequest().url());
+        }
+        
+        return ResponseReceivedAction.continueWith(response);
+    }
+}
+```
+
+## 扫描器集成
+
+### 自定义扫描检查
+```java
+import burp.api.montoya.scanner.ScanCheck;
+import burp.api.montoya.scanner.audit.issues.AuditIssue;
+
+public class MyScanCheck implements ScanCheck {
+    
+    @Override
+    public AuditResult activeAudit(HttpRequestResponse baseRequestResponse, 
+                                  AuditInsertionPoint auditInsertionPoint) {
+        
+        // 构造测试payload
+        String payload = "' OR 1=1 --";
+        HttpRequest testRequest = auditInsertionPoint.buildHttpRequestWithPayload(
+            ByteArray.byteArray(payload)
+        );
+        
+        // 发送测试请求
+        HttpRequestResponse testResponse = api.http().sendRequest(testRequest);
+        
+        // 分析响应
+        if (indicatesVulnerability(testResponse.response())) {
+            return AuditResult.auditIssues(
+                AuditIssue.auditIssue(
+                    "SQL注入漏洞",
+                    "检测到SQL注入漏洞",
+                    "https://example.com/remediation",
+                    baseRequestResponse.request().url(),
+                    AuditIssueSeverity.HIGH,
+                    AuditIssueConfidence.CERTAIN,
+                    "详细的漏洞描述...",
+                    "修复建议...",
+                    AuditIssueSeverity.HIGH,
+                    testRequest,
+                    testResponse
+                )
+            );
+        }
+        
+        return AuditResult.auditIssues();
+    }
+    
+    @Override
+    public AuditResult passiveAudit(HttpRequestResponse baseRequestResponse) {
+        // 被动扫描逻辑
+        String responseBody = baseRequestResponse.response().bodyToString();
+        
+        if (responseBody.contains("password") && responseBody.contains("admin")) {
+            // 发现信息泄露
+            return AuditResult.auditIssues(/* 创建漏洞报告 */);
+        }
+        
+        return AuditResult.auditIssues();
+    }
+}
+```
+
+## UI集成
+
+### 创建自定义选项卡
+```java
+import burp.api.montoya.ui.UserInterface;
+import javax.swing.*;
+
+private void createUserInterface() {
+    // 创建主面板
+    JPanel mainPanel = new MainPanel(api);
+    
+    // 注册为Burp的选项卡
+    api.userInterface().registerSuiteTab("我的插件", mainPanel);
+    
+    // 也可以创建HTTP编辑器
+    api.userInterface().registerHttpRequestEditorProvider(new MyRequestEditorProvider());
+}
+```
+
+### 上下文菜单集成
+```java
+import burp.api.montoya.ui.contextmenu.*;
+
+public class MyContextMenuProvider implements ContextMenuItemsProvider {
+    
+    @Override
+    public List<Component> provideMenuItems(ContextMenuEvent event) {
+        List<Component> menuItems = new ArrayList<>();
+        
+        // 根据上下文类型提供不同菜单
+        switch (event.invocationType()) {
+            case MESSAGE_EDITOR_REQUEST:
+            case MESSAGE_VIEWER_REQUEST:
+                menuItems.add(createMenuItem("发送到重放器", () -> sendToRepeater(event)));
+                break;
+                
+            case MESSAGE_EDITOR_RESPONSE:
+            case MESSAGE_VIEWER_RESPONSE:
+                menuItems.add(createMenuItem("分析响应", () -> analyzeResponse(event)));
+                break;
+        }
+        
+        return menuItems;
+    }
+    
+    private JMenuItem createMenuItem(String text, Runnable action) {
+        JMenuItem item = new JMenuItem(text);
+        item.addActionListener(e -> action.run());
+        return item;
+    }
+}
+```
+
+## 数据持久化
+
+### 使用Burp的持久化功能
+```java
+import burp.api.montoya.persistence.Preferences;
+
+public class ConfigurationManager {
+    private final Preferences preferences;
+    
+    public ConfigurationManager(MontoyaApi api) {
+        this.preferences = api.persistence().preferences();
+    }
+    
+    public void saveConfiguration(String key, String value) {
+        preferences.setString(key, value);
+    }
+    
+    public String loadConfiguration(String key, String defaultValue) {
+        return preferences.getString(key).orElse(defaultValue);
+    }
+    
+    public void saveBooleanSetting(String key, boolean value) {
+        preferences.setBoolean(key, value);
+    }
+    
+    public boolean loadBooleanSetting(String key, boolean defaultValue) {
+        return preferences.getBoolean(key).orElse(defaultValue);
+    }
+}
+```
+
+## 错误处理和日志
+
+### 统一的错误处理
+```java
+public class ErrorHandler {
+    private final MontoyaApi api;
+    
+    public ErrorHandler(MontoyaApi api) {
+        this.api = api;
+    }
+    
+    public void handleError(String operation, Exception e) {
+        String errorMessage = String.format("操作失败 [%s]: %s", operation, e.getMessage());
+        
+        // 记录到错误日志
+        api.logging().logToError(errorMessage);
+        
+        // 显示给用户（如果在UI线程中）
+        if (SwingUtilities.isEventDispatchThread()) {
+            JOptionPane.showMessageDialog(null, errorMessage, "错误", JOptionPane.ERROR_MESSAGE);
+        }
+        
+        // 记录堆栈跟踪（调试时）
+        if (isDebugMode()) {
+            api.logging().logToError(getStackTrace(e));
+        }
+    }
+    
+    public void logInfo(String message) {
+        api.logging().logToOutput("[INFO] " + message);
+    }
+    
+    public void logDebug(String message) {
+        if (isDebugMode()) {
+            api.logging().logToOutput("[DEBUG] " + message);
+        }
+    }
+}
+```
+
+## 最佳实践
+
+1. **资源管理**: 及时释放不需要的资源
+2. **线程安全**: UI更新必须在EDT中进行
+3. **异常处理**: 所有API调用都要有适当的异常处理
+4. **性能考虑**: 避免在请求/响应处理器中执行耗时操作
+5. **用户体验**: 提供进度反馈和错误提示
+

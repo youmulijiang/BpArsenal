@@ -1,0 +1,30 @@
+{
+  "httpTool": [
+    {
+      "toolName": "dirsearch",
+      "command":"dirsearch -u %http.url% -x %http.method.post%",
+      "favor": true
+    },
+    {
+      "toolName": "",
+      "command":"",
+      "favor": true
+    }
+  ],
+  "thirtyPart": [
+    {
+      "toolName": "D:\\tools\\dirsearch\\dirsearch.exe",
+      "autoStart": true
+    }
+  ],
+  "webSite": [
+    {
+      "url": "",
+      "desc": "",
+      "favor": true
+    },
+    {
+
+    }
+  ]
+}

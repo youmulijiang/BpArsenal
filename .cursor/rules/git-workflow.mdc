@@ -1,0 +1,251 @@
+# Git 工作流规范
+
+## 🔥 强制要求
+**每次生成代码后必须立即执行以下命令：**
+```bash
+git add .
+git commit -m "type: 描述"
+```
+
+## 提交类型规范
+
+### 主要类型
+- **`feat`**: 新功能开发
+  ```bash
+  git add . ; git commit -m "feat: 实现SQL注入扫描器"
+  git add . ; git commit -m "feat: 添加结果导出功能"
+  ```
+
+- **`fix`**: 错误修复
+  ```bash
+  git add . ; git commit -m "fix: 修复HTTP请求处理异常"
+  git add . ; git commit -m "fix: 解决UI线程安全问题"
+  ```
+
+- **`refactor`**: 代码重构
+  ```bash
+  git add . ; git commit -m "refactor: 重构扫描器工厂模式"
+  git add . ; git commit -m "refactor: 优化MVC架构分层"
+  ```
+
+### 辅助类型
+- **`style`**: 代码格式调整
+  ```bash
+  git add . ; git commit -m "style: 格式化代码并添加JavaDoc"
+  ```
+
+- **`docs`**: 文档更新
+  ```bash
+  git add . ; git commit -m "docs: 更新API使用文档"
+  ```
+
+- **`chore`**: 构建配置等
+  ```bash
+  git add . ; git commit -m "chore: 更新Maven依赖版本"
+  ```
+
+## 提交描述规范
+
+### 好的提交描述
+- ✅ `feat: 实现工厂模式用于扫描器创建`
+- ✅ `feat: 添加HTTP代理模式支持缓存`
+- ✅ `fix: 修复观察者模式中的内存泄漏`
+- ✅ `refactor: 重构命令模式支持撤销操作`
+- ✅ `style: 统一代码格式和命名规范`
+
+### 避免的提交描述
+- ❌ `update`
+- ❌ `fix bug`
+- ❌ `add feature`
+- ❌ `修改代码`
+- ❌ `代码更新`
+
+## 分支管理
+
+### 主分支
+- **`main`**: 主分支，包含稳定版本
+- **`develop`**: 开发分支，包含最新功能
+
+### 功能分支命名
+- `feature/功能名称`: 新功能开发
+  ```bash
+  git checkout -b feature/sql-injection-scanner
+  git checkout -b feature/result-export
+  ```
+
+- `fix/问题描述`: 错误修复
+  ```bash
+  git checkout -b fix/http-handler-exception
+  git checkout -b fix/ui-thread-safety
+  ```
+
+- `refactor/重构内容`: 代码重构
+  ```bash
+  git checkout -b refactor/mvc-architecture
+  git checkout -b refactor/factory-pattern
+  ```
+
+## 常用工作流
+
+### 1. 新功能开发流程
+```bash
+# 1. 创建功能分支
+git checkout -b feature/new-scanner
+
+# 2. 开发过程中频繁提交
+git add .
+git commit -m "feat: 添加扫描器基础接口"
+
+git add .
+git commit -m "feat: 实现SQL注入扫描逻辑"
+
+git add .
+git commit -m "feat: 添加扫描结果UI展示"
+
+# 3. 完成后合并到开发分支
+git checkout develop
+git merge feature/new-scanner
+
+# 4. 删除功能分支
+git branch -d feature/new-scanner
+```
+
+### 2. 快速修复流程
+```bash
+# 1. 从主分支创建修复分支
+git checkout main
+git checkout -b fix/critical-bug
+
+# 2. 修复并提交
+git add .
+git commit -m "fix: 修复扫描器崩溃问题"
+
+# 3. 合并到主分支
+git checkout main
+git merge fix/critical-bug
+
+# 4. 同步到开发分支
+git checkout develop
+git merge main
+```
+
+### 3. 设计模式实现流程
+```bash
+# 1. 创建模式实现分支
+git checkout -b refactor/observer-pattern
+
+# 2. 实现设计模式
+git add .
+git commit -m "refactor: 实现观察者模式接口定义"
+
+git add .
+git commit -m "refactor: 添加扫描事件观察者实现"
+
+git add .
+git commit -m "refactor: 集成观察者模式到扫描系统"
+
+# 3. 完成后合并
+git checkout develop
+git merge refactor/observer-pattern
+```
+
+## 版本标签
+
+### 标签命名规范
+- `v主版本.次版本.修订版本`
+- 例如: `v1.0.0`, `v1.1.0`, `v1.1.1`
+
+### 发布标签流程
+```bash
+# 1. 确保在主分支
+git checkout main
+
+# 2. 创建标签
+git tag -a v1.0.0 -m "Release version 1.0.0 - 初始版本发布"
+
+# 3. 推送标签
+git push origin v1.0.0
+
+# 4. 推送所有标签
+git push origin --tags
+```
+
+### 标签说明模板
+```bash
+# 主要版本发布
+git tag -a v1.0.0 -m "Release v1.0.0 - 实现基础扫描功能"
+
+# 功能版本发布
+git tag -a v1.1.0 -m "Release v1.1.0 - 添加高级扫描策略"
+
+# 修复版本发布
+git tag -a v1.1.1 -m "Release v1.1.1 - 修复扫描器稳定性问题"
+```
+
+## 提交频率建议
+
+### 建议提交时机
+1. **完成一个小功能后** - 立即提交
+2. **修复一个bug后** - 立即提交
+3. **重构一个模块后** - 立即提交
+4. **实现一个设计模式后** - 立即提交
+5. **添加或修改配置后** - 立即提交
+
+### 提交粒度
+- ✅ **细粒度提交**: 每个逻辑完整的小改动一个提交
+- ✅ **功能导向**: 以功能完成度为提交边界
+- ❌ **避免大批量**: 不要积累太多改动再提交
+- ❌ **避免无意义**: 不要为了提交而提交
+
+## 冲突解决
+
+### 合并冲突处理
+```bash
+# 1. 拉取最新代码
+git pull origin develop
+
+# 2. 如有冲突，手动解决后
+git add .
+git commit -m "fix: 解决合并冲突"
+```
+
+### 预防冲突
+- 频繁同步主分支代码
+- 保持功能分支生命周期短
+- 及时合并已完成的功能分支
+
+## 自动化脚本
+
+### Windows PowerShell
+```powershell
+# quick-commit.ps1
+param([string]$type, [string]$message)
+
+if (-not $type -or -not $message) {
+    Write-Host "用法: .\quick-commit.ps1 -type feat -message '实现新功能'"
+    exit 1
+}
+
+git add .
+git commit -m "$type: $message"
+Write-Host "提交完成: $type: $message" -ForegroundColor Green
+```
+
+### Linux/macOS
+```bash
+#!/bin/bash
+# quick-commit.sh
+if [ $# -ne 2 ]; then
+    echo "用法: ./quick-commit.sh <type> <message>"
+    echo "例如: ./quick-commit.sh feat '实现新功能'"
+    exit 1
+fi
+
+git add .
+git commit -m "$1: $2"
+echo "提交完成: $1: $2"
+```
+
+---
+**记住：每次生成代码后立即执行 `git add . ; git commit -m "type: 描述"`**
+

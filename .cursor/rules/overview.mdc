@@ -1,0 +1,119 @@
+# Burp Suite 插件开发规则总览
+
+本项目包含完整的 Burp Suite 插件开发规范，使用 Montoya API、Swing GUI 和 MVC 架构。
+
+## 规则文件列表
+
+### 🎯 核心开发规范
+- **[burp-extension-development.mdc](mdc:.cursor/rules/burp-extension-development.mdc)**: Burp Suite插件开发核心规范
+- **[montoya-api-usage.mdc](mdc:.cursor/rules/montoya-api-usage.mdc)**: Montoya API使用指南和最佳实践
+
+### 💻 代码规范
+- **[java-coding-standards.mdc](mdc:.cursor/rules/java-coding-standards.mdc)**: Java编码规范(JDK 17)
+- **[mvc-architecture.mdc](mdc:.cursor/rules/mvc-architecture.mdc)**: MVC架构设计模式规范
+
+### 🎨 UI开发
+- **[swing-ui-guidelines.mdc](mdc:.cursor/rules/swing-ui-guidelines.mdc)**: Swing GUI开发规范和最佳实践
+
+### 🎨 设计模式
+- **[design-patterns.mdc](mdc:.cursor/rules/design-patterns.mdc)**: 设计模式实现规范和代码模板
+
+### 🚀 构建与部署
+- **[build-and-deployment.mdc](mdc:.cursor/rules/build-and-deployment.mdc)**: 项目构建、打包和部署规范
+
+### 📝 Git工作流
+- **[git-workflow.mdc](mdc:.cursor/rules/git-workflow.mdc)**: Git工作流和提交规范
+
+## 快速开始
+
+### 2. 关键技术栈
+- **Java**: JDK 17 + 现代语法特性
+- **API**: Montoya API (参考: [apiDoc/montoya](mdc:apiDoc/montoya))
+- **GUI**: Swing 组件
+- **架构**: MVC 模式
+- **构建**: Maven
+- **设计模式**: 工厂、观察者、策略、命令、代理、单例
+
+### 3. 开发流程
+1. 实现 `BurpExtension` 接口
+2. 使用 MVC 架构组织代码
+3. 应用合适的设计模式
+4. 遵循 Java 17 编码规范
+5. 使用 Maven 构建和打包
+6. 提交代码：`git add . ; git commit -m "feat: 功能描述"`
+7. 部署到 Burp Suite
+
+### 4. 核心接口
+```java
+public class MyBurpExtension implements BurpExtension {
+    @Override
+    public void initialize(MontoyaApi api) {
+        // 插件初始化逻辑
+        api.extension().setName("我的插件");
+        
+        // 注册处理器和UI
+        registerHandlers(api);
+        createUserInterface(api);
+    }
+}
+```
+
+### 5. 提交
+```bash
+
+# 提交代码（每次生成代码后执行）
+git add .
+git commit -m "feat: 实现新功能"
+```
+
+## 最佳实践摘要
+
+### 代码质量
+- ✅ 使用 Java 17 特性 (records, switch expressions, text blocks)
+- ✅ 遵循 Google Java Style Guide
+- ✅ 所有 public 方法必须有 JavaDoc
+- ✅ 每次生成代码后执行 git 提交
+
+### 架构设计
+- ✅ 严格遵循 MVC 分层
+- ✅ 应用多种设计模式 (工厂、观察者、策略、命令、代理、单例)
+- ✅ 使用依赖注入
+- ✅ 单一职责原则
+- ✅ 事件驱动的UI交互
+
+### Burp Suite 集成
+- ✅ 正确使用 Montoya API
+- ✅ 线程安全的UI更新
+- ✅ 统一的错误处理和日志
+- ✅ 与Burp主题保持一致
+
+### 部署与发布
+- ✅ 自动化构建脚本
+- ✅ 规范的Git提交信息 (`git add . ; git commit -m "type: 描述"`)
+- ✅ 版本管理和标签
+
+## 开发工具推荐
+
+### IDE配置
+- **IntelliJ IDEA** 或 **Eclipse** 
+- **Java 17** SDK
+- **Maven** 集成
+- **Git** 版本控制
+
+## 常见问题
+
+### Q: 如何选择合适的设计模式？
+A: 参考 [design-patterns.mdc](mdc:.cursor/rules/design-patterns.mdc) 中的模式选择原则
+
+### Q: 如何处理UI线程安全？
+A: 参考 [swing-ui-guidelines.mdc](mdc:.cursor/rules/swing-ui-guidelines.mdc) 中的线程安全章节
+
+### Q: 如何正确使用Montoya API？
+A: 参考 [montoya-api-usage.mdc](mdc:.cursor/rules/montoya-api-usage.mdc) 中的API使用示例
+
+### Q: 如何规范地提交代码？
+A: 每次生成代码后执行：`git add . ; git commit -m "type: 描述"`
+
+---
+遵循这些规范将确保您开发出高质量、可维护的 Burp Suite 插件。
+
