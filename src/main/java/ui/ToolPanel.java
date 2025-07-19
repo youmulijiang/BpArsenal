@@ -92,10 +92,10 @@ public class ToolPanel extends JPanel {
         // 右侧：操作按钮
         JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 5, 0));
         
-        addButton = createButton("➕ 添加工具", "添加新的HTTP工具", new Color(46, 125, 50));
-        editButton = createButton("✏️ 编辑", "编辑选中的工具", new Color(25, 118, 210));
-        deleteButton = createButton("🗑️ 删除", "删除选中的工具", new Color(211, 47, 47));
-        favoriteButton = createButton("⭐ 收藏", "切换收藏状态", new Color(255, 152, 0));
+        addButton = createButton("+ 添加工具", "添加新的HTTP工具", new Color(46, 125, 50));
+        editButton = createButton("编辑", "编辑选中的工具", new Color(25, 118, 210));
+        deleteButton = createButton("删除", "删除选中的工具", new Color(211, 47, 47));
+        favoriteButton = createButton("收藏", "切换收藏状态", new Color(255, 152, 0));
         
         rightPanel.add(addButton);
         rightPanel.add(editButton);
@@ -149,18 +149,18 @@ public class ToolPanel extends JPanel {
         // 左侧：执行按钮
         JPanel leftPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
         
-        executeButton = new JButton("🚀 执行选中工具");
+        executeButton = new JButton("执行选中工具");
         executeButton.setFont(new Font("微软雅黑", Font.BOLD, 12));
-        executeButton.setPreferredSize(new Dimension(140, 35));
+        executeButton.setPreferredSize(new Dimension(120, 35));
         executeButton.setBackground(new Color(76, 175, 80));
         executeButton.setForeground(Color.WHITE);
         executeButton.setFocusPainted(false);
         executeButton.setBorder(BorderFactory.createRaisedBevelBorder());
         executeButton.setToolTipText("执行当前选中的HTTP工具");
         
-        JButton helpButton = new JButton("❓ 占位符帮助");
+        JButton helpButton = new JButton("占位符帮助");
         helpButton.setFont(new Font("微软雅黑", Font.PLAIN, 11));
-        helpButton.setPreferredSize(new Dimension(120, 30));
+        helpButton.setPreferredSize(new Dimension(100, 30));
         helpButton.addActionListener(e -> showPlaceholderHelp());
         
         leftPanel.add(executeButton);
@@ -562,7 +562,7 @@ class FavoriteRenderer extends DefaultTableCellRenderer {
         }
         
         if (value instanceof Boolean) {
-            label.setText(((Boolean) value) ? "⭐" : "☆");
+            label.setText(((Boolean) value) ? "★" : "☆");
         }
         
         return label;

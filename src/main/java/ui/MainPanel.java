@@ -43,10 +43,10 @@ public class MainPanel extends JPanel {
         settingPanel = new SettingPanel();
         
         // 添加选项卡
-        tabbedPane.addTab("🔧 HTTP工具", createTabIcon("tool"), toolPanel, "HTTP渗透测试工具");
-        tabbedPane.addTab("⚙️ 第三方工具", createTabIcon("third"), thirdPartyPanel, "外部工具启动管理");
-        tabbedPane.addTab("🌐 网站导航", createTabIcon("website"), websitePanel, "快速访问常用网站");
-        tabbedPane.addTab("⚙️ 设置", createTabIcon("setting"), settingPanel, "插件配置和管理");
+        tabbedPane.addTab("HTTP工具", createTabIcon("tool"), toolPanel, "HTTP渗透测试工具");
+        tabbedPane.addTab("第三方工具", createTabIcon("third"), thirdPartyPanel, "外部工具启动管理");
+        tabbedPane.addTab("网站导航", createTabIcon("website"), websitePanel, "快速访问常用网站");
+        tabbedPane.addTab("设置", createTabIcon("setting"), settingPanel, "插件配置和管理");
         
         add(tabbedPane, BorderLayout.CENTER);
         
@@ -78,9 +78,9 @@ public class MainPanel extends JPanel {
         versionLabel.setForeground(new Color(128, 128, 128));
         
         // 刷新按钮
-        JButton refreshButton = new JButton("🔄 刷新配置");
+        JButton refreshButton = new JButton("刷新配置");
         refreshButton.setFont(new Font("微软雅黑", Font.PLAIN, 11));
-        refreshButton.setPreferredSize(new Dimension(100, 25));
+        refreshButton.setPreferredSize(new Dimension(80, 25));
         refreshButton.addActionListener(e -> refreshConfiguration());
         
         JPanel leftPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));

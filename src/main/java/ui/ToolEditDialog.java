@@ -150,7 +150,7 @@ public class ToolEditDialog extends JDialog {
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
         buttonPanel.setBorder(BorderFactory.createEmptyBorder(0, 20, 10, 20));
         
-        helpButton = new JButton("❓ 占位符帮助");
+        helpButton = new JButton("? 占位符帮助");
         helpButton.setFont(new Font("微软雅黑", Font.PLAIN, 11));
         helpButton.setPreferredSize(new Dimension(120, 30));
         

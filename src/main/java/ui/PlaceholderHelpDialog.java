@@ -35,7 +35,7 @@ public class PlaceholderHelpDialog extends JDialog {
         fullDocArea.setCaretPosition(0);
         
         JScrollPane fullDocScroll = new JScrollPane(fullDocArea);
-        tabbedPane.addTab("📋 完整文档", fullDocScroll);
+        tabbedPane.addTab("完整文档", fullDocScroll);
         
         // 使用示例
         JTextArea exampleArea = new JTextArea();
@@ -45,11 +45,11 @@ public class PlaceholderHelpDialog extends JDialog {
         exampleArea.setCaretPosition(0);
         
         JScrollPane exampleScroll = new JScrollPane(exampleArea);
-        tabbedPane.addTab("💡 使用示例", exampleScroll);
+        tabbedPane.addTab("使用示例", exampleScroll);
         
         // 分类浏览
         JPanel categoryPanel = createCategoryPanel();
-        tabbedPane.addTab("📂 分类浏览", categoryPanel);
+        tabbedPane.addTab("分类浏览", categoryPanel);
         
         add(tabbedPane, BorderLayout.CENTER);
         
