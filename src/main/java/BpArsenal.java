@@ -2,6 +2,7 @@ import burp.api.montoya.BurpExtension;
 import burp.api.montoya.MontoyaApi;
 import manager.ApiManager;
 import manager.ConfigManager;
+import ui.MainPanel;
 
 /**
  * BpArsenal Burp扩展主入口类
@@ -20,7 +21,11 @@ public class BpArsenal implements BurpExtension {
             ConfigManager.getInstance();
             api.logging().logToOutput("配置管理器初始化完成");
             
-            // TODO: 注册UI组件
+            // 注册UI组件
+            MainPanel mainPanel = new MainPanel();
+            api.userInterface().registerSuiteTab("BpArsenal", mainPanel);
+            api.logging().logToOutput("UI组件注册完成");
+            
             // TODO: 注册上下文菜单
             
             api.logging().logToOutput("BpArsenal插件初始化完成");

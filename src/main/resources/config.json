@@ -5,7 +5,7 @@
     "content":[
       {
         "toolName":"sqlmap",
-        "Command":"python D:\\tools\\sqlmap\\sqlmap.py -u %http.url% --random-agent --dbs",
+        "command":"python D:\\tools\\sqlmap\\sqlmap.py -u %http.request.url% --user-agent=\"%http.request.headers.user.agent%\" --cookie=\"%http.request.headers.cookies%\" --dbs",
         "favor":true
       }
     ]

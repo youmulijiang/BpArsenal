@@ -2,6 +2,8 @@ package executor;
 
 import burp.api.montoya.http.message.requests.HttpRequest;
 import burp.api.montoya.http.message.responses.HttpResponse;
+
+import java.io.UnsupportedEncodingException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Pattern;
@@ -94,7 +96,7 @@ public class AdvancedHttpParser implements HttpMessageParser {
      * 添加编码相关的变量
      * @param variables 变量映射
      */
-    private void addEncodingVariables(Map<String, String> variables) {
+    private void addEncodingVariables(Map<String, String> variables) throws UnsupportedEncodingException {
         String url = variables.get("http.url");
         String path = variables.get("http.path");
         String query = variables.get("http.query");
