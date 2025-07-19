@@ -1,7 +1,7 @@
 {
   "httpTool": [
    {
-    "type":"sqlmap",
+    "type":"sql-inject",
     "content":[
       {
         "toolName":"sqlmap",

@@ -4,8 +4,8 @@ import model.Config;
 import model.HttpTool;
 import manager.ConfigManager;
 import manager.ApiManager;
-import executor.ToolExecutor;
-import util.PlaceholderDocumentation;
+import ui.component.ToolEditDialog;
+
 import javax.swing.*;
 import javax.swing.table.*;
 import javax.swing.border.TitledBorder;
@@ -26,7 +26,6 @@ public class ToolPanel extends JPanel {
     private JButton addButton;
     private JButton editButton;
     private JButton deleteButton;
-    private JButton executeButton;
     private JButton favoriteButton;
     private JTextField searchField;
     private JComboBox<String> categoryFilter;
@@ -52,7 +51,7 @@ public class ToolPanel extends JPanel {
         JPanel tablePanel = createTablePanel();
         add(tablePanel, BorderLayout.CENTER);
         
-        // 创建底部操作面板
+        // 创建底部状态面板
         JPanel bottomPanel = createBottomPanel();
         add(bottomPanel, BorderLayout.SOUTH);
     }
@@ -78,7 +77,7 @@ public class ToolPanel extends JPanel {
         // 分类过滤
         JLabel categoryLabel = new JLabel("分类:");
         categoryLabel.setFont(new Font("微软雅黑", Font.PLAIN, 12));
-        categoryFilter = new JComboBox<>(new String[]{"全部", "注入工具", "扫描工具", "爆破工具", "其他"});
+        categoryFilter = new JComboBox<>(new String[]{"全部", "SQL注入", "XSS", "扫描工具", "爆破工具", "漏洞利用", "其他"});
         categoryFilter.setFont(new Font("微软雅黑", Font.PLAIN, 11));
         
         leftPanel.add(searchLabel);
@@ -124,7 +123,7 @@ public class ToolPanel extends JPanel {
         
         // 创建滚动面板
         JScrollPane scrollPane = new JScrollPane(toolTable);
-        scrollPane.setPreferredSize(new Dimension(800, 400));
+        scrollPane.setPreferredSize(new Dimension(800, 450));
         scrollPane.setBorder(BorderFactory.createTitledBorder(
             BorderFactory.createEtchedBorder(), 
             "HTTP工具列表", 
@@ -139,40 +138,18 @@ public class ToolPanel extends JPanel {
     }
     
     /**
-     * 创建底部操作面板
+     * 创建底部状态面板
      * @return 底部面板
      */
     private JPanel createBottomPanel() {
         JPanel bottomPanel = new JPanel(new BorderLayout(10, 0));
         bottomPanel.setBorder(BorderFactory.createEmptyBorder(10, 0, 0, 0));
         
-        // 左侧：执行按钮
-        JPanel leftPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
-        
-        executeButton = new JButton("执行选中工具");
-        executeButton.setFont(new Font("微软雅黑", Font.BOLD, 12));
-        executeButton.setPreferredSize(new Dimension(120, 35));
-        executeButton.setBackground(new Color(76, 175, 80));
-        executeButton.setForeground(Color.WHITE);
-        executeButton.setFocusPainted(false);
-        executeButton.setBorder(BorderFactory.createRaisedBevelBorder());
-        executeButton.setToolTipText("执行当前选中的HTTP工具");
-        
-        JButton helpButton = new JButton("占位符帮助");
-        helpButton.setFont(new Font("微软雅黑", Font.PLAIN, 11));
-        helpButton.setPreferredSize(new Dimension(100, 30));
-        helpButton.addActionListener(e -> showPlaceholderHelp());
-        
-        leftPanel.add(executeButton);
-        leftPanel.add(Box.createHorizontalStrut(10));
-        leftPanel.add(helpButton);
-        
-        // 右侧：状态信息
+        // 状态信息
         statusLabel = new JLabel("就绪");
         statusLabel.setFont(new Font("微软雅黑", Font.PLAIN, 11));
         statusLabel.setForeground(new Color(100, 100, 100));
         
-        bottomPanel.add(leftPanel, BorderLayout.WEST);
         bottomPanel.add(statusLabel, BorderLayout.EAST);
         
         return bottomPanel;
@@ -257,7 +234,6 @@ public class ToolPanel extends JPanel {
         editButton.addActionListener(e -> editSelectedTool());
         deleteButton.addActionListener(e -> deleteSelectedTool());
         favoriteButton.addActionListener(e -> toggleFavorite());
-        executeButton.addActionListener(e -> executeSelectedTool());
         
         // 搜索事件
         searchField.addCaretListener(e -> filterTable());
@@ -298,9 +274,16 @@ public class ToolPanel extends JPanel {
         
         if (dialog.isConfirmed()) {
             HttpTool newTool = dialog.getTool();
+            String category = dialog.getSelectedCategory();
+            
+            // 添加到表格模型
             tableModel.addTool(newTool);
+            
+            // 添加到配置文件的对应分类
+            addToolToConfig(newTool, category);
+            
             saveConfiguration();
-            updateStatus("已添加工具: " + newTool.getToolName());
+            updateStatus("已添加工具: " + newTool.getToolName() + " (分类: " + getCategoryDisplayName(category) + ")");
         }
     }
     
@@ -320,9 +303,16 @@ public class ToolPanel extends JPanel {
         
         if (dialog.isConfirmed()) {
             HttpTool updatedTool = dialog.getTool();
+            String newCategory = dialog.getSelectedCategory();
+            
+            // 更新表格模型
             tableModel.updateTool(selectedRow, updatedTool);
+            
+            // 更新配置文件中的分类
+            updateToolInConfig(tool, updatedTool, newCategory);
+            
             saveConfiguration();
-            updateStatus("已更新工具: " + updatedTool.getToolName());
+            updateStatus("已更新工具: " + updatedTool.getToolName() + " (分类: " + getCategoryDisplayName(newCategory) + ")");
         }
     }
     
@@ -345,6 +335,7 @@ public class ToolPanel extends JPanel {
             
         if (result == JOptionPane.YES_OPTION) {
             tableModel.removeTool(selectedRow);
+            removeToolFromConfig(tool);
             saveConfiguration();
             updateStatus("已删除工具: " + tool.getToolName());
         }
@@ -370,36 +361,6 @@ public class ToolPanel extends JPanel {
     }
     
     /**
-     * 执行选中工具
-     */
-    private void executeSelectedTool() {
-        int selectedRow = toolTable.getSelectedRow();
-        if (selectedRow == -1) {
-            JOptionPane.showMessageDialog(this, "请先选择要执行的工具", "提示", JOptionPane.INFORMATION_MESSAGE);
-            return;
-        }
-        
-        HttpTool tool = tableModel.getToolAt(selectedRow);
-        
-        // 这里需要HTTP请求对象，暂时显示提示
-        JOptionPane.showMessageDialog(this,
-            "工具执行功能需要在HTTP请求上下文中使用\n" +
-            "请在Burp的HTTP请求上右键选择对应工具",
-            "提示",
-            JOptionPane.INFORMATION_MESSAGE);
-            
-        updateStatus("工具 " + tool.getToolName() + " 需要HTTP请求上下文");
-    }
-    
-    /**
-     * 显示占位符帮助
-     */
-    private void showPlaceholderHelp() {
-        PlaceholderHelpDialog dialog = new PlaceholderHelpDialog(SwingUtilities.getWindowAncestor(this));
-        dialog.setVisible(true);
-    }
-    
-    /**
      * 过滤表格
      */
     private void filterTable() {
@@ -407,7 +368,6 @@ public class ToolPanel extends JPanel {
         String searchText = searchField.getText().toLowerCase();
         String selectedCategory = (String) categoryFilter.getSelectedItem();
         
-        // 这里可以实现表格过滤逻辑
         updateStatus("搜索: " + searchText + ", 分类: " + selectedCategory);
     }
     
@@ -419,7 +379,6 @@ public class ToolPanel extends JPanel {
         editButton.setEnabled(hasSelection);
         deleteButton.setEnabled(hasSelection);
         favoriteButton.setEnabled(hasSelection);
-        executeButton.setEnabled(hasSelection);
     }
     
     /**
@@ -457,6 +416,112 @@ public class ToolPanel extends JPanel {
             ApiManager.getInstance().getApi().logging().logToError("ToolPanel: " + message);
         }
     }
+    
+    /**
+     * 添加工具到配置文件
+     * @param tool 工具对象
+     * @param category 分类
+     */
+    private void addToolToConfig(HttpTool tool, String category) {
+        try {
+            Config config = ConfigManager.getInstance().getConfig();
+            if (config.getHttpTool() == null) {
+                config.setHttpTool(new ArrayList<>());
+            }
+            
+            // 查找或创建对应分类
+            Config.HttpToolCategory targetCategory = null;
+            for (Config.HttpToolCategory cat : config.getHttpTool()) {
+                if (category.equals(cat.getType())) {
+                    targetCategory = cat;
+                    break;
+                }
+            }
+            
+            if (targetCategory == null) {
+                targetCategory = new Config.HttpToolCategory();
+                targetCategory.setType(category);
+                targetCategory.setContent(new ArrayList<>());
+                config.getHttpTool().add(targetCategory);
+            }
+            
+            if (targetCategory.getContent() == null) {
+                targetCategory.setContent(new ArrayList<>());
+            }
+            
+            targetCategory.getContent().add(tool);
+            
+        } catch (Exception e) {
+            logError("添加工具到配置失败: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * 在配置文件中更新工具
+     * @param oldTool 原工具
+     * @param newTool 新工具
+     * @param newCategory 新分类
+     */
+    private void updateToolInConfig(HttpTool oldTool, HttpTool newTool, String newCategory) {
+        try {
+            Config config = ConfigManager.getInstance().getConfig();
+            if (config.getHttpTool() == null) return;
+            
+            // 先从原分类中移除
+            removeToolFromConfig(oldTool);
+            
+            // 添加到新分类
+            addToolToConfig(newTool, newCategory);
+            
+        } catch (Exception e) {
+            logError("更新配置中的工具失败: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * 从配置文件中移除工具
+     * @param tool 要移除的工具
+     */
+    private void removeToolFromConfig(HttpTool tool) {
+        try {
+            Config config = ConfigManager.getInstance().getConfig();
+            if (config.getHttpTool() == null) return;
+            
+            for (Config.HttpToolCategory category : config.getHttpTool()) {
+                if (category.getContent() != null) {
+                    category.getContent().removeIf(t -> 
+                        t.getToolName().equals(tool.getToolName()));
+                }
+            }
+            
+        } catch (Exception e) {
+            logError("从配置中移除工具失败: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * 获取分类显示名称
+     * @param type 分类类型
+     * @return 显示名称
+     */
+    private String getCategoryDisplayName(String type) {
+        if (type == null) return "未分类";
+        
+        switch (type.toLowerCase()) {
+            case "sql-inject":
+                return "SQL注入";
+            case "xss":
+                return "XSS";
+            case "scanner":
+                return "扫描工具";
+            case "brute-force":
+                return "爆破工具";
+            case "exploit":
+                return "漏洞利用";
+            default:
+                return type;
+        }
+    }
 }
 
 /**
@@ -488,7 +553,7 @@ class ToolTableModel extends AbstractTableModel {
             case 0: return tool.getToolName();
             case 1: return tool.getCommand();
             case 2: return tool.isFavor();
-            case 3: return "HTTP工具"; // 可以后续扩展分类
+            case 3: return getToolCategory(tool);
             default: return null;
         }
     }
@@ -538,6 +603,55 @@ class ToolTableModel extends AbstractTableModel {
     
     public List<HttpTool> getTools() {
         return new ArrayList<>(tools);
+    }
+    
+    /**
+     * 获取工具分类
+     * @param tool HTTP工具
+     * @return 工具分类
+     */
+    private String getToolCategory(HttpTool tool) {
+        try {
+            Config config = ConfigManager.getInstance().getConfig();
+            if (config.getHttpTool() != null) {
+                for (Config.HttpToolCategory category : config.getHttpTool()) {
+                    if (category.getContent() != null) {
+                        for (HttpTool categoryTool : category.getContent()) {
+                            if (categoryTool.getToolName().equals(tool.getToolName())) {
+                                return getCategoryDisplayName(category.getType());
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            // 忽略错误，返回默认值
+        }
+        return "未分类";
+    }
+    
+    /**
+     * 获取分类显示名称
+     * @param type 分类类型
+     * @return 显示名称
+     */
+    private String getCategoryDisplayName(String type) {
+        if (type == null) return "未分类";
+        
+        switch (type.toLowerCase()) {
+            case "sql-inject":
+                return "SQL注入";
+            case "xss":
+                return "XSS";
+            case "scanner":
+                return "扫描工具";
+            case "brute-force":
+                return "爆破工具";
+            case "exploit":
+                return "漏洞利用";
+            default:
+                return type;
+        }
     }
 }
 

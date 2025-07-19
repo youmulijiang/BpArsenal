@@ -1,4 +1,4 @@
-package ui;
+package ui.component;
 
 import util.PlaceholderDocumentation;
 import javax.swing.*;

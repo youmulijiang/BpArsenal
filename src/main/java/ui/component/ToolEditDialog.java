@@ -1,6 +1,7 @@
-package ui;
+package ui.component;
 
 import model.HttpTool;
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
@@ -18,6 +19,7 @@ public class ToolEditDialog extends JDialog {
     private JTextField nameField;
     private JTextArea commandArea;
     private JCheckBox favorCheckBox;
+    private JComboBox<String> categoryComboBox;
     private JButton okButton;
     private JButton cancelButton;
     private JButton helpButton;
@@ -97,8 +99,25 @@ public class ToolEditDialog extends JDialog {
         scrollPane.setBorder(BorderFactory.createTitledBorder("命令内容"));
         formPanel.add(scrollPane, gbc);
         
-        // 收藏
+        // 分类选择
         gbc.gridx = 0; gbc.gridy = 2;
+        gbc.gridwidth = 1;
+        gbc.anchor = GridBagConstraints.WEST;
+        gbc.fill = GridBagConstraints.NONE;
+        gbc.weightx = 0; gbc.weighty = 0;
+        gbc.insets = new Insets(10, 5, 5, 10);
+        formPanel.add(new JLabel("工具分类:"), gbc);
+        
+        gbc.gridx = 1; gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.weightx = 1.0;
+        categoryComboBox = new JComboBox<>(new String[]{
+            "sql-inject", "xss", "scanner", "brute-force", "exploit", "其他"
+        });
+        categoryComboBox.setFont(new Font("微软雅黑", Font.PLAIN, 12));
+        formPanel.add(categoryComboBox, gbc);
+        
+        // 收藏
+        gbc.gridx = 0; gbc.gridy = 3;
         gbc.gridwidth = 2;
         gbc.fill = GridBagConstraints.NONE;
         gbc.weightx = 0; gbc.weighty = 0;
@@ -109,7 +128,7 @@ public class ToolEditDialog extends JDialog {
         
         mainPanel.add(formPanel, BorderLayout.CENTER);
         
-        // 帮助面板
+        // 帮助面板 - 添加占位符文档
         JPanel helpPanel = createHelpPanel();
         mainPanel.add(helpPanel, BorderLayout.SOUTH);
         
@@ -122,24 +141,91 @@ public class ToolEditDialog extends JDialog {
      */
     private JPanel createHelpPanel() {
         JPanel helpPanel = new JPanel(new BorderLayout());
-        helpPanel.setBorder(BorderFactory.createTitledBorder("占位符帮助"));
+        helpPanel.setBorder(BorderFactory.createTitledBorder("占位符文档"));
         
-        JTextArea helpText = new JTextArea(4, 50);
-        helpText.setEditable(false);
-        helpText.setFont(new Font("微软雅黑", Font.PLAIN, 10));
-        helpText.setBackground(new Color(248, 248, 248));
-        helpText.setText(
-            "常用占位符:\n" +
-            "%http.request.url% - 完整请求URL\n" +
-            "%http.request.host% - 目标主机\n" +
-            "%http.request.headers.user.agent% - User-Agent头\n" +
-            "%http.request.headers.cookies% - Cookie信息\n" +
-            "点击'占位符帮助'按钮查看完整列表"
+        JTabbedPane tabbedPane = new JTabbedPane();
+        
+        // 常用占位符
+        JTextArea commonPlaceholders = new JTextArea(6, 60);
+        commonPlaceholders.setEditable(false);
+        commonPlaceholders.setFont(new Font("Consolas", Font.PLAIN, 10));
+        commonPlaceholders.setBackground(new Color(248, 248, 248));
+        commonPlaceholders.setText(
+            "# 请求基础\n" +
+            "%http.request.url%              - 完整请求URL\n" +
+            "%http.request.host%             - 目标主机\n" +
+            "%http.request.port%             - 端口号\n" +
+            "%http.request.path%             - 请求路径\n" +
+            "%http.request.method%           - 请求方法(GET/POST等)\n" +
+            "\n" +
+            "# 请求头部\n" +
+            "%http.request.headers.user.agent%    - User-Agent头\n" +
+            "%http.request.headers.cookies%       - Cookie信息\n" +
+            "%http.request.headers.authorization% - Authorization头\n" +
+            "%http.request.headers.referer%       - Referer头\n" +
+            "\n" +
+            "# 请求体\n" +
+            "%http.request.body%             - 请求体内容\n" +
+            "%http.request.body.len%         - 请求体长度"
         );
         
-        helpPanel.add(new JScrollPane(helpText), BorderLayout.CENTER);
+        JScrollPane commonScroll = new JScrollPane(commonPlaceholders);
+        tabbedPane.addTab("常用", commonScroll);
+        
+        // 完整文档
+        JTextArea fullDoc = new JTextArea(6, 60);
+        fullDoc.setEditable(false);
+        fullDoc.setFont(new Font("Consolas", Font.PLAIN, 9));
+        fullDoc.setBackground(new Color(248, 248, 248));
+        fullDoc.setText(generateCompactDocumentation());
+        
+        JScrollPane fullScroll = new JScrollPane(fullDoc);
+        tabbedPane.addTab("完整", fullScroll);
+        
+        helpPanel.add(tabbedPane, BorderLayout.CENTER);
         
         return helpPanel;
+    }
+    
+    /**
+     * 生成紧凑的占位符文档
+     * @return 文档字符串
+     */
+    private String generateCompactDocumentation() {
+        return "# HTTP占位符完整列表\n\n" +
+               "## 请求基础\n" +
+               "%http.request.url%              - 完整请求URL\n" +
+               "%http.request.host%             - 目标主机\n" +
+               "%http.request.port%             - 端口号\n" +
+               "%http.request.path%             - 请求路径\n" +
+               "%http.request.query%            - 查询字符串\n" +
+               "%http.request.method%           - 请求方法\n" +
+               "%http.request.protocol%         - 协议版本\n\n" +
+               
+               "## 请求头部\n" +
+               "%http.request.headers.user.agent%    - User-Agent头\n" +
+               "%http.request.headers.cookies%       - Cookie信息\n" +
+               "%http.request.headers.authorization% - Authorization头\n" +
+               "%http.request.headers.referer%       - Referer头\n" +
+               "%http.request.headers.content.type%  - Content-Type头\n\n" +
+               
+               "## 请求参数\n" +
+               "%http.request.params.get%       - GET参数(JSON)\n" +
+               "%http.request.params.post%      - POST参数(JSON)\n" +
+               "%http.request.params.all%       - 所有参数(JSON)\n\n" +
+               
+               "## 请求体\n" +
+               "%http.request.body%             - 请求体内容\n" +
+               "%http.request.body.len%         - 请求体长度\n\n" +
+               
+               "## 响应基础\n" +
+               "%http.response.status%          - 响应状态码\n" +
+               "%http.response.headers%         - 响应头(JSON)\n" +
+               "%http.response.body%            - 响应体内容\n" +
+               "%http.response.body.len%        - 响应体长度\n\n" +
+               
+               "示例用法:\n" +
+               "sqlmap -u \"%http.request.url%\" --cookie=\"%http.request.headers.cookies%\"";
     }
     
     /**
@@ -207,11 +293,42 @@ public class ToolEditDialog extends JDialog {
             nameField.setText(tool.getToolName());
             commandArea.setText(tool.getCommand());
             favorCheckBox.setSelected(tool.isFavor());
+            
+            // 根据工具名称推断分类
+            String category = inferCategory(tool.getToolName().toLowerCase());
+            categoryComboBox.setSelectedItem(category);
         } else {
             // 设置默认值
             favorCheckBox.setSelected(true);
-            commandArea.setText(""); // 可以设置默认模板
+            categoryComboBox.setSelectedIndex(0);
+            
+            // 设置默认模板
+            commandArea.setText("# 在此输入命令，支持以下占位符:\n" +
+                              "# %http.request.url% - 请求URL\n" +
+                              "# %http.request.headers.cookies% - Cookie\n" +
+                              "# 完整占位符列表请查看下方文档\n\n" +
+                              "");
         }
+    }
+    
+    /**
+     * 根据工具名称推断分类
+     * @param toolName 工具名称
+     * @return 分类
+     */
+    private String inferCategory(String toolName) {
+        if (toolName.contains("sql") || toolName.contains("inject")) {
+            return "sql-inject";
+        } else if (toolName.contains("xss")) {
+            return "xss";
+        } else if (toolName.contains("scan") || toolName.contains("dir")) {
+            return "scanner";
+        } else if (toolName.contains("brute") || toolName.contains("hydra")) {
+            return "brute-force";
+        } else if (toolName.contains("exploit") || toolName.contains("msf")) {
+            return "exploit";
+        }
+        return "其他";
     }
     
     /**
@@ -248,6 +365,9 @@ public class ToolEditDialog extends JDialog {
         tool.setToolName(nameField.getText().trim());
         tool.setCommand(commandArea.getText().trim());
         tool.setFavor(favorCheckBox.isSelected());
+        
+        // 注意：分类信息保存在配置文件的分类结构中，这里不直接保存到HttpTool对象
+        // 具体的分类保存逻辑应该在ToolPanel的saveConfiguration方法中处理
     }
     
     /**
@@ -272,5 +392,13 @@ public class ToolEditDialog extends JDialog {
      */
     public boolean isConfirmed() {
         return confirmed;
+    }
+
+    /**
+     * 获取选中的分类
+     * @return 分类字符串
+     */
+    public String getSelectedCategory() {
+        return (String) categoryComboBox.getSelectedItem();
     }
 } 
