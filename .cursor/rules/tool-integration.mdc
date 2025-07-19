@@ -1,0 +1,41 @@
+---
+title: 外部工具集成规范
+---
+
+# 外部工具集成规范
+
+## 工具执行器单例
+```java
+public class ToolExecutor {
+    private static ToolExecutor instance;
+    
+    public static ToolExecutor getInstance() {
+        if (instance == null) {
+            instance = new ToolExecutor();
+        }
+        return instance;
+    }
+    
+    /**
+     * 执行HTTP工具
+     * @param tool 工具配置
+     * @param httpRequest HTTP请求对象
+     */
+    public void executeHttpTool(HttpTool tool, HttpRequest httpRequest) {
+        // 实现工具执行逻辑
+    }
+}
+```
+
+## 命令执行规范
+- 使用ProcessBuilder而非Runtime.exec()
+- 支持变量替换（%http.url%等）
+- 处理进程输出和错误流
+- 设置执行超时
+
+## 变量替换
+支持的变量:
+- `%http.url%`: 完整URL
+- `%http.host%`: 主机名
+- `%http.path%`: 路径
+- `%http.method%`: HTTP方法

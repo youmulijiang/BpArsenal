@@ -1,0 +1,35 @@
+---
+globs: *.java
+description: "Singleton pattern implementation standards"
+---
+
+# 单例模式实现规范
+
+## 标准单例模式
+- 使用懒汉式单例（延迟初始化）
+- 线程安全考虑（如需要）
+- 私有构造函数
+- 静态获取方法
+
+## 适用场景
+- ApiManager: 管理MontoyaApi实例
+- ConfigManager: 管理配置文件
+- ToolExecutor: 工具执行器
+
+## 实现模板
+```java
+public class SingletonClass {
+    private static SingletonClass instance;
+    
+    private SingletonClass() {
+        // 初始化代码
+    }
+    
+    public static SingletonClass getInstance() {
+        if (instance == null) {
+            instance = new SingletonClass();
+        }
+        return instance;
+    }
+}
+```

@@ -1,30 +1,48 @@
 {
   "httpTool": [
-    {
-      "toolName": "dirsearch",
-      "command":"dirsearch -u %http.url% -x %http.method.post%",
-      "favor": true
-    },
-    {
-      "toolName": "",
-      "command":"",
-      "favor": true
-    }
+   {
+    "type":"sqlmap",
+    "content":[
+      {
+        "toolName":"sqlmap",
+        "Command":"python D:\\tools\\sqlmap\\sqlmap.py -u %http.url% --random-agent --dbs",
+        "favor":true
+      }
+    ]
+   }
   ],
   "thirtyPart": [
     {
-      "toolName": "D:\\tools\\dirsearch\\dirsearch.exe",
-      "autoStart": true
+      "type":"exploit",
+      "content":[
+        {
+          "toolName":"dirsearch",
+          "startCommand":"D:\\tools\\dirsearch\\dirsearch.exe",
+          "favor":true,
+          "autoStart":true
+        }
+      ]
     }
   ],
   "webSite": [
     {
-      "url": "",
-      "desc": "",
-      "favor": true
-    },
-    {
-
+      "type":"OSINT",
+      "content":[
+        {
+          "url":"https://www.baidu.com",
+          "desc":"百度",
+          "favor":true
+        }
+      ]
+    },{
+      "type":"Reacon",
+      "content":[
+        {
+          "url":"https://www.fofa.com",
+          "desc":"fofa",
+          "favor":true
+        }
+      ]
     }
   ]
 }

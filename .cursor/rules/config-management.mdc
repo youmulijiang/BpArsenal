@@ -1,0 +1,35 @@
+# 配置文件管理规范
+
+## 配置管理单例模式
+```java
+public class ConfigManager {
+    private static ConfigManager instance;
+    private Config config;
+    private final String CONFIG_PATH = "config.json";
+    
+    private ConfigManager() {
+        loadConfig();
+    }
+    
+    public static ConfigManager getInstance() {
+        if (instance == null) {
+            instance = new ConfigManager();
+        }
+        return instance;
+    }
+    
+    public Config getConfig() {
+        return config;
+    }
+    
+    public void reloadConfig() {
+        loadConfig();
+    }
+}
+```
+
+## 配置文件规范
+- 配置文件路径: [src/main/resources/config.json](mdc:src/main/resources/config.json)
+- 支持热重载功能
+- JSON格式验证和异常处理
+- 配置变更时自动通知相关组件

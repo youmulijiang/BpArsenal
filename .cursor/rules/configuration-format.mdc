@@ -1,0 +1,52 @@
+# 配置文件格式规范
+
+## JSON结构规范
+基于 [config.json](mdc:src/main/resources/config.json) 的标准格式:
+
+```json
+{
+  "httpTool": [
+    {
+      "type": "工具类型",
+      "content": [
+        {
+          "toolName": "工具名称",
+          "Command": "执行命令",
+          "favor": true/false
+        }
+      ]
+    }
+  ],
+  "thirtyPart": [
+    {
+      "type": "工具分类", 
+      "content": [
+        {
+          "toolName": "工具名称",
+          "startCommand": "启动命令",
+          "favor": true/false,
+          "autoStart": true/false
+        }
+      ]
+    }
+  ],
+  "webSite": [
+    {
+      "type": "网站分类",
+      "content": [
+        {
+          "url": "网站URL",
+          "desc": "描述",
+          "favor": true/false
+        }
+      ]
+    }
+  ]
+}
+```
+
+## 配置验证
+- JSON格式有效性检查
+- 必填字段验证
+- URL格式验证
+- 命令路径存在性检查

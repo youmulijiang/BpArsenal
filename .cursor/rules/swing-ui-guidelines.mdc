@@ -1,223 +1,39 @@
-# Swing GUI 开发规范
+---
+title: Swing UI开发规范
+---
 
-## 组件布局管理
+# Swing UI开发规范
 
-### 推荐的布局管理器
-1. **BorderLayout**: 主要面板布局
-2. **GridBagLayout**: 复杂表单布局
-3. **BoxLayout**: 简单的水平/垂直排列
-4. **FlowLayout**: 组件自然流动排列
+## UI组件规范
+- 使用BorderLayout作为主要布局
+- 复杂布局使用GridBagLayout
+- 按钮使用JButton，表格使用JTable
+- 面板使用JPanel进行组织
 
-### 布局示例
+## 事件处理
 ```java
-public class MainPanel extends JPanel {
-    
-    public MainPanel() {
-        setLayout(new BorderLayout());
-        
-        // 北部：工具栏
-        add(createToolBar(), BorderLayout.NORTH);
-        
-        // 中部：主要内容区域
-        add(createContentPanel(), BorderLayout.CENTER);
-        
-        // 南部：状态栏
-        add(createStatusBar(), BorderLayout.SOUTH);
-        
-        // 西部：导航面板
-        add(createNavigationPanel(), BorderLayout.WEST);
-    }
-    
-    private JPanel createContentPanel() {
-        JPanel panel = new JPanel(new GridBagLayout());
-        GridBagConstraints gbc = new GridBagConstraints();
-        
-        gbc.insets = new Insets(5, 5, 5, 5);
-        gbc.anchor = GridBagConstraints.WEST;
-        
-        // 添加组件...
-        return panel;
-    }
-}
+// 使用Lambda表达式处理事件
+button.addActionListener(e -> {
+    // 处理点击事件
+    executeAction();
+});
 ```
 
-## 组件规范
-
-### JTable 使用规范
+## UI线程安全
 ```java
-public class ResultTable extends JTable {
-    
-    public ResultTable(TableModel model) {
-        super(model);
-        configureTable();
-    }
-    
-    private void configureTable() {
-        // 设置选择模式
-        setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        
-        // 设置列宽
-        getColumnModel().getColumn(0).setPreferredWidth(200);
-        getColumnModel().getColumn(1).setPreferredWidth(100);
-        
-        // 启用排序
-        setAutoCreateRowSorter(true);
-        
-        // 设置行高
-        setRowHeight(25);
-        
-        // 添加右键菜单
-        setComponentPopupMenu(createContextMenu());
-    }
-    
-    private JPopupMenu createContextMenu() {
-        JPopupMenu menu = new JPopupMenu();
-        menu.add(new JMenuItem("复制"));
-        menu.add(new JMenuItem("导出"));
-        return menu;
-    }
-}
+// 使用SwingUtilities确保UI更新在EDT线程
+SwingUtilities.invokeLater(() -> {
+    // 更新UI组件
+    updateUIComponents();
+});
 ```
 
-### 自定义组件规范
-```java
-/**
- * 自定义面板必须继承适当的Swing基类
- */
-public class CustomPanel extends JPanel {
-    
-    // 组件常量定义
-    private static final Color BACKGROUND_COLOR = new Color(248, 248, 248);
-    private static final Font DEFAULT_FONT = new Font("SansSerif", Font.PLAIN, 12);
-    
-    // 组件成员变量
-    private final JTextField urlField;
-    private final JButton scanButton;
-    
-    public CustomPanel() {
-        urlField = new JTextField(30);
-        scanButton = new JButton("开始扫描");
-        
-        initializeComponent();
-        setupLayout();
-        setupEventHandlers();
-    }
-    
-    private void initializeComponent() {
-        setBackground(BACKGROUND_COLOR);
-        setFont(DEFAULT_FONT);
-        
-        // 设置组件属性
-        urlField.setToolTipText("请输入要扫描的URL");
-        scanButton.setPreferredSize(new Dimension(100, 25));
-    }
-    
-    private void setupLayout() {
-        setLayout(new FlowLayout(FlowLayout.LEFT));
-        add(new JLabel("URL:"));
-        add(urlField);
-        add(scanButton);
-    }
-    
-    private void setupEventHandlers() {
-        scanButton.addActionListener(this::onScanButtonClicked);
-    }
-    
-    private void onScanButtonClicked(ActionEvent e) {
-        String url = urlField.getText().trim();
-        if (!url.isEmpty()) {
-            // 触发扫描事件
-            firePropertyChange("scanRequested", null, url);
-        }
-    }
-}
-```
+## 组件命名
+- 面板: xxxPanel
+- 按钮: xxxButton  
+- 表格: xxxTable
+- 文本框: xxxTextField
 
-## 事件处理规范
-
-### 推荐的事件处理方式
-```java
-public class EventHandlingExample {
-    
-    // 1. Lambda表达式（推荐）
-    button.addActionListener(e -> handleButtonClick());
-    
-    // 2. 方法引用（推荐）
-    button.addActionListener(this::handleButtonClick);
-    
-    // 3. 内部类（复杂逻辑时使用）
-    button.addActionListener(new ActionListener() {
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            // 复杂的事件处理逻辑
-        }
-    });
-}
-```
-
-## 线程安全
-
-### EDT (Event Dispatch Thread) 规则
-```java
-public class ThreadSafeExample {
-    
-    /**
-     * 在后台线程中执行耗时操作
-     */
-    public void performLongRunningTask() {
-        SwingUtilities.invokeLater(() -> {
-            // 更新UI前先禁用按钮
-            scanButton.setEnabled(false);
-            progressBar.setVisible(true);
-        });
-        
-        // 在后台线程执行
-        SwingWorker<String, Void> worker = new SwingWorker<String, Void>() {
-            @Override
-            protected String doInBackground() throws Exception {
-                // 耗时操作
-                return performScan();
-            }
-            
-            @Override
-            protected void done() {
-                try {
-                    String result = get();
-                    // 在EDT中更新UI
-                    SwingUtilities.invokeLater(() -> {
-                        resultArea.setText(result);
-                        scanButton.setEnabled(true);
-                        progressBar.setVisible(false);
-                    });
-                } catch (Exception e) {
-                    handleError(e);
-                }
-            }
-        };
-        
-        worker.execute();
-    }
-}
-```
-
-## 样式和主题
-
-### 与Burp Suite主题保持一致
-```java
-public class BurpThemedComponent extends JPanel {
-    
-    public BurpThemedComponent() {
-        // 使用Burp Suite的默认颜色和字体
-        setBackground(UIManager.getColor("Panel.background"));
-        setForeground(UIManager.getColor("Panel.foreground"));
-        setFont(UIManager.getFont("Panel.font"));
-    }
-}
-```
-
-## 可访问性规范
-- 为所有交互组件设置工具提示
-- 使用适当的键盘快捷键
-- 确保颜色对比度足够
-- 为屏幕阅读器提供适当的标签
-
+## Burp UI集成
+- 通过api.userInterface()获取UI接口
+- 使用registerSuiteTab()注册主面板

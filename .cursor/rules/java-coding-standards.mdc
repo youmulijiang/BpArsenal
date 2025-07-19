@@ -1,72 +1,34 @@
-# Java 编码规范 (JDK 17)
+# Java编码规范
 
-## 命名约定
-- **类名**: PascalCase (如: `HttpRequestHandler`)
-- **方法名**: camelCase (如: `processRequest()`)
-- **常量**: UPPER_SNAKE_CASE (如: `MAX_RETRY_COUNT`)
-- **包名**: 全小写 (如: `com.company.burp.utils`)
+## 基本规范
+- 使用JDK17语法特性
+- 类名使用PascalCase
+- 方法名和变量名使用camelCase
+- 常量使用UPPER_SNAKE_CASE
 
-## JDK 17 特性使用
-### Records (推荐用于数据传输对象)
-```java
-public record HttpRequestData(String url, String method, Map<String, String> headers) {}
-```
+## 异常处理
+- 必须捕获和处理所有可能的异常
+- 提供用户友好的错误信息
+- 记录详细的错误日志
 
-### Switch Expressions
-```java
-String result = switch (requestMethod) {
-    case "GET" -> handleGet(request);
-    case "POST" -> handlePost(request);
-    default -> handleDefault(request);
-};
-```
-
-### Text Blocks (用于SQL、JSON等多行字符串)
-```java
-String jsonTemplate = """
-    {
-        "url": "%s",
-        "method": "%s"
-    }
-    """;
-```
-
-## JavaDoc 规范
-每个public类和方法必须包含完整的JavaDoc注释：
-
+## 注释规范
 ```java
 /**
- * 处理HTTP请求的控制器类
- * 
- * @author Your Name
- * @version 1.0
- * @since 2024-01-01
+ * 配置管理器，负责配置文件的加载和管理
+ * 采用单例模式确保全局唯一实例
  */
-public class HttpRequestController {
-    
+public class ConfigManager {
     /**
-     * 发送HTTP请求并返回响应
-     * 
-     * @param request 要发送的HTTP请求对象
-     * @param timeout 超时时间（毫秒）
-     * @return HTTP响应对象，如果请求失败返回null
-     * @throws IllegalArgumentException 当request为null时抛出
-     * @throws TimeoutException 当请求超时时抛出
+     * 加载配置文件
+     * @throws ConfigException 配置文件格式错误时抛出
      */
-    public HttpResponse sendRequest(HttpRequest request, int timeout) 
-            throws IllegalArgumentException, TimeoutException {
+    private void loadConfig() throws ConfigException {
         // 实现代码
     }
 }
 ```
 
-## 异常处理
-- 使用Burp的日志系统记录异常: `api.logging().logToOutput()`
-- 自定义异常必须继承合适的基类
-- 避免空的catch块，至少要记录日志
-
-## 代码格式化
-- 缩进: 4个空格
-- 行长度: 最大120字符
-- 大括号: Java风格（开括号不换行）
-
+## 代码组织
+- 一个类一个文件
+- 相关功能归类到同一包
+- 接口和实现分离

@@ -1,0 +1,37 @@
+---
+title: 错误处理规范
+---
+
+# 错误处理规范
+
+## 异常处理策略
+- 所有外部调用都要包装try-catch
+- 配置文件读取失败要有默认配置
+- 工具执行失败要提供用户提示
+
+## 异常处理模板
+```java
+try {
+    // 可能抛出异常的代码
+    executeRiskyOperation();
+} catch (SpecificException e) {
+    // 记录错误日志
+    api.logging().logToError("操作失败: " + e.getMessage());
+    
+    // 用户友好提示
+    JOptionPane.showMessageDialog(
+        parentComponent, 
+        "操作失败，请检查配置", 
+        "错误", 
+        JOptionPane.ERROR_MESSAGE
+    );
+} catch (Exception e) {
+    // 处理其他未预期异常
+    api.logging().logToError("未知错误: " + e.getMessage());
+}
+```
+
+## 日志记录
+- 使用MontoyaApi的logging接口
+- 错误信息记录到Error级别
+- 调试信息记录到Output级别
