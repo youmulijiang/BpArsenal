@@ -4,6 +4,7 @@ import model.HttpTool;
 import model.ThirdPartyTool;
 import manager.ApiManager;
 import burp.api.montoya.http.message.requests.HttpRequest;
+import burp.api.montoya.http.message.responses.HttpResponse;
 import java.io.IOException;
 import java.awt.Desktop;
 import java.net.URI;
@@ -13,14 +14,22 @@ import javax.swing.JOptionPane;
 /**
  * 工具执行器，负责执行外部工具和命令
  * 采用单例模式确保全局唯一实例
+ * 使用策略模式处理HTTP报文解析
  */
 public class ToolExecutor {
     private static ToolExecutor instance;
+    private final HttpVariableReplacer variableReplacer;
+    private HttpMessageParser currentParser;
     
     /**
      * 私有构造函数，防止外部实例化
+     * 初始化HTTP解析器和变量替换器
      */
-    private ToolExecutor() {}
+    private ToolExecutor() {
+        // 默认使用高级解析器
+        this.currentParser = new AdvancedHttpParser();
+        this.variableReplacer = new HttpVariableReplacer(currentParser);
+    }
     
     /**
      * 获取ToolExecutor单例实例
@@ -39,10 +48,36 @@ public class ToolExecutor {
      * @param httpRequest HTTP请求对象
      */
     public void executeHttpTool(HttpTool tool, HttpRequest httpRequest) {
+        executeHttpTool(tool, httpRequest, null);
+    }
+    
+    /**
+     * 执行HTTP工具（支持请求和响应）
+     * @param tool 工具配置
+     * @param httpRequest HTTP请求对象
+     * @param httpResponse HTTP响应对象（可选）
+     */
+    public void executeHttpTool(HttpTool tool, HttpRequest httpRequest, HttpResponse httpResponse) {
         CompletableFuture.runAsync(() -> {
             try {
-                String command = replaceVariables(tool.getCommand(), httpRequest);
+                // 验证命令中的变量
+                HttpVariableReplacer.VariableValidationResult validation = 
+                    variableReplacer.validateVariables(tool.getCommand(), httpRequest, httpResponse);
+                
+                if (!validation.isValid()) {
+                    logVariableValidationWarning(tool.getToolName(), validation);
+                }
+                
+                // 替换变量并执行命令
+                String command;
+                if (httpResponse != null) {
+                    command = variableReplacer.replaceAllVariables(tool.getCommand(), httpRequest, httpResponse);
+                } else {
+                    command = variableReplacer.replaceRequestVariables(tool.getCommand(), httpRequest);
+                }
+                
                 executeCommand(command, tool.getToolName());
+                
             } catch (Exception e) {
                 handleError("HTTP工具执行失败", tool.getToolName(), e);
             }
@@ -122,31 +157,50 @@ public class ToolExecutor {
     }
     
     /**
-     * 替换命令中的变量
-     * @param command 原始命令
-     * @param httpRequest HTTP请求对象
-     * @return 替换后的命令
+     * 设置HTTP解析器策略
+     * @param parser HTTP解析器实例
      */
-    private String replaceVariables(String command, HttpRequest httpRequest) {
-        if (httpRequest == null) {
-            return command;
+    public void setHttpParser(HttpMessageParser parser) {
+        this.currentParser = parser;
+    }
+    
+    /**
+     * 获取当前HTTP解析器
+     * @return 当前HTTP解析器
+     */
+    public HttpMessageParser getCurrentParser() {
+        return currentParser;
+    }
+    
+    /**
+     * 获取可用的请求变量（用于调试）
+     * @param httpRequest HTTP请求对象
+     * @return 变量映射
+     */
+    public java.util.Map<String, String> getAvailableRequestVariables(HttpRequest httpRequest) {
+        return variableReplacer.getAvailableRequestVariables(httpRequest);
+    }
+    
+    /**
+     * 获取可用的响应变量（用于调试）
+     * @param httpResponse HTTP响应对象
+     * @return 变量映射
+     */
+    public java.util.Map<String, String> getAvailableResponseVariables(HttpResponse httpResponse) {
+        return variableReplacer.getAvailableResponseVariables(httpResponse);
+    }
+    
+    /**
+     * 记录变量验证警告
+     * @param toolName 工具名称
+     * @param validation 验证结果
+     */
+    private void logVariableValidationWarning(String toolName, HttpVariableReplacer.VariableValidationResult validation) {
+        if (ApiManager.getInstance().isInitialized()) {
+            String warningMsg = String.format("工具 %s 中包含未解析的变量: %s", 
+                toolName, validation.getMissingVariables());
+            ApiManager.getInstance().getApi().logging().logToError(warningMsg);
         }
-        
-        String result = command;
-        
-        // 替换URL变量
-        result = result.replace("%http.url%", httpRequest.url());
-        
-        // 替换主机名变量
-        result = result.replace("%http.host%", httpRequest.httpService().host());
-        
-        // 替换路径变量
-        result = result.replace("%http.path%", httpRequest.path());
-        
-        // 替换HTTP方法变量
-        result = result.replace("%http.method%", httpRequest.method());
-        
-        return result;
     }
     
     /**
