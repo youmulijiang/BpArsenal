@@ -11,21 +11,32 @@ import model.HttpTool;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableRowSorter;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.io.UnsupportedEncodingException;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Set;
+import java.util.HashSet;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 /**
  * Arsenal工具对话框
- * 显示工具列表、命令预览和执行结果
+ * 显示工具列表、命令预览和执行结果，支持筛选功能
  */
 public class ArsenalDialog extends JDialog {
     
     private JTable toolTable;
     private DefaultTableModel tableModel;
+    private TableRowSorter<DefaultTableModel> tableSorter;
+    private JTextField toolNameFilterField;
+    private JComboBox<String> categoryFilterCombo;
+    private JButton clearFilterButton;
     private JTextArea commandPreviewArea;
     private JTextArea commandResultArea;
     private JButton runButton;
@@ -34,7 +45,9 @@ public class ArsenalDialog extends JDialog {
     private HttpRequest httpRequest;
     private HttpResponse httpResponse;
     private List<HttpTool> allTools;
+    private List<HttpTool> filteredTools;
     private HttpTool selectedTool;
+    private Set<String> allCategories;
     
     /**
      * 构造函数
@@ -45,6 +58,8 @@ public class ArsenalDialog extends JDialog {
         this.httpRequest = httpRequest;
         this.httpResponse = httpResponse;
         this.allTools = loadAllTools();
+        this.filteredTools = new ArrayList<>(allTools);
+        this.allCategories = extractAllCategories();
         
         initializeDialog();
         initializeComponents();
@@ -58,7 +73,7 @@ public class ArsenalDialog extends JDialog {
      */
     private void initializeDialog() {
         setTitle("Arsenal - 武器库");
-        setSize(900, 700);
+        setSize(950, 750);
         setLocationRelativeTo(null);
         setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
         setModal(false); // 非模态对话框
@@ -75,6 +90,9 @@ public class ArsenalDialog extends JDialog {
      * 初始化UI组件
      */
     private void initializeComponents() {
+        // 创建筛选组件
+        initializeFilterComponents();
+        
         // 创建工具表格
         String[] columnNames = {"工具名称", "命令", "分类"};
         tableModel = new DefaultTableModel(columnNames, 0) {
@@ -89,10 +107,17 @@ public class ArsenalDialog extends JDialog {
         toolTable.setFont(new Font("微软雅黑", Font.PLAIN, 12));
         toolTable.getTableHeader().setFont(new Font("微软雅黑", Font.BOLD, 12));
         
+        // 设置表格行高
+        toolTable.setRowHeight(25);
+        
         // 设置列宽
         toolTable.getColumnModel().getColumn(0).setPreferredWidth(120);
         toolTable.getColumnModel().getColumn(1).setPreferredWidth(400);
         toolTable.getColumnModel().getColumn(2).setPreferredWidth(100);
+        
+        // 创建表格排序器
+        tableSorter = new TableRowSorter<>(tableModel);
+        toolTable.setRowSorter(tableSorter);
         
         // 创建命令预览文本框
         commandPreviewArea = new JTextArea(4, 50);
@@ -111,10 +136,10 @@ public class ArsenalDialog extends JDialog {
         runButton.setEnabled(false);
         runButton.setPreferredSize(new Dimension(80, 30));
         
-        // 创建执行结果文本框
+        // 创建执行结果文本框，修复字体编码问题
         commandResultArea = new JTextArea(8, 50);
         commandResultArea.setEditable(false);
-        commandResultArea.setFont(new Font("Consolas", Font.PLAIN, 11));
+        commandResultArea.setFont(new Font("Consolas", Font.PLAIN, 12));
         commandResultArea.setBackground(Color.BLACK);
         commandResultArea.setForeground(Color.GREEN);
         commandResultArea.setBorder(BorderFactory.createTitledBorder("执行结果"));
@@ -124,17 +149,41 @@ public class ArsenalDialog extends JDialog {
     }
     
     /**
+     * 初始化筛选组件
+     */
+    private void initializeFilterComponents() {
+        // 工具名称筛选框
+        toolNameFilterField = new JTextField(15);
+        toolNameFilterField.setFont(new Font("微软雅黑", Font.PLAIN, 12));
+        toolNameFilterField.setBorder(BorderFactory.createTitledBorder("工具名称"));
+        
+        // 分类筛选下拉框
+        categoryFilterCombo = new JComboBox<>();
+        categoryFilterCombo.setFont(new Font("微软雅黑", Font.PLAIN, 12));
+        categoryFilterCombo.addItem("全部分类");
+        
+        // 清除筛选按钮
+        clearFilterButton = new JButton("清除筛选");
+        clearFilterButton.setFont(new Font("微软雅黑", Font.PLAIN, 11));
+        clearFilterButton.setPreferredSize(new Dimension(80, 25));
+    }
+    
+    /**
      * 布局组件
      */
     private void layoutComponents() {
         setLayout(new BorderLayout());
         
-        // 顶部：工具表格
+        // 顶部：筛选面板
+        JPanel filterPanel = createFilterPanel();
+        add(filterPanel, BorderLayout.NORTH);
+        
+        // 中部：工具表格
         JScrollPane tableScrollPane = new JScrollPane(toolTable);
-        tableScrollPane.setPreferredSize(new Dimension(880, 250));
+        tableScrollPane.setPreferredSize(new Dimension(930, 220));
         tableScrollPane.setBorder(BorderFactory.createTitledBorder("工具列表"));
         
-        // 中部：命令预览和运行按钮
+        // 命令预览和运行按钮面板
         JPanel middlePanel = new JPanel(new BorderLayout());
         JScrollPane previewScrollPane = new JScrollPane(commandPreviewArea);
         middlePanel.add(previewScrollPane, BorderLayout.CENTER);
@@ -143,13 +192,65 @@ public class ArsenalDialog extends JDialog {
         buttonPanel.add(runButton);
         middlePanel.add(buttonPanel, BorderLayout.SOUTH);
         
+        // 组合中部面板
+        JPanel centerPanel = new JPanel(new BorderLayout());
+        centerPanel.add(tableScrollPane, BorderLayout.NORTH);
+        centerPanel.add(middlePanel, BorderLayout.CENTER);
+        
         // 底部：执行结果
-        resultScrollPane.setPreferredSize(new Dimension(880, 200));
+        resultScrollPane.setPreferredSize(new Dimension(930, 180));
         
         // 添加到主面板
-        add(tableScrollPane, BorderLayout.NORTH);
-        add(middlePanel, BorderLayout.CENTER);
+        add(centerPanel, BorderLayout.CENTER);
         add(resultScrollPane, BorderLayout.SOUTH);
+    }
+    
+    /**
+     * 创建筛选面板
+     * @return 筛选面板
+     */
+    private JPanel createFilterPanel() {
+        JPanel filterPanel = new JPanel(new GridBagLayout());
+        filterPanel.setBorder(BorderFactory.createTitledBorder("筛选条件"));
+        filterPanel.setPreferredSize(new Dimension(930, 80));
+        
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(5, 5, 5, 5);
+        gbc.anchor = GridBagConstraints.WEST;
+        
+        // 工具名称标签和输入框
+        gbc.gridx = 0; gbc.gridy = 0;
+        filterPanel.add(new JLabel("工具名称:"), gbc);
+        
+        gbc.gridx = 1; gbc.gridy = 0;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.weightx = 0.4;
+        filterPanel.add(toolNameFilterField, gbc);
+        
+        // 分类标签和下拉框
+        gbc.gridx = 2; gbc.gridy = 0;
+        gbc.fill = GridBagConstraints.NONE;
+        gbc.weightx = 0;
+        filterPanel.add(new JLabel("分类:"), gbc);
+        
+        gbc.gridx = 3; gbc.gridy = 0;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.weightx = 0.3;
+        filterPanel.add(categoryFilterCombo, gbc);
+        
+        // 清除筛选按钮
+        gbc.gridx = 4; gbc.gridy = 0;
+        gbc.fill = GridBagConstraints.NONE;
+        gbc.weightx = 0;
+        filterPanel.add(clearFilterButton, gbc);
+        
+        // 占位符，推送其他组件到左侧
+        gbc.gridx = 5; gbc.gridy = 0;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.weightx = 1.0;
+        filterPanel.add(Box.createHorizontalGlue(), gbc);
+        
+        return filterPanel;
     }
     
     /**
@@ -160,10 +261,18 @@ public class ArsenalDialog extends JDialog {
         toolTable.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
                 int selectedRow = toolTable.getSelectedRow();
-                if (selectedRow >= 0 && selectedRow < allTools.size()) {
-                    selectedTool = allTools.get(selectedRow);
-                    updateCommandPreview();
-                    runButton.setEnabled(true);
+                if (selectedRow >= 0) {
+                    // 获取实际的工具索引（考虑筛选和排序）
+                    int modelRow = toolTable.convertRowIndexToModel(selectedRow);
+                    if (modelRow >= 0 && modelRow < filteredTools.size()) {
+                        selectedTool = filteredTools.get(modelRow);
+                        updateCommandPreview();
+                        runButton.setEnabled(true);
+                    } else {
+                        selectedTool = null;
+                        commandPreviewArea.setText("");
+                        runButton.setEnabled(false);
+                    }
                 } else {
                     selectedTool = null;
                     commandPreviewArea.setText("");
@@ -179,6 +288,89 @@ public class ArsenalDialog extends JDialog {
                 executeSelectedTool();
             }
         });
+        
+        // 工具名称筛选事件
+        toolNameFilterField.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+            @Override
+            public void insertUpdate(javax.swing.event.DocumentEvent e) { applyFilters(); }
+            @Override
+            public void removeUpdate(javax.swing.event.DocumentEvent e) { applyFilters(); }
+            @Override
+            public void changedUpdate(javax.swing.event.DocumentEvent e) { applyFilters(); }
+        });
+        
+        // 分类筛选事件
+        categoryFilterCombo.addActionListener(e -> applyFilters());
+        
+        // 清除筛选按钮事件
+        clearFilterButton.addActionListener(e -> clearFilters());
+    }
+    
+    /**
+     * 应用筛选条件
+     */
+    private void applyFilters() {
+        String toolNameFilter = toolNameFilterField.getText().trim().toLowerCase();
+        String categoryFilter = (String) categoryFilterCombo.getSelectedItem();
+        
+        filteredTools.clear();
+        
+        for (HttpTool tool : allTools) {
+            boolean matchesName = true;
+            boolean matchesCategory = true;
+            
+            // 工具名称筛选
+            if (!toolNameFilter.isEmpty()) {
+                String toolName = tool.getToolName() != null ? tool.getToolName().toLowerCase() : "";
+                matchesName = toolName.contains(toolNameFilter);
+            }
+            
+            // 分类筛选
+            if (categoryFilter != null && !categoryFilter.equals("全部分类")) {
+                String toolCategory = getToolCategory(tool);
+                matchesCategory = categoryFilter.equals(toolCategory);
+            }
+            
+            if (matchesName && matchesCategory) {
+                filteredTools.add(tool);
+            }
+        }
+        
+        loadToolData();
+    }
+    
+    /**
+     * 清除筛选条件
+     */
+    private void clearFilters() {
+        toolNameFilterField.setText("");
+        categoryFilterCombo.setSelectedIndex(0);
+        filteredTools.clear();
+        filteredTools.addAll(allTools);
+        loadToolData();
+    }
+    
+    /**
+     * 提取所有分类
+     * @return 分类集合
+     */
+    private Set<String> extractAllCategories() {
+        Set<String> categories = new HashSet<>();
+        
+        try {
+            Config config = ConfigManager.getInstance().getConfig();
+            if (config.getHttpTool() != null) {
+                for (Config.HttpToolCategory category : config.getHttpTool()) {
+                    if (category.getType() != null) {
+                        categories.add(category.getType());
+                    }
+                }
+            }
+        } catch (Exception e) {
+            ApiManager.getInstance().getApi().logging().logToError("提取分类失败: " + e.getMessage());
+        }
+        
+        return categories;
     }
     
     /**
@@ -187,7 +379,20 @@ public class ArsenalDialog extends JDialog {
      */
     private List<HttpTool> loadAllTools() {
         try {
-            return ToolController.getInstance().getAllTools();
+            List<HttpTool> tools = ToolController.getInstance().getAllTools();
+            
+            // 初始化分类下拉框
+            SwingUtilities.invokeLater(() -> {
+                categoryFilterCombo.removeAllItems();
+                categoryFilterCombo.addItem("全部分类");
+                
+                Set<String> categories = extractAllCategories();
+                for (String category : categories.stream().sorted().collect(Collectors.toList())) {
+                    categoryFilterCombo.addItem(category);
+                }
+            });
+            
+            return tools;
         } catch (Exception e) {
             ApiManager.getInstance().getApi().logging().logToError("加载工具数据失败: " + e.getMessage());
             return new ArrayList<>();
@@ -200,7 +405,7 @@ public class ArsenalDialog extends JDialog {
     private void loadToolData() {
         tableModel.setRowCount(0); // 清空表格
         
-        for (HttpTool tool : allTools) {
+        for (HttpTool tool : filteredTools) {
             String toolName = tool.getToolName() != null ? tool.getToolName() : "未知工具";
             String command = tool.getCommand() != null ? tool.getCommand() : "";
             String category = getToolCategory(tool);
@@ -212,9 +417,21 @@ public class ArsenalDialog extends JDialog {
             tableModel.addRow(new Object[]{toolName, displayCommand, category});
         }
         
-        // 自动调整列宽
+        // 自动调整列宽和重绘表格
         toolTable.revalidate();
         toolTable.repaint();
+        
+        // 更新筛选结果统计
+        updateFilterStatus();
+    }
+    
+    /**
+     * 更新筛选状态显示
+     */
+    private void updateFilterStatus() {
+        String title = String.format("Arsenal - 武器库 (显示 %d/%d 个工具)", 
+                                    filteredTools.size(), allTools.size());
+        setTitle(title);
     }
     
     /**
@@ -290,17 +507,48 @@ public class ArsenalDialog extends JDialog {
         
         // 清空之前的结果
         commandResultArea.setText("正在执行命令...\n");
+        commandResultArea.append("工具: " + selectedTool.getToolName() + "\n");
         commandResultArea.append("命令: " + selectedTool.getCommand() + "\n");
-        commandResultArea.append("---\n");
+        commandResultArea.append("---执行结果---\n");
         
         // 异步执行工具
         CompletableFuture.runAsync(() -> {
             try {
-                ToolExecutor.getInstance().executeHttpTool(selectedTool, httpRequest);
+                // 执行命令并捕获输出
+                String command = ToolExecutor.getInstance().previewCommand(selectedTool, httpRequest);
+                Process process = new ProcessBuilder("cmd", "/c", command)
+                    .redirectErrorStream(true)
+                    .start();
+                
+                // 读取命令输出，修复编码问题
+                StringBuilder output = new StringBuilder();
+                try (BufferedReader reader = new BufferedReader(
+                        new InputStreamReader(process.getInputStream(), getSystemEncoding()))) {
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        output.append(line).append("\n");
+                        
+                        // 实时更新UI
+                        final String currentLine = line;
+                        SwingUtilities.invokeLater(() -> {
+                            commandResultArea.append(currentLine + "\n");
+                            commandResultArea.setCaretPosition(commandResultArea.getDocument().getLength());
+                        });
+                    }
+                }
+                
+                // 等待进程完成
+                int exitCode = process.waitFor();
                 
                 SwingUtilities.invokeLater(() -> {
-                    commandResultArea.append("命令执行完成\n");
-                    commandResultArea.append("注意: 详细的执行结果请查看Burp Suite的输出日志\n");
+                    commandResultArea.append("\n---执行完成---\n");
+                    commandResultArea.append("退出码: " + exitCode + "\n");
+                    
+                    if (exitCode == 0) {
+                        commandResultArea.append("命令执行成功！\n");
+                    } else {
+                        commandResultArea.append("命令执行失败，退出码: " + exitCode + "\n");
+                    }
                     
                     // 恢复按钮状态
                     runButton.setEnabled(true);
@@ -310,9 +558,11 @@ public class ArsenalDialog extends JDialog {
                     commandResultArea.setCaretPosition(commandResultArea.getDocument().getLength());
                 });
                 
+                ApiManager.getInstance().getApi().logging().logToOutput("工具执行完成: " + selectedTool.getToolName());
+                
             } catch (Exception e) {
                 SwingUtilities.invokeLater(() -> {
-                    commandResultArea.append("执行失败: " + e.getMessage() + "\n");
+                    commandResultArea.append("\n执行异常: " + e.getMessage() + "\n");
                     
                     // 恢复按钮状态
                     runButton.setEnabled(true);
@@ -325,5 +575,20 @@ public class ArsenalDialog extends JDialog {
                 ApiManager.getInstance().getApi().logging().logToError("工具执行失败: " + e.getMessage());
             }
         });
+    }
+    
+    /**
+     * 获取系统编码
+     * @return 编码字符串
+     */
+    private String getSystemEncoding() {
+        String osName = System.getProperty("os.name").toLowerCase();
+        if (osName.contains("windows")) {
+            // Windows系统使用GBK编码
+            return "GBK";
+        } else {
+            // Unix/Linux系统使用UTF-8编码
+            return "UTF-8";
+        }
     }
 } 
