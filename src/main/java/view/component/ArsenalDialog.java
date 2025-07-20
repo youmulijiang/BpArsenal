@@ -668,7 +668,30 @@ public class ArsenalDialog extends JDialog {
                 // 设置渲染后的命令
                 if (httpRequest != null) {
                     String renderedCommand = generateRenderedCommand(selectedToolCommand, httpRequest);
-                    renderedCommandArea.setText(renderedCommand);
+                    
+                    // 添加调试信息到UI显示
+                    StringBuilder displayCommand = new StringBuilder();
+                    displayCommand.append(renderedCommand);
+                    
+                    if (renderedCommand.equals(originalCommand)) {
+                        displayCommand.append("\n\n# 提示: 命令中未找到可替换的变量");
+                    } else {
+                        // 计算替换的变量数量
+                        AdvancedHttpParser advancedParser = new AdvancedHttpParser();
+                        Map<String, String> requestVariables = advancedParser.parseRequest(httpRequest);
+                        Map<String, String> responseVariables = new HashMap<>();
+                        if (httpResponse != null) {
+                            responseVariables = advancedParser.parseResponse(httpResponse);
+                        }
+                        Map<String, String> allVariables = new HashMap<>();
+                        allVariables.putAll(requestVariables);
+                        allVariables.putAll(responseVariables);
+                        
+                        int variableCount = countReplacedVariables(originalCommand, allVariables);
+                        displayCommand.append(String.format("\n\n# 已替换 %d 个变量", variableCount));
+                    }
+                    
+                    renderedCommandArea.setText(displayCommand.toString());
                     renderedCommandArea.setCaretPosition(0);
                 } else {
                     renderedCommandArea.setText("无HTTP请求数据，无法渲染变量");
@@ -719,14 +742,6 @@ public class ArsenalDialog extends JDialog {
             
             // 进行变量替换
             String renderedCommand = replaceVariables(command, allVariables);
-            
-            // 添加调试信息（可选）
-            if (renderedCommand.equals(command)) {
-                renderedCommand += "\n\n# 提示: 命令中未找到可替换的变量";
-            } else {
-                int variableCount = countReplacedVariables(command, allVariables);
-                renderedCommand += String.format("\n\n# 已替换 %d 个变量", variableCount);
-            }
             
             return renderedCommand;
             
@@ -844,33 +859,144 @@ public class ArsenalDialog extends JDialog {
         // 获取工具名称
         String toolName = selectedToolCommand != null ? selectedToolCommand.getToolName() : "手动命令";
         
-        // 记录到执行历史
-        addToExecutionHistory(toolName, commandType, command);
+        // 禁用运行按钮防止重复执行
+        runButton.setEnabled(false);
+        runButton.setText("执行中...");
         
-        // 创建并显示命令执行窗口
-        CommandExecutionDialog executionDialog = new CommandExecutionDialog(this, toolName, command.trim(), commandType);
-        executionDialog.setVisible(true);
+        // 记录执行开始
+        addExecutionLogEntry("开始执行", toolName, commandType, command.trim());
+        
+        // 使用ToolExecutor直接执行命令
+        try {
+            // 对于原始命令，需要进行变量替换；对于渲染命令，直接使用
+            String finalCommand = command.trim();
+            if (selectedTab == 0 && httpRequest != null && selectedToolCommand != null) {
+                // 原始命令需要进行变量替换
+                finalCommand = generateRenderedCommand(selectedToolCommand, httpRequest);
+            } else if (selectedTab == 1) {
+                // 渲染命令可能包含调试信息，需要提取实际命令
+                String[] lines = finalCommand.split("\n");
+                finalCommand = lines[0]; // 取第一行作为实际命令
+            }
+            
+            // 记录最终执行的命令
+            addExecutionLogEntry("实际执行", toolName, "系统命令", finalCommand);
+            
+            // 显示格式化后的命令（用于调试）
+            String[] formattedCommand = ToolExecutor.formatCommandForRunningOnOperatingSystem(finalCommand);
+            StringBuilder commandDisplay = new StringBuilder();
+            for (int i = 0; i < formattedCommand.length; i++) {
+                if (i > 0) commandDisplay.append(" ");
+                commandDisplay.append(formattedCommand[i]);
+            }
+            addExecutionLogEntry("格式化命令", toolName, "完整命令", commandDisplay.toString());
+            
+            // 使用ToolExecutor执行命令
+            executeCommandWithExecutor(finalCommand, toolName);
+            
+        } catch (Exception e) {
+            addExecutionLogEntry("执行异常", toolName, "错误", e.getMessage());
+            // 恢复按钮状态
+            runButton.setEnabled(true);
+            runButton.setText("Run");
+            
+            // 显示错误对话框
+            JOptionPane.showMessageDialog(this, 
+                "命令执行失败: " + e.getMessage(), 
+                "执行错误", 
+                JOptionPane.ERROR_MESSAGE);
+        }
     }
     
     /**
-     * 添加到执行历史
+     * 使用ToolExecutor执行命令
+     * @param command 要执行的命令
      * @param toolName 工具名称
-     * @param commandType 命令类型
-     * @param command 执行的命令
      */
-    private void addToExecutionHistory(String toolName, String commandType, String command) {
+    private void executeCommandWithExecutor(String command, String toolName) {
+        ToolExecutor.getInstance().executeCommandSync(command, toolName, new ToolExecutor.CommandExecutionCallback() {
+            @Override
+            public void onCommandStart(String toolName, String command) {
+                SwingUtilities.invokeLater(() -> {
+                    addExecutionLogEntry("命令启动", toolName, "状态", "命令已提交到系统执行");
+                });
+            }
+            
+            @Override
+            public void onOutputReceived(String output) {
+                // 不在UI中显示输出，命令在后台运行
+                // 可以选择记录到Burp的日志中
+                if (ApiManager.getInstance().isInitialized()) {
+                    ApiManager.getInstance().getApi().logging().logToOutput("工具输出: " + output);
+                }
+            }
+            
+            @Override
+            public void onCommandComplete(String toolName, int exitCode, String fullOutput) {
+                SwingUtilities.invokeLater(() -> {
+                    String status = exitCode == 0 ? "执行成功" : "执行失败";
+                    addExecutionLogEntry("执行完成", toolName, status, "退出码: " + exitCode);
+                    
+                    // 恢复按钮状态
+                    runButton.setEnabled(true);
+                    runButton.setText("Run");
+                    
+                    // 记录完整输出到Burp日志
+                    if (ApiManager.getInstance().isInitialized()) {
+                        String logMessage = String.format("工具执行完成: %s (退出码: %d)", toolName, exitCode);
+                        if (exitCode == 0) {
+                            ApiManager.getInstance().getApi().logging().logToOutput(logMessage);
+                        } else {
+                            ApiManager.getInstance().getApi().logging().logToError(logMessage);
+                        }
+                    }
+                });
+            }
+            
+            @Override
+            public void onCommandError(String toolName, Exception error) {
+                SwingUtilities.invokeLater(() -> {
+                    addExecutionLogEntry("执行异常", toolName, "错误", error.getMessage());
+                    
+                    // 恢复按钮状态
+                    runButton.setEnabled(true);
+                    runButton.setText("Run");
+                    
+                    // 记录错误到Burp日志
+                    if (ApiManager.getInstance().isInitialized()) {
+                        ApiManager.getInstance().getApi().logging().logToError("工具执行异常: " + toolName + " - " + error.getMessage());
+                    }
+                });
+            }
+        });
+    }
+    
+    /**
+     * 添加执行日志条目
+     * @param action 操作类型
+     * @param toolName 工具名称
+     * @param type 类型
+     * @param details 详细信息
+     */
+    private void addExecutionLogEntry(String action, String toolName, String type, String details) {
         java.text.SimpleDateFormat formatter = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         String timestamp = formatter.format(new java.util.Date());
         
-        StringBuilder historyEntry = new StringBuilder();
-        historyEntry.append("[").append(timestamp).append("] ");
-        historyEntry.append("工具: ").append(toolName).append(" | ");
-        historyEntry.append("类型: ").append(commandType).append("\n");
-        historyEntry.append("命令: ").append(command).append("\n");
-        historyEntry.append("状态: 已启动执行窗口\n");
-        historyEntry.append(createSeparator(50)).append("\n");
+        StringBuilder logEntry = new StringBuilder();
+        logEntry.append("[").append(timestamp).append("] ");
+        logEntry.append(action).append(" - ");
+        logEntry.append("工具: ").append(toolName).append(" | ");
+        logEntry.append("类型: ").append(type).append("\n");
         
-        commandResultArea.append(historyEntry.toString());
+        // 如果details太长，进行截断显示
+        String displayDetails = details;
+        if (details.length() > 200) {
+            displayDetails = details.substring(0, 200) + "...";
+        }
+        logEntry.append("详情: ").append(displayDetails).append("\n");
+        logEntry.append(createSeparator(50)).append("\n");
+        
+        commandResultArea.append(logEntry.toString());
         commandResultArea.setCaretPosition(commandResultArea.getDocument().getLength());
     }
     
