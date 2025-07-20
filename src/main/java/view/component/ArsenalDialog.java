@@ -150,13 +150,14 @@ public class ArsenalDialog extends JDialog {
         refreshVariablesButton.setEnabled(false);
         refreshVariablesButton.setPreferredSize(new Dimension(100, 30));
         
-        // 创建执行日志文本框 - 修改为白色背景
+        // 创建执行历史文本框 - 修改为白色背景
         commandResultArea = new JTextArea(8, 50);
         commandResultArea.setEditable(false);
-        commandResultArea.setFont(new Font("Consolas", Font.PLAIN, 11));
+        commandResultArea.setFont(new Font("微软雅黑", Font.PLAIN, 11));  // 使用支持中文的字体
         commandResultArea.setBackground(Color.WHITE);  // 修改为白色背景
         commandResultArea.setForeground(Color.BLACK);  // 修改为黑色文字
-        commandResultArea.setBorder(BorderFactory.createTitledBorder("执行日志"));  // 修改标题
+        commandResultArea.setBorder(BorderFactory.createTitledBorder("执行历史"));  // 修改标题
+        commandResultArea.setText("点击Run按钮执行命令，命令将在新窗口中运行...\n");
         
         resultScrollPane = new JScrollPane(commandResultArea);
         resultScrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
@@ -272,7 +273,7 @@ public class ArsenalDialog extends JDialog {
         centerPanel.add(tableScrollPane, BorderLayout.NORTH);
         centerPanel.add(middlePanel, BorderLayout.CENTER);
         
-        // 底部：执行日志
+        // 底部：执行历史
         resultScrollPane.setPreferredSize(new Dimension(930, 180));
         
         // 添加到主面板
@@ -840,89 +841,36 @@ public class ArsenalDialog extends JDialog {
             return;
         }
         
-        // 禁用运行按钮防止重复执行
-        runButton.setEnabled(false);
-        runButton.setText("Running...");
-        
-        // 清空之前的日志
-        commandResultArea.setText("");
-        
         // 获取工具名称
         String toolName = selectedToolCommand != null ? selectedToolCommand.getToolName() : "手动命令";
         
-        // 使用ToolExecutor执行命令
-        ToolExecutor.getInstance().executeCommandSync(command.trim(), toolName, new ToolExecutor.CommandExecutionCallback() {
-            @Override
-            public void onCommandStart(String toolName, String command) {
-                SwingUtilities.invokeLater(() -> {
-                    appendToLog("🚀 开始执行: " + toolName);
-                    appendToLog("📝 命令类型: " + commandType);
-                    appendToLog("⚡ 执行命令: " + command);
-                    appendToLog("📊 系统平台: " + ToolExecutor.getOsType());
-                    appendToLog(createSeparator(60));
-                });
-            }
-            
-            @Override
-            public void onOutputReceived(String output) {
-                SwingUtilities.invokeLater(() -> {
-                    appendToLog(output);
-                });
-            }
-            
-            @Override
-            public void onCommandComplete(String toolName, int exitCode, String fullOutput) {
-                SwingUtilities.invokeLater(() -> {
-                    appendToLog(createSeparator(60));
-                    if (exitCode == 0) {
-                        appendToLog("✅ 执行成功: " + toolName + " (退出码: " + exitCode + ")");
-                    } else {
-                        appendToLog("❌ 执行失败: " + toolName + " (退出码: " + exitCode + ")");
-                    }
-                    
-                    // 添加时间戳
-                    java.text.SimpleDateFormat formatter = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-                    appendToLog("🕒 完成时间: " + formatter.format(new java.util.Date()));
-                    appendToLog("");
-                    
-                    // 恢复按钮状态
-                    runButton.setEnabled(true);
-                    runButton.setText("Run");
-                    
-                    // 滚动到底部
-                    commandResultArea.setCaretPosition(commandResultArea.getDocument().getLength());
-                });
-            }
-            
-            @Override
-            public void onCommandError(String toolName, Exception error) {
-                SwingUtilities.invokeLater(() -> {
-                    appendToLog(createSeparator(60));
-                    appendToLog("💥 执行异常: " + toolName);
-                    appendToLog("🔥 错误信息: " + error.getMessage());
-                    
-                    // 添加时间戳
-                    java.text.SimpleDateFormat formatter = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-                    appendToLog("🕒 异常时间: " + formatter.format(new java.util.Date()));
-                    appendToLog("");
-                    
-                    // 恢复按钮状态
-                    runButton.setEnabled(true);
-                    runButton.setText("Run");
-                    
-                    // 滚动到底部
-                    commandResultArea.setCaretPosition(commandResultArea.getDocument().getLength());
-                });
-            }
-        });
+        // 记录到执行历史
+        addToExecutionHistory(toolName, commandType, command);
+        
+        // 创建并显示命令执行窗口
+        CommandExecutionDialog executionDialog = new CommandExecutionDialog(this, toolName, command.trim(), commandType);
+        executionDialog.setVisible(true);
     }
     
     /**
-     * 添加日志到执行结果区域
-     * @param message 日志消息
+     * 添加到执行历史
+     * @param toolName 工具名称
+     * @param commandType 命令类型
+     * @param command 执行的命令
      */
-    private void appendToLog(String message) {
-        commandResultArea.append(message + "\n");
+    private void addToExecutionHistory(String toolName, String commandType, String command) {
+        java.text.SimpleDateFormat formatter = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        String timestamp = formatter.format(new java.util.Date());
+        
+        StringBuilder historyEntry = new StringBuilder();
+        historyEntry.append("[").append(timestamp).append("] ");
+        historyEntry.append("工具: ").append(toolName).append(" | ");
+        historyEntry.append("类型: ").append(commandType).append("\n");
+        historyEntry.append("命令: ").append(command).append("\n");
+        historyEntry.append("状态: 已启动执行窗口\n");
+        historyEntry.append(createSeparator(50)).append("\n");
+        
+        commandResultArea.append(historyEntry.toString());
         commandResultArea.setCaretPosition(commandResultArea.getDocument().getLength());
     }
     
