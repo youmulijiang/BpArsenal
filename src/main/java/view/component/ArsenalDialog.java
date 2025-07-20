@@ -4,6 +4,8 @@ import burp.api.montoya.http.message.requests.HttpRequest;
 import burp.api.montoya.http.message.responses.HttpResponse;
 import controller.ToolController;
 import executor.ToolExecutor;
+import executor.AdvancedHttpParser;
+import executor.BasicHttpParser;
 import manager.ApiManager;
 import manager.ConfigManager;
 import model.Config;
@@ -25,6 +27,8 @@ import java.util.List;
 import java.util.ArrayList;
 import java.util.Set;
 import java.util.HashSet;
+import java.util.Map;
+import java.util.HashMap;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
@@ -45,9 +49,11 @@ public class ArsenalDialog extends JDialog {
     private JTabbedPane commandTabbedPane;
     private JTextArea originalCommandArea;  // 原始命令（未渲染）
     private JTextArea renderedCommandArea;  // 渲染后的命令
+    private JTextArea variablesPreviewArea; // 变量预览
     
     private JTextArea commandResultArea;
     private JButton runButton;  // 统一的运行按钮
+    private JButton refreshVariablesButton; // 刷新变量按钮
     private JScrollPane resultScrollPane;
     
     private HttpRequest httpRequest;
@@ -138,6 +144,14 @@ public class ArsenalDialog extends JDialog {
         runButton.setEnabled(false);
         runButton.setPreferredSize(new Dimension(100, 30));
         
+        // 创建刷新变量按钮
+        refreshVariablesButton = new JButton("刷新变量");
+        refreshVariablesButton.setFont(new Font("微软雅黑", Font.BOLD, 11));
+        refreshVariablesButton.setBackground(new Color(0, 123, 255));
+        refreshVariablesButton.setForeground(Color.WHITE);
+        refreshVariablesButton.setEnabled(false);
+        refreshVariablesButton.setPreferredSize(new Dimension(100, 30));
+        
         // 创建执行结果文本框
         commandResultArea = new JTextArea(8, 50);
         commandResultArea.setEditable(false);
@@ -183,13 +197,28 @@ public class ArsenalDialog extends JDialog {
         renderedScrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
         renderedScrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         
+        // 变量预览选项卡
+        variablesPreviewArea = new JTextArea(5, 50);
+        variablesPreviewArea.setEditable(false);  // 只读
+        variablesPreviewArea.setFont(new Font("Consolas", Font.PLAIN, 10));
+        variablesPreviewArea.setBackground(new Color(248, 248, 255));  // 浅蓝色背景
+        variablesPreviewArea.setLineWrap(true);
+        variablesPreviewArea.setWrapStyleWord(true);
+        variablesPreviewArea.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
+        
+        JScrollPane variablesScrollPane = new JScrollPane(variablesPreviewArea);
+        variablesScrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+        variablesScrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        
         // 添加选项卡
         commandTabbedPane.addTab("原始命令", originalScrollPane);
         commandTabbedPane.addTab("渲染命令", renderedScrollPane);
+        commandTabbedPane.addTab("变量预览", variablesScrollPane);
         
         // 设置选项卡提示
         commandTabbedPane.setToolTipTextAt(0, "显示未经变量替换的原始命令模板，可以手动编辑");
         commandTabbedPane.setToolTipTextAt(1, "显示经过变量替换的命令，可以手动编辑后执行");
+        commandTabbedPane.setToolTipTextAt(2, "显示当前HTTP请求/响应解析出的所有可用变量");
     }
     
     /**
@@ -236,6 +265,7 @@ public class ArsenalDialog extends JDialog {
         
         // 按钮面板
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 5));
+        buttonPanel.add(refreshVariablesButton);
         buttonPanel.add(runButton);
         middlePanel.add(buttonPanel, BorderLayout.SOUTH);
         
@@ -315,15 +345,18 @@ public class ArsenalDialog extends JDialog {
                         selectedToolCommand = filteredToolCommands.get(modelRow);
                         updateCommandPreview();
                         runButton.setEnabled(true);
+                        refreshVariablesButton.setEnabled(true);
                     } else {
                         selectedToolCommand = null;
                         clearCommandAreas();
                         runButton.setEnabled(false);
+                        refreshVariablesButton.setEnabled(false);
                     }
                 } else {
                     selectedToolCommand = null;
                     clearCommandAreas();
                     runButton.setEnabled(false);
+                    refreshVariablesButton.setEnabled(false);
                 }
             }
         });
@@ -333,6 +366,14 @@ public class ArsenalDialog extends JDialog {
             @Override
             public void actionPerformed(ActionEvent e) {
                 executeSelectedCommand();
+            }
+        });
+        
+        // 刷新变量按钮点击事件
+        refreshVariablesButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                updateVariablesPreview();
             }
         });
         
@@ -364,6 +405,105 @@ public class ArsenalDialog extends JDialog {
     private void clearCommandAreas() {
         originalCommandArea.setText("");
         renderedCommandArea.setText("");
+        variablesPreviewArea.setText("");
+    }
+    
+    /**
+     * 更新变量预览
+     */
+    private void updateVariablesPreview() {
+        if (httpRequest == null) {
+            variablesPreviewArea.setText("# 无HTTP请求数据\n请在Burp Suite中拦截或选择一个HTTP请求，然后右键选择Arsenal工具。");
+            return;
+        }
+        
+        try {
+            // 使用AdvancedHttpParser解析请求
+            AdvancedHttpParser advancedParser = new AdvancedHttpParser();
+            Map<String, String> requestVariables = advancedParser.parseRequest(httpRequest);
+            
+            // 解析响应（如果有）
+            Map<String, String> responseVariables = new HashMap<>();
+            if (httpResponse != null) {
+                responseVariables = advancedParser.parseResponse(httpResponse);
+            }
+            
+            // 生成变量预览文本
+            StringBuilder preview = new StringBuilder();
+            preview.append("# HTTP请求变量预览\n");
+            preview.append("# 用法: 在命令中使用 %变量名% 进行替换\n\n");
+            
+            // 按分类显示变量
+            addVariablesByCategory(preview, "基础信息", requestVariables, 
+                new String[]{"http.request.url", "http.request.method", "http.request.host", 
+                           "http.request.port", "http.request.path", "http.request.protocol"});
+            
+            addVariablesByCategory(preview, "头部信息", requestVariables, 
+                new String[]{"http.request.headers.user-agent", "http.request.headers.cookie", 
+                           "http.request.headers.referer", "http.request.headers.authorization"});
+            
+            addVariablesByCategory(preview, "请求体信息", requestVariables,
+                new String[]{"http.request.body", "body.type", "body.json.field.count"});
+            
+            addVariablesByCategory(preview, "文件信息", requestVariables,
+                new String[]{"file.name", "file.extension", "path.directory"});
+            
+            addVariablesByCategory(preview, "认证信息", requestVariables,
+                new String[]{"auth.type", "auth.username", "auth.password", "auth.token"});
+            
+            // 响应变量
+            if (!responseVariables.isEmpty()) {
+                preview.append("\n## HTTP响应变量\n");
+                addVariablesByCategory(preview, "响应信息", responseVariables,
+                    new String[]{"http.response.status", "http.response.headers.content-type", 
+                               "response.format", "response.html.title"});
+            }
+            
+            // 显示所有可用变量
+            preview.append("\n## 所有可用变量 (").append(requestVariables.size() + responseVariables.size()).append(" 个)\n");
+            Map<String, String> allVariables = new HashMap<>();
+            allVariables.putAll(requestVariables);
+            allVariables.putAll(responseVariables);
+            
+            allVariables.entrySet().stream()
+                .sorted(Map.Entry.comparingByKey())
+                .forEach(entry -> {
+                    String value = entry.getValue();
+                    if (value.length() > 50) {
+                        value = value.substring(0, 50) + "...";
+                    }
+                    preview.append(String.format("%%%-40s%% = %s\n", entry.getKey(), value));
+                });
+            
+            variablesPreviewArea.setText(preview.toString());
+            variablesPreviewArea.setCaretPosition(0);
+            
+        } catch (Exception e) {
+            String errorMsg = "变量解析失败: " + e.getMessage();
+            variablesPreviewArea.setText("# 错误\n" + errorMsg);
+            ApiManager.getInstance().getApi().logging().logToError(errorMsg);
+        }
+    }
+    
+    /**
+     * 添加指定分类的变量到预览
+     * @param preview 预览文本构建器
+     * @param category 分类名称
+     * @param variables 变量映射
+     * @param keys 要显示的变量键
+     */
+    private void addVariablesByCategory(StringBuilder preview, String category, 
+                                      Map<String, String> variables, String[] keys) {
+        preview.append("\n## ").append(category).append("\n");
+        for (String key : keys) {
+            String value = variables.get(key);
+            if (value != null && !value.isEmpty()) {
+                if (value.length() > 50) {
+                    value = value.substring(0, 50) + "...";
+                }
+                preview.append(String.format("%%%-40s%% = %s\n", key, value));
+            }
+        }
     }
     
     /**
@@ -535,6 +675,9 @@ public class ArsenalDialog extends JDialog {
                     renderedCommandArea.setText("无HTTP请求数据，无法渲染变量");
                 }
                 
+                // 更新变量预览
+                updateVariablesPreview();
+                
             } catch (Exception e) {
                 originalCommandArea.setText("命令加载失败: " + e.getMessage());
                 renderedCommandArea.setText("命令渲染失败: " + e.getMessage());
@@ -551,23 +694,127 @@ public class ArsenalDialog extends JDialog {
      */
     private String generateRenderedCommand(HttpToolCommand toolCommand, HttpRequest request) {
         try {
-            // 手动进行变量替换
             String command = toolCommand.getCommand();
-            if (command != null && request != null) {
-                command = command.replace("%http.request.url%", request.url());
-                command = command.replace("%http.request.host%", request.httpService().host());
-                command = command.replace("%http.request.port%", String.valueOf(request.httpService().port()));
-                command = command.replace("%http.request.method%", request.method());
-                command = command.replace("%http.request.path%", request.path());
-                
-                // 可以添加更多变量替换...
-                // command = command.replace("%http.request.headers%", request.headers().toString());
-                // command = command.replace("%http.request.body%", request.bodyToString());
+            if (command == null || command.isEmpty()) {
+                return "";
             }
-            return command != null ? command : "";
+            
+            if (request == null) {
+                return command + "\n\n# 警告: 无HTTP请求数据，无法渲染变量";
+            }
+            
+            // 使用AdvancedHttpParser解析请求，获取完整的变量映射
+            AdvancedHttpParser advancedParser = new AdvancedHttpParser();
+            Map<String, String> requestVariables = advancedParser.parseRequest(request);
+            
+            // 如果有响应数据，也进行解析
+            Map<String, String> responseVariables = new HashMap<>();
+            if (httpResponse != null) {
+                responseVariables = advancedParser.parseResponse(httpResponse);
+            }
+            
+            // 合并变量映射
+            Map<String, String> allVariables = new HashMap<>();
+            allVariables.putAll(requestVariables);
+            allVariables.putAll(responseVariables);
+            
+            // 进行变量替换
+            String renderedCommand = replaceVariables(command, allVariables);
+            
+            // 添加调试信息（可选）
+            if (renderedCommand.equals(command)) {
+                renderedCommand += "\n\n# 提示: 命令中未找到可替换的变量";
+            } else {
+                int variableCount = countReplacedVariables(command, allVariables);
+                renderedCommand += String.format("\n\n# 已替换 %d 个变量", variableCount);
+            }
+            
+            return renderedCommand;
+            
         } catch (Exception e) {
-            return "命令渲染失败: " + e.getMessage();
+            String errorMsg = "命令渲染失败: " + e.getMessage();
+            ApiManager.getInstance().getApi().logging().logToError(errorMsg);
+            return toolCommand.getCommand() + "\n\n# 错误: " + errorMsg;
         }
+    }
+    
+    /**
+     * 替换命令中的变量
+     * @param command 原始命令
+     * @param variables 变量映射
+     * @return 替换后的命令
+     */
+    private String replaceVariables(String command, Map<String, String> variables) {
+        String result = command;
+        
+        // 按变量名长度排序，优先替换长变量名，避免部分匹配问题
+        List<String> sortedKeys = variables.keySet().stream()
+                .sorted((a, b) -> b.length() - a.length())
+                .collect(Collectors.toList());
+        
+        for (String key : sortedKeys) {
+            String value = variables.get(key);
+            if (value != null) {
+                String placeholder = "%" + key + "%";
+                if (result.contains(placeholder)) {
+                    // 对特殊字符进行转义，避免命令执行问题
+                    String escapedValue = escapeCommandValue(value);
+                    result = result.replace(placeholder, escapedValue);
+                }
+            }
+        }
+        
+        return result;
+    }
+    
+    /**
+     * 转义命令值中的特殊字符
+     * @param value 原始值
+     * @return 转义后的值
+     */
+    private String escapeCommandValue(String value) {
+        if (value == null) {
+            return "";
+        }
+        
+        // 移除可能危险的字符
+        String escaped = value.replace("\n", " ")
+                             .replace("\r", " ")
+                             .replace("\t", " ");
+        
+        // 如果包含空格，在Windows下用双引号包围，在Unix下转义空格
+        if (escaped.contains(" ")) {
+            if (OsUtils.isWindows()) {
+                // Windows: 用双引号包围，内部的双引号转义
+                escaped = "\"" + escaped.replace("\"", "\\\"") + "\"";
+            } else {
+                // Unix: 转义空格和特殊字符
+                escaped = escaped.replace(" ", "\\ ")
+                                .replace("\"", "\\\"")
+                                .replace("'", "\\'")
+                                .replace("`", "\\`")
+                                .replace("$", "\\$");
+            }
+        }
+        
+        return escaped;
+    }
+    
+    /**
+     * 统计已替换的变量数量
+     * @param originalCommand 原始命令
+     * @param variables 变量映射
+     * @return 替换的变量数量
+     */
+    private int countReplacedVariables(String originalCommand, Map<String, String> variables) {
+        int count = 0;
+        for (String key : variables.keySet()) {
+            String placeholder = "%" + key + "%";
+            if (originalCommand.contains(placeholder)) {
+                count++;
+            }
+        }
+        return count;
     }
     
     /**
