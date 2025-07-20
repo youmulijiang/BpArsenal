@@ -1,4 +1,4 @@
-package ui;
+package view;
 
 import manager.ConfigManager;
 import manager.ApiManager;
@@ -6,7 +6,7 @@ import javax.swing.*;
 import java.awt.*;
 
 /**
- * 主面板UI组件
+ * 主面板UI组件 (View层)
  * 提供BpArsenal插件的主要用户界面，包含四个功能选项卡
  */
 public class MainPanel extends JPanel {
@@ -21,8 +21,6 @@ public class MainPanel extends JPanel {
         initializeUI();
         loadData();
     }
-
-
     
     /**
      * 初始化UI组件
@@ -45,10 +43,10 @@ public class MainPanel extends JPanel {
         settingPanel = new SettingPanel();
         
         // 添加选项卡
-        tabbedPane.addTab("HTTP工具", createTabIcon("tool"), toolPanel, "HTTP渗透测试工具");
-        tabbedPane.addTab("第三方工具", createTabIcon("third"), thirdPartyPanel, "外部工具启动管理");
-        tabbedPane.addTab("网站导航", createTabIcon("website"), websitePanel, "快速访问常用网站");
-        tabbedPane.addTab("设置", createTabIcon("setting"), settingPanel, "插件配置和管理");
+        tabbedPane.addTab("HTTP工具", null, toolPanel, "HTTP渗透测试工具");
+        tabbedPane.addTab("第三方工具", null, thirdPartyPanel, "外部工具启动管理");
+        tabbedPane.addTab("网站导航", null, websitePanel, "快速访问常用网站");
+        tabbedPane.addTab("设置", null, settingPanel, "插件配置和管理");
         
         add(tabbedPane, BorderLayout.CENTER);
         
@@ -70,7 +68,7 @@ public class MainPanel extends JPanel {
         titlePanel.setBackground(new Color(245, 245, 245));
         
         // 标题标签
-        JLabel titleLabel = new JLabel("BpArsenal - 军火库");
+        JLabel titleLabel = new JLabel("BpArsenal - Burp扩展工具集");
         titleLabel.setFont(new Font("微软雅黑", Font.BOLD, 18));
         titleLabel.setForeground(new Color(51, 51, 51));
         
@@ -113,16 +111,6 @@ public class MainPanel extends JPanel {
         statusPanel.add(statusLabel, BorderLayout.WEST);
         
         return statusPanel;
-    }
-    
-    /**
-     * 创建选项卡图标（简单实现）
-     * @param type 图标类型
-     * @return 图标
-     */
-    private Icon createTabIcon(String type) {
-        // 这里可以后续添加实际的图标
-        return null;
     }
     
     /**
@@ -190,24 +178,6 @@ public class MainPanel extends JPanel {
     private void logError(String message) {
         if (ApiManager.getInstance().isInitialized()) {
             ApiManager.getInstance().getApi().logging().logToError("BpArsenal UI: " + message);
-        }
-    }
-    
-    /**
-     * 获取当前选中的选项卡索引
-     * @return 选项卡索引
-     */
-    public int getSelectedTabIndex() {
-        return tabbedPane.getSelectedIndex();
-    }
-    
-    /**
-     * 切换到指定选项卡
-     * @param index 选项卡索引
-     */
-    public void setSelectedTab(int index) {
-        if (index >= 0 && index < tabbedPane.getTabCount()) {
-            tabbedPane.setSelectedIndex(index);
         }
     }
 } 

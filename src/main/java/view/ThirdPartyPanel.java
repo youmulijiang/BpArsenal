@@ -1,22 +1,22 @@
-package ui;
+package view;
 
 import javax.swing.*;
 import java.awt.*;
 
 /**
- * 网站导航面板
- * 用于快速访问常用安全网站
+ * 第三方工具面板 (View层)
+ * 用于管理和启动外部工具
  */
-public class WebsitePanel extends JPanel {
+public class ThirdPartyPanel extends JPanel {
     
-    public WebsitePanel() {
+    public ThirdPartyPanel() {
         initializeUI();
     }
     
     private void initializeUI() {
         setLayout(new BorderLayout());
         
-        JLabel label = new JLabel("网站导航面板 - 开发中...", JLabel.CENTER);
+        JLabel label = new JLabel("第三方工具面板 - 开发中...", JLabel.CENTER);
         label.setFont(new Font("微软雅黑", Font.PLAIN, 14));
         label.setForeground(Color.GRAY);
         
@@ -24,6 +24,6 @@ public class WebsitePanel extends JPanel {
     }
     
     public void loadData() {
-        // TODO: 加载网站数据
+        // TODO: 加载第三方工具数据
     }
 } 

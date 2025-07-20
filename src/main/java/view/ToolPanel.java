@@ -1,10 +1,8 @@
-package ui;
+package view;
 
-import model.Config;
 import model.HttpTool;
-import manager.ConfigManager;
-import manager.ApiManager;
-import ui.component.ToolEditDialog;
+import controller.ToolController;
+import view.component.ToolEditDialog;
 
 import javax.swing.*;
 import javax.swing.table.*;
@@ -201,8 +199,8 @@ public class ToolPanel extends JPanel {
         // 设置收藏列渲染器
         columnModel.getColumn(2).setCellRenderer(new FavoriteRenderer());
         
-        // 设置命令列渲染器（支持换行显示）
-        columnModel.getColumn(1).setCellRenderer(new CommandRenderer());
+        // 设置命令列渲染器（纯文本格式）
+        columnModel.getColumn(1).setCellRenderer(new PlainTextRenderer());
         
         // 设置行颜色交替
         toolTable.setDefaultRenderer(Object.class, new AlternateRowRenderer());
@@ -245,17 +243,7 @@ public class ToolPanel extends JPanel {
      */
     public void loadData() {
         try {
-            Config config = ConfigManager.getInstance().getConfig();
-            List<HttpTool> tools = new ArrayList<>();
-            
-            if (config.getHttpTool() != null) {
-                for (Config.HttpToolCategory category : config.getHttpTool()) {
-                    if (category.getContent() != null) {
-                        tools.addAll(category.getContent());
-                    }
-                }
-            }
-            
+            List<HttpTool> tools = ToolController.getInstance().getAllTools();
             tableModel.setTools(tools);
             updateStatus("已加载 " + tools.size() + " 个工具");
             
@@ -276,14 +264,13 @@ public class ToolPanel extends JPanel {
             HttpTool newTool = dialog.getTool();
             String category = dialog.getSelectedCategory();
             
-            // 添加到表格模型
-            tableModel.addTool(newTool);
-            
-            // 添加到配置文件的对应分类
-            addToolToConfig(newTool, category);
-            
-            saveConfiguration();
-            updateStatus("已添加工具: " + newTool.getToolName() + " (分类: " + getCategoryDisplayName(category) + ")");
+            if (ToolController.getInstance().addTool(newTool, category)) {
+                tableModel.addTool(newTool);
+                updateStatus("已添加工具: " + newTool.getToolName() + " (分类: " + 
+                    ToolController.getInstance().getCategoryDisplayName(category) + ")");
+            } else {
+                updateStatus("添加工具失败");
+            }
         }
     }
     
@@ -305,14 +292,13 @@ public class ToolPanel extends JPanel {
             HttpTool updatedTool = dialog.getTool();
             String newCategory = dialog.getSelectedCategory();
             
-            // 更新表格模型
-            tableModel.updateTool(selectedRow, updatedTool);
-            
-            // 更新配置文件中的分类
-            updateToolInConfig(tool, updatedTool, newCategory);
-            
-            saveConfiguration();
-            updateStatus("已更新工具: " + updatedTool.getToolName() + " (分类: " + getCategoryDisplayName(newCategory) + ")");
+            if (ToolController.getInstance().updateTool(tool, updatedTool, newCategory)) {
+                tableModel.updateTool(selectedRow, updatedTool);
+                updateStatus("已更新工具: " + updatedTool.getToolName() + " (分类: " + 
+                    ToolController.getInstance().getCategoryDisplayName(newCategory) + ")");
+            } else {
+                updateStatus("更新工具失败");
+            }
         }
     }
     
@@ -334,10 +320,12 @@ public class ToolPanel extends JPanel {
             JOptionPane.WARNING_MESSAGE);
             
         if (result == JOptionPane.YES_OPTION) {
-            tableModel.removeTool(selectedRow);
-            removeToolFromConfig(tool);
-            saveConfiguration();
-            updateStatus("已删除工具: " + tool.getToolName());
+            if (ToolController.getInstance().removeTool(tool)) {
+                tableModel.removeTool(selectedRow);
+                updateStatus("已删除工具: " + tool.getToolName());
+            } else {
+                updateStatus("删除工具失败");
+            }
         }
     }
     
@@ -352,12 +340,17 @@ public class ToolPanel extends JPanel {
         }
         
         HttpTool tool = tableModel.getToolAt(selectedRow);
-        tool.setFavor(!tool.isFavor());
-        tableModel.fireTableDataChanged();
-        saveConfiguration();
+        boolean newFavoriteState = !tool.isFavor();
         
-        String status = tool.isFavor() ? "已收藏" : "已取消收藏";
-        updateStatus(status + ": " + tool.getToolName());
+        if (ToolController.getInstance().updateToolFavorite(tool, newFavoriteState)) {
+            tool.setFavor(newFavoriteState);
+            tableModel.fireTableDataChanged();
+            
+            String status = tool.isFavor() ? "已收藏" : "已取消收藏";
+            updateStatus(status + ": " + tool.getToolName());
+        } else {
+            updateStatus("更新收藏状态失败");
+        }
     }
     
     /**
@@ -381,13 +374,7 @@ public class ToolPanel extends JPanel {
         favoriteButton.setEnabled(hasSelection);
     }
     
-    /**
-     * 保存配置
-     */
-    private void saveConfiguration() {
-        // TODO: 实现配置保存功能
-        logInfo("配置已保存");
-    }
+
     
     /**
      * 更新状态
@@ -398,130 +385,15 @@ public class ToolPanel extends JPanel {
     }
     
     /**
-     * 记录信息日志
-     * @param message 日志消息
-     */
-    private void logInfo(String message) {
-        if (ApiManager.getInstance().isInitialized()) {
-            ApiManager.getInstance().getApi().logging().logToOutput("ToolPanel: " + message);
-        }
-    }
-    
-    /**
      * 记录错误日志
      * @param message 错误消息
      */
     private void logError(String message) {
-        if (ApiManager.getInstance().isInitialized()) {
-            ApiManager.getInstance().getApi().logging().logToError("ToolPanel: " + message);
-        }
+        // 委托给控制器处理日志
+        System.err.println("ToolPanel: " + message);
     }
     
-    /**
-     * 添加工具到配置文件
-     * @param tool 工具对象
-     * @param category 分类
-     */
-    private void addToolToConfig(HttpTool tool, String category) {
-        try {
-            Config config = ConfigManager.getInstance().getConfig();
-            if (config.getHttpTool() == null) {
-                config.setHttpTool(new ArrayList<>());
-            }
-            
-            // 查找或创建对应分类
-            Config.HttpToolCategory targetCategory = null;
-            for (Config.HttpToolCategory cat : config.getHttpTool()) {
-                if (category.equals(cat.getType())) {
-                    targetCategory = cat;
-                    break;
-                }
-            }
-            
-            if (targetCategory == null) {
-                targetCategory = new Config.HttpToolCategory();
-                targetCategory.setType(category);
-                targetCategory.setContent(new ArrayList<>());
-                config.getHttpTool().add(targetCategory);
-            }
-            
-            if (targetCategory.getContent() == null) {
-                targetCategory.setContent(new ArrayList<>());
-            }
-            
-            targetCategory.getContent().add(tool);
-            
-        } catch (Exception e) {
-            logError("添加工具到配置失败: " + e.getMessage());
-        }
-    }
-    
-    /**
-     * 在配置文件中更新工具
-     * @param oldTool 原工具
-     * @param newTool 新工具
-     * @param newCategory 新分类
-     */
-    private void updateToolInConfig(HttpTool oldTool, HttpTool newTool, String newCategory) {
-        try {
-            Config config = ConfigManager.getInstance().getConfig();
-            if (config.getHttpTool() == null) return;
-            
-            // 先从原分类中移除
-            removeToolFromConfig(oldTool);
-            
-            // 添加到新分类
-            addToolToConfig(newTool, newCategory);
-            
-        } catch (Exception e) {
-            logError("更新配置中的工具失败: " + e.getMessage());
-        }
-    }
-    
-    /**
-     * 从配置文件中移除工具
-     * @param tool 要移除的工具
-     */
-    private void removeToolFromConfig(HttpTool tool) {
-        try {
-            Config config = ConfigManager.getInstance().getConfig();
-            if (config.getHttpTool() == null) return;
-            
-            for (Config.HttpToolCategory category : config.getHttpTool()) {
-                if (category.getContent() != null) {
-                    category.getContent().removeIf(t -> 
-                        t.getToolName().equals(tool.getToolName()));
-                }
-            }
-            
-        } catch (Exception e) {
-            logError("从配置中移除工具失败: " + e.getMessage());
-        }
-    }
-    
-    /**
-     * 获取分类显示名称
-     * @param type 分类类型
-     * @return 显示名称
-     */
-    private String getCategoryDisplayName(String type) {
-        if (type == null) return "未分类";
-        
-        switch (type.toLowerCase()) {
-            case "sql-inject":
-                return "SQL注入";
-            case "xss":
-                return "XSS";
-            case "scanner":
-                return "扫描工具";
-            case "brute-force":
-                return "爆破工具";
-            case "exploit":
-                return "漏洞利用";
-            default:
-                return type;
-        }
-    }
+
 }
 
 /**
@@ -611,47 +483,7 @@ class ToolTableModel extends AbstractTableModel {
      * @return 工具分类
      */
     private String getToolCategory(HttpTool tool) {
-        try {
-            Config config = ConfigManager.getInstance().getConfig();
-            if (config.getHttpTool() != null) {
-                for (Config.HttpToolCategory category : config.getHttpTool()) {
-                    if (category.getContent() != null) {
-                        for (HttpTool categoryTool : category.getContent()) {
-                            if (categoryTool.getToolName().equals(tool.getToolName())) {
-                                return getCategoryDisplayName(category.getType());
-                            }
-                        }
-                    }
-                }
-            }
-        } catch (Exception e) {
-            // 忽略错误，返回默认值
-        }
-        return "未分类";
-    }
-    
-    /**
-     * 获取分类显示名称
-     * @param type 分类类型
-     * @return 显示名称
-     */
-    private String getCategoryDisplayName(String type) {
-        if (type == null) return "未分类";
-        
-        switch (type.toLowerCase()) {
-            case "sql-inject":
-                return "SQL注入";
-            case "xss":
-                return "XSS";
-            case "scanner":
-                return "扫描工具";
-            case "brute-force":
-                return "爆破工具";
-            case "exploit":
-                return "漏洞利用";
-            default:
-                return type;
-        }
+        return ToolController.getInstance().getToolCategory(tool.getToolName());
     }
 }
 
@@ -684,9 +516,9 @@ class FavoriteRenderer extends DefaultTableCellRenderer {
 }
 
 /**
- * 命令渲染器
+ * 纯文本渲染器 - 命令列专用
  */
-class CommandRenderer extends DefaultTableCellRenderer {
+class PlainTextRenderer extends DefaultTableCellRenderer {
     @Override
     public Component getTableCellRendererComponent(JTable table, Object value, 
             boolean isSelected, boolean hasFocus, int row, int column) {
@@ -695,13 +527,22 @@ class CommandRenderer extends DefaultTableCellRenderer {
         
         if (value != null) {
             String command = value.toString();
-            if (command.length() > 80) {
-                setToolTipText("<html>" + command.replaceAll("(.{80})", "$1<br>") + "</html>");
-                setText(command.substring(0, 77) + "...");
+            
+            // 设置为等宽字体，更适合显示命令
+            setFont(new Font("Consolas", Font.PLAIN, 10));
+            
+            // 显示完整命令作为提示
+            setToolTipText("<html><pre>" + command + "</pre></html>");
+            
+            // 如果命令太长，截断显示
+            if (command.length() > 60) {
+                setText(command.substring(0, 57) + "...");
             } else {
-                setToolTipText(command);
                 setText(command);
             }
+            
+            // 设置文本对齐
+            setHorizontalAlignment(JLabel.LEFT);
         }
         
         return comp;

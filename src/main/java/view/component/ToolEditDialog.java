@@ -1,4 +1,4 @@
-package ui.component;
+package view.component;
 
 import model.HttpTool;
 
@@ -8,7 +8,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
 /**
- * HTTP工具编辑对话框
+ * HTTP工具编辑对话框 (View层组件)
  * 用于添加和编辑HTTP工具配置
  */
 public class ToolEditDialog extends JDialog {
@@ -22,7 +22,6 @@ public class ToolEditDialog extends JDialog {
     private JComboBox<String> categoryComboBox;
     private JButton okButton;
     private JButton cancelButton;
-    private JButton helpButton;
     
     public ToolEditDialog(Window parent, HttpTool tool) {
         super(parent, tool == null ? "添加HTTP工具" : "编辑HTTP工具", ModalityType.APPLICATION_MODAL);
@@ -39,7 +38,7 @@ public class ToolEditDialog extends JDialog {
      */
     private void initializeUI() {
         setLayout(new BorderLayout(10, 10));
-        setSize(600, 450);
+        setSize(700, 550);
         setResizable(true);
         
         // 创建主面板
@@ -78,29 +77,8 @@ public class ToolEditDialog extends JDialog {
         nameField.setFont(new Font("微软雅黑", Font.PLAIN, 12));
         formPanel.add(nameField, gbc);
         
-        // 命令
-        gbc.gridx = 0; gbc.gridy = 1;
-        gbc.anchor = GridBagConstraints.NORTHWEST;
-        gbc.fill = GridBagConstraints.NONE;
-        gbc.weightx = 0;
-        gbc.insets = new Insets(10, 5, 5, 10);
-        formPanel.add(new JLabel("执行命令 *:"), gbc);
-        
-        gbc.gridx = 1; gbc.fill = GridBagConstraints.BOTH;
-        gbc.weightx = 1.0; gbc.weighty = 1.0;
-        commandArea = new JTextArea(8, 40);
-        commandArea.setFont(new Font("Consolas", Font.PLAIN, 11));
-        commandArea.setLineWrap(true);
-        commandArea.setWrapStyleWord(true);
-        commandArea.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
-        
-        JScrollPane scrollPane = new JScrollPane(commandArea);
-        scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
-        scrollPane.setBorder(BorderFactory.createTitledBorder("命令内容"));
-        formPanel.add(scrollPane, gbc);
-        
         // 分类选择
-        gbc.gridx = 0; gbc.gridy = 2;
+        gbc.gridx = 0; gbc.gridy = 1;
         gbc.gridwidth = 1;
         gbc.anchor = GridBagConstraints.WEST;
         gbc.fill = GridBagConstraints.NONE;
@@ -115,6 +93,27 @@ public class ToolEditDialog extends JDialog {
         });
         categoryComboBox.setFont(new Font("微软雅黑", Font.PLAIN, 12));
         formPanel.add(categoryComboBox, gbc);
+        
+        // 命令
+        gbc.gridx = 0; gbc.gridy = 2;
+        gbc.anchor = GridBagConstraints.NORTHWEST;
+        gbc.fill = GridBagConstraints.NONE;
+        gbc.weightx = 0;
+        gbc.insets = new Insets(10, 5, 5, 10);
+        formPanel.add(new JLabel("执行命令 *:"), gbc);
+        
+        gbc.gridx = 1; gbc.fill = GridBagConstraints.BOTH;
+        gbc.weightx = 1.0; gbc.weighty = 1.0;
+        commandArea = new JTextArea(10, 50);
+        commandArea.setFont(new Font("Consolas", Font.PLAIN, 11));
+        commandArea.setLineWrap(true);
+        commandArea.setWrapStyleWord(true);
+        commandArea.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
+        
+        JScrollPane scrollPane = new JScrollPane(commandArea);
+        scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+        scrollPane.setBorder(BorderFactory.createTitledBorder("命令内容"));
+        formPanel.add(scrollPane, gbc);
         
         // 收藏
         gbc.gridx = 0; gbc.gridy = 3;
@@ -146,9 +145,9 @@ public class ToolEditDialog extends JDialog {
         JTabbedPane tabbedPane = new JTabbedPane();
         
         // 常用占位符
-        JTextArea commonPlaceholders = new JTextArea(6, 60);
+        JTextArea commonPlaceholders = new JTextArea(4, 70);
         commonPlaceholders.setEditable(false);
-        commonPlaceholders.setFont(new Font("Consolas", Font.PLAIN, 10));
+        commonPlaceholders.setFont(new Font("Consolas", Font.PLAIN, 9));
         commonPlaceholders.setBackground(new Color(248, 248, 248));
         commonPlaceholders.setText(
             "# 请求基础\n" +
@@ -173,9 +172,9 @@ public class ToolEditDialog extends JDialog {
         tabbedPane.addTab("常用", commonScroll);
         
         // 完整文档
-        JTextArea fullDoc = new JTextArea(6, 60);
+        JTextArea fullDoc = new JTextArea(4, 70);
         fullDoc.setEditable(false);
-        fullDoc.setFont(new Font("Consolas", Font.PLAIN, 9));
+        fullDoc.setFont(new Font("Consolas", Font.PLAIN, 8));
         fullDoc.setBackground(new Color(248, 248, 248));
         fullDoc.setText(generateCompactDocumentation());
         
@@ -236,11 +235,7 @@ public class ToolEditDialog extends JDialog {
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
         buttonPanel.setBorder(BorderFactory.createEmptyBorder(0, 20, 10, 20));
         
-        helpButton = new JButton("? 占位符帮助");
-        helpButton.setFont(new Font("微软雅黑", Font.PLAIN, 11));
-        helpButton.setPreferredSize(new Dimension(120, 30));
-        
-        cancelButton = new JButton("取消");
+        JButton cancelButton = new JButton("取消");
         cancelButton.setFont(new Font("微软雅黑", Font.PLAIN, 12));
         cancelButton.setPreferredSize(new Dimension(80, 30));
         
@@ -251,8 +246,6 @@ public class ToolEditDialog extends JDialog {
         okButton.setForeground(Color.WHITE);
         okButton.setFocusPainted(false);
         
-        buttonPanel.add(helpButton);
-        buttonPanel.add(Box.createHorizontalStrut(20));
         buttonPanel.add(cancelButton);
         buttonPanel.add(okButton);
         
@@ -274,12 +267,9 @@ public class ToolEditDialog extends JDialog {
             }
         });
         
+        // 获取取消按钮并设置事件
+        JButton cancelButton = (JButton) ((JPanel) getContentPane().getComponent(1)).getComponent(0);
         cancelButton.addActionListener(e -> dispose());
-        
-        helpButton.addActionListener(e -> {
-            PlaceholderHelpDialog helpDialog = new PlaceholderHelpDialog(this);
-            helpDialog.setVisible(true);
-        });
         
         // 回车键确定
         nameField.addActionListener(e -> okButton.doClick());
@@ -365,9 +355,6 @@ public class ToolEditDialog extends JDialog {
         tool.setToolName(nameField.getText().trim());
         tool.setCommand(commandArea.getText().trim());
         tool.setFavor(favorCheckBox.isSelected());
-        
-        // 注意：分类信息保存在配置文件的分类结构中，这里不直接保存到HttpTool对象
-        // 具体的分类保存逻辑应该在ToolPanel的saveConfiguration方法中处理
     }
     
     /**
@@ -393,7 +380,7 @@ public class ToolEditDialog extends JDialog {
     public boolean isConfirmed() {
         return confirmed;
     }
-
+    
     /**
      * 获取选中的分类
      * @return 分类字符串

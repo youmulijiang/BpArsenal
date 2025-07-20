@@ -99,6 +99,37 @@ public class ToolExecutor {
     }
     
     /**
+     * 预览HTTP工具命令（用于UI显示）
+     * @param tool 工具配置
+     * @param httpRequest HTTP请求对象
+     * @return 替换变量后的命令字符串
+     */
+    public String previewCommand(HttpTool tool, HttpRequest httpRequest) {
+        return previewCommand(tool, httpRequest, null);
+    }
+    
+    /**
+     * 预览HTTP工具命令（支持请求和响应）
+     * @param tool 工具配置
+     * @param httpRequest HTTP请求对象
+     * @param httpResponse HTTP响应对象（可选）
+     * @return 替换变量后的命令字符串
+     */
+    public String previewCommand(HttpTool tool, HttpRequest httpRequest, HttpResponse httpResponse) {
+        try {
+            String command;
+            if (httpResponse != null) {
+                command = variableReplacer.replaceAllVariables(tool.getCommand(), httpRequest, httpResponse);
+            } else {
+                command = variableReplacer.replaceRequestVariables(tool.getCommand(), httpRequest);
+            }
+            return command;
+        } catch (Exception e) {
+            return "命令预览失败: " + e.getMessage();
+        }
+    }
+    
+    /**
      * 打开网站URL
      * @param url 网站URL
      * @param desc 网站描述

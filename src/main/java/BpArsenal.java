@@ -2,7 +2,8 @@ import burp.api.montoya.BurpExtension;
 import burp.api.montoya.MontoyaApi;
 import manager.ApiManager;
 import manager.ConfigManager;
-import ui.MainPanel;
+import view.MainPanel;
+import view.contextmenu.ArsenalContextMenuProvider;
 
 /**
  * BpArsenal Burp扩展主入口类
@@ -26,7 +27,10 @@ public class BpArsenal implements BurpExtension {
             api.userInterface().registerSuiteTab("BpArsenal", mainPanel);
             api.logging().logToOutput("UI组件注册完成");
             
-            // TODO: 注册上下文菜单
+            // 注册上下文菜单
+            ArsenalContextMenuProvider contextMenuProvider = new ArsenalContextMenuProvider();
+            api.userInterface().registerContextMenuItemsProvider(contextMenuProvider);
+            api.logging().logToOutput("上下文菜单注册完成");
             
             api.logging().logToOutput("BpArsenal插件初始化完成");
             

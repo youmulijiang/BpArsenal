@@ -1,29 +1,25 @@
-package ui;
+package view;
 
 import javax.swing.*;
 import java.awt.*;
 
 /**
- * 第三方工具面板
- * 用于管理和启动外部工具
+ * 设置面板 (View层)
+ * 用于插件配置和管理
  */
-public class ThirdPartyPanel extends JPanel {
+public class SettingPanel extends JPanel {
     
-    public ThirdPartyPanel() {
+    public SettingPanel() {
         initializeUI();
     }
     
     private void initializeUI() {
         setLayout(new BorderLayout());
         
-        JLabel label = new JLabel("第三方工具面板 - 开发中...", JLabel.CENTER);
+        JLabel label = new JLabel("设置面板 - 开发中...", JLabel.CENTER);
         label.setFont(new Font("微软雅黑", Font.PLAIN, 14));
         label.setForeground(Color.GRAY);
         
         add(label, BorderLayout.CENTER);
-    }
-    
-    public void loadData() {
-        // TODO: 加载第三方工具数据
     }
 } 

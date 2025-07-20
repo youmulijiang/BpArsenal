@@ -37,3 +37,6 @@ SwingUtilities.invokeLater(() -> {
 ## Burp UI集成
 - 通过api.userInterface()获取UI接口
 - 使用registerSuiteTab()注册主面板
+
+## 开发架构
+- 遵循MVC开发架构
