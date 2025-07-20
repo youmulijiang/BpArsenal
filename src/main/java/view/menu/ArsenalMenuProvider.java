@@ -20,23 +20,149 @@ import java.util.stream.Collectors;
  */
 public class ArsenalMenuProvider {
     
+    // 保存菜单引用以便动态更新
+    private static JMenu mainMenu;
+    private static JMenu toolsSubMenu;
+    private static JMenu websiteSubMenu;
+    
     /**
      * 创建BpArsenal主菜单
      * @return BpArsenal菜单
      */
     public static JMenu createBpArsenalMenu() {
         // 创建主菜单
-        JMenu mainMenu = new JMenu("BpArsenal");
+        mainMenu = new JMenu("BpArsenal");
         
         // 添加Tools子菜单
-        JMenu toolsSubMenu = createToolsSubMenu();
+        toolsSubMenu = createToolsSubMenu();
         mainMenu.add(toolsSubMenu);
         
         // 添加Website子菜单
-        JMenu websiteSubMenu = createWebsiteSubMenu();
+        websiteSubMenu = createWebsiteSubMenu();
         mainMenu.add(websiteSubMenu);
         
         return mainMenu;
+    }
+    
+    /**
+     * 动态更新菜单
+     * 当收藏状态发生变化时调用此方法
+     */
+    public static void updateMenu() {
+        if (mainMenu != null) {
+            SwingUtilities.invokeLater(() -> {
+                try {
+                    // 移除现有子菜单
+                    mainMenu.removeAll();
+                    
+                    // 重新创建子菜单
+                    toolsSubMenu = createToolsSubMenu();
+                    websiteSubMenu = createWebsiteSubMenu();
+                    
+                    // 添加到主菜单
+                    mainMenu.add(toolsSubMenu);
+                    mainMenu.add(websiteSubMenu);
+                    
+                    // 刷新菜单显示
+                    mainMenu.revalidate();
+                    mainMenu.repaint();
+                    
+                    // 记录更新日志
+                    ApiManager.getInstance().getApi().logging().logToOutput(
+                            "BpArsenal: 菜单已动态更新");
+                    
+                } catch (Exception e) {
+                    ApiManager.getInstance().getApi().logging().logToError(
+                            "BpArsenal: 菜单更新失败 - " + e.getMessage());
+                }
+            });
+        }
+    }
+    
+    /**
+     * 更新工具菜单
+     * 当第三方工具收藏状态变化时调用
+     */
+    public static void updateToolsMenu() {
+        if (mainMenu != null && toolsSubMenu != null) {
+            SwingUtilities.invokeLater(() -> {
+                try {
+                    // 获取工具菜单在主菜单中的位置
+                    int toolsIndex = -1;
+                    for (int i = 0; i < mainMenu.getItemCount(); i++) {
+                        if (mainMenu.getItem(i) == toolsSubMenu) {
+                            toolsIndex = i;
+                            break;
+                        }
+                    }
+                    
+                    if (toolsIndex >= 0) {
+                        // 移除现有工具菜单
+                        mainMenu.remove(toolsIndex);
+                        
+                        // 重新创建工具菜单
+                        toolsSubMenu = createToolsSubMenu();
+                        
+                        // 插入到原位置
+                        mainMenu.insert(toolsSubMenu, toolsIndex);
+                        
+                        // 刷新菜单显示
+                        mainMenu.revalidate();
+                        mainMenu.repaint();
+                        
+                        ApiManager.getInstance().getApi().logging().logToOutput(
+                                "BpArsenal: 工具菜单已更新");
+                    }
+                    
+                } catch (Exception e) {
+                    ApiManager.getInstance().getApi().logging().logToError(
+                            "BpArsenal: 工具菜单更新失败 - " + e.getMessage());
+                }
+            });
+        }
+    }
+    
+    /**
+     * 更新网站菜单
+     * 当网站收藏状态变化时调用
+     */
+    public static void updateWebsiteMenu() {
+        if (mainMenu != null && websiteSubMenu != null) {
+            SwingUtilities.invokeLater(() -> {
+                try {
+                    // 获取网站菜单在主菜单中的位置
+                    int websiteIndex = -1;
+                    for (int i = 0; i < mainMenu.getItemCount(); i++) {
+                        if (mainMenu.getItem(i) == websiteSubMenu) {
+                            websiteIndex = i;
+                            break;
+                        }
+                    }
+                    
+                    if (websiteIndex >= 0) {
+                        // 移除现有网站菜单
+                        mainMenu.remove(websiteIndex);
+                        
+                        // 重新创建网站菜单
+                        websiteSubMenu = createWebsiteSubMenu();
+                        
+                        // 插入到原位置
+                        mainMenu.insert(websiteSubMenu, websiteIndex);
+                        
+                        // 刷新菜单显示
+                        mainMenu.revalidate();
+                        mainMenu.repaint();
+                        
+                        ApiManager.getInstance().getApi().logging().logToOutput(
+                                "BpArsenal: 网站菜单已更新");
+                    }
+                    
+                } catch (Exception e) {
+                    ApiManager.getInstance().getApi().logging().logToError(
+                            "BpArsenal: 网站菜单更新失败 - " + e.getMessage());
+                }
+            });
+        }
     }
     
     /**

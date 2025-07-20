@@ -3,6 +3,7 @@ package view;
 import model.ThirdPartyTool;
 import controller.ToolController;
 import view.component.ThirdPartyToolEditDialog;
+import view.menu.ArsenalMenuProvider;
 import executor.ToolExecutor;
 
 import javax.swing.*;
@@ -276,6 +277,15 @@ public class ThirdPartyPanel extends JPanel {
             if (ToolController.getInstance().addThirdPartyTool(newTool, category)) {
                 loadData();
                 updateStatus("已添加工具: " + newTool.getToolName() + " (分类: " + category + ")");
+                
+                // 如果新工具是收藏状态，更新菜单
+                if (newTool.isFavor()) {
+                    try {
+                        ArsenalMenuProvider.updateToolsMenu();
+                    } catch (Exception e) {
+                        logError("更新菜单失败: " + e.getMessage());
+                    }
+                }
             } else {
                 updateStatus("添加工具失败");
             }
@@ -293,6 +303,8 @@ public class ThirdPartyPanel extends JPanel {
         }
         
         ThirdPartyTool tool = tableModel.getToolAt(selectedRow);
+        boolean oldFavoriteState = tool.isFavor();
+        
         ThirdPartyToolEditDialog dialog = new ThirdPartyToolEditDialog(SwingUtilities.getWindowAncestor(this), tool);
         dialog.setVisible(true);
         
@@ -303,6 +315,15 @@ public class ThirdPartyPanel extends JPanel {
             if (ToolController.getInstance().updateThirdPartyTool(tool, updatedTool, newCategory)) {
                 loadData();
                 updateStatus("已更新工具: " + updatedTool.getToolName() + " (分类: " + newCategory + ")");
+                
+                // 如果收藏状态发生变化，更新菜单
+                if (oldFavoriteState != updatedTool.isFavor()) {
+                    try {
+                        ArsenalMenuProvider.updateToolsMenu();
+                    } catch (Exception e) {
+                        logError("更新菜单失败: " + e.getMessage());
+                    }
+                }
             } else {
                 updateStatus("更新工具失败");
             }
@@ -320,6 +341,8 @@ public class ThirdPartyPanel extends JPanel {
         }
         
         ThirdPartyTool tool = tableModel.getToolAt(selectedRow);
+        boolean wasFavorite = tool.isFavor();
+        
         int result = JOptionPane.showConfirmDialog(this,
             "确定要删除工具 \"" + tool.getToolName() + "\" 吗？",
             "确认删除",
@@ -330,6 +353,15 @@ public class ThirdPartyPanel extends JPanel {
             if (ToolController.getInstance().removeThirdPartyTool(tool)) {
                 loadData();
                 updateStatus("已删除工具: " + tool.getToolName());
+                
+                // 如果删除的是收藏工具，更新菜单
+                if (wasFavorite) {
+                    try {
+                        ArsenalMenuProvider.updateToolsMenu();
+                    } catch (Exception e) {
+                        logError("更新菜单失败: " + e.getMessage());
+                    }
+                }
             } else {
                 updateStatus("删除工具失败");
             }
@@ -355,6 +387,13 @@ public class ThirdPartyPanel extends JPanel {
             
             String status = tool.isFavor() ? "已收藏" : "已取消收藏";
             updateStatus(status + ": " + tool.getToolName());
+            
+            // 动态更新菜单栏
+            try {
+                ArsenalMenuProvider.updateToolsMenu();
+            } catch (Exception e) {
+                logError("更新菜单失败: " + e.getMessage());
+            }
         } else {
             updateStatus("更新收藏状态失败");
         }
@@ -475,12 +514,31 @@ class ThirdPartyToolTableModel extends AbstractTableModel {
     @Override
     public void setValueAt(Object value, int rowIndex, int columnIndex) {
         ThirdPartyTool tool = tools.get(rowIndex);
+        boolean favoriteChanged = false;
+        
         if (columnIndex == 2) {
+            boolean oldFavoriteState = tool.isFavor();
             tool.setFavor((Boolean) value);
+            favoriteChanged = (oldFavoriteState != tool.isFavor());
+            
+            // 更新数据库中的收藏状态
+            if (favoriteChanged) {
+                ToolController.getInstance().updateThirdPartyToolFavorite(tool, tool.isFavor());
+            }
         } else if (columnIndex == 4) {
             tool.setAutoStart((Boolean) value);
         }
+        
         fireTableCellUpdated(rowIndex, columnIndex);
+        
+        // 如果收藏状态发生变化，更新菜单
+        if (favoriteChanged) {
+            try {
+                ArsenalMenuProvider.updateToolsMenu();
+            } catch (Exception e) {
+                System.err.println("更新菜单失败: " + e.getMessage());
+            }
+        }
     }
     
     public void setTools(List<ThirdPartyTool> tools) {

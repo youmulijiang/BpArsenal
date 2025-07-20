@@ -3,6 +3,7 @@ package view;
 import model.WebSite;
 import controller.ToolController;
 import view.component.WebSiteEditDialog;
+import view.menu.ArsenalMenuProvider;
 
 import javax.swing.*;
 import javax.swing.table.*;
@@ -275,6 +276,15 @@ public class WebsitePanel extends JPanel {
             if (ToolController.getInstance().addWebSite(newWebsite, category)) {
                 loadData();
                 updateStatus("已添加网站: " + newWebsite.getDesc() + " (分类: " + category + ")");
+                
+                // 如果新网站是收藏状态，更新菜单
+                if (newWebsite.isFavor()) {
+                    try {
+                        ArsenalMenuProvider.updateWebsiteMenu();
+                    } catch (Exception e) {
+                        logError("更新菜单失败: " + e.getMessage());
+                    }
+                }
             } else {
                 updateStatus("添加网站失败");
             }
@@ -292,6 +302,8 @@ public class WebsitePanel extends JPanel {
         }
         
         WebSite website = tableModel.getWebSiteAt(selectedRow);
+        boolean oldFavoriteState = website.isFavor();
+        
         WebSiteEditDialog dialog = new WebSiteEditDialog(SwingUtilities.getWindowAncestor(this), website);
         dialog.setVisible(true);
         
@@ -302,6 +314,15 @@ public class WebsitePanel extends JPanel {
             if (ToolController.getInstance().updateWebSite(website, updatedWebsite, newCategory)) {
                 loadData();
                 updateStatus("已更新网站: " + updatedWebsite.getDesc() + " (分类: " + newCategory + ")");
+                
+                // 如果收藏状态发生变化，更新菜单
+                if (oldFavoriteState != updatedWebsite.isFavor()) {
+                    try {
+                        ArsenalMenuProvider.updateWebsiteMenu();
+                    } catch (Exception e) {
+                        logError("更新菜单失败: " + e.getMessage());
+                    }
+                }
             } else {
                 updateStatus("更新网站失败");
             }
@@ -319,6 +340,8 @@ public class WebsitePanel extends JPanel {
         }
         
         WebSite website = tableModel.getWebSiteAt(selectedRow);
+        boolean wasFavorite = website.isFavor();
+        
         int result = JOptionPane.showConfirmDialog(this,
             "确定要删除网站 \"" + website.getDesc() + "\" 吗？",
             "确认删除",
@@ -329,6 +352,15 @@ public class WebsitePanel extends JPanel {
             if (ToolController.getInstance().removeWebSite(website)) {
                 loadData();
                 updateStatus("已删除网站: " + website.getDesc());
+                
+                // 如果删除的是收藏网站，更新菜单
+                if (wasFavorite) {
+                    try {
+                        ArsenalMenuProvider.updateWebsiteMenu();
+                    } catch (Exception e) {
+                        logError("更新菜单失败: " + e.getMessage());
+                    }
+                }
             } else {
                 updateStatus("删除网站失败");
             }
@@ -354,6 +386,13 @@ public class WebsitePanel extends JPanel {
             
             String status = website.isFavor() ? "已收藏" : "已取消收藏";
             updateStatus(status + ": " + website.getDesc());
+            
+            // 动态更新菜单栏
+            try {
+                ArsenalMenuProvider.updateWebsiteMenu();
+            } catch (Exception e) {
+                logError("更新菜单失败: " + e.getMessage());
+            }
         } else {
             updateStatus("更新收藏状态失败");
         }
@@ -515,7 +554,23 @@ class WebSiteTableModel extends AbstractTableModel {
     @Override
     public void setValueAt(Object value, int rowIndex, int columnIndex) {
         if (columnIndex == 2) {
-            websites.get(rowIndex).setFavor((Boolean) value);
+            WebSite website = websites.get(rowIndex);
+            boolean oldFavoriteState = website.isFavor();
+            website.setFavor((Boolean) value);
+            
+            // 更新数据库中的收藏状态
+            boolean favoriteChanged = (oldFavoriteState != website.isFavor());
+            if (favoriteChanged) {
+                ToolController.getInstance().updateWebSiteFavorite(website, website.isFavor());
+                
+                // 更新菜单
+                try {
+                    ArsenalMenuProvider.updateWebsiteMenu();
+                } catch (Exception e) {
+                    System.err.println("更新菜单失败: " + e.getMessage());
+                }
+            }
+            
             fireTableCellUpdated(rowIndex, columnIndex);
         }
     }
