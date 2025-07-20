@@ -3,6 +3,7 @@ package view;
 import manager.ApiManager;
 import manager.ConfigManager;
 import util.JsonUtil;
+import util.OsUtils;
 import model.Config;
 
 import javax.swing.*;
@@ -35,6 +36,13 @@ public class SettingPanel extends JPanel {
     private JButton browseDirectoryButton;
     private JButton applyDirectoryButton;
     private JLabel directoryStatusLabel;
+    
+    // 系统前缀设置相关组件
+    private JTextField commandPrefixField;
+    private JButton resetPrefixButton;
+    private JButton applyPrefixButton;
+    private JLabel prefixStatusLabel;
+    private JLabel systemInfoLabel;
     
     // 插件信息组件
     private JLabel versionLabel;
@@ -81,6 +89,10 @@ public class SettingPanel extends JPanel {
         
         // 工具目录设置面板
         mainPanel.add(createToolDirectoryPanel());
+        mainPanel.add(Box.createVerticalStrut(15));
+        
+        // 系统前缀设置面板
+        mainPanel.add(createSystemPrefixPanel());
         mainPanel.add(Box.createVerticalStrut(15));
         
         // 插件信息面板
@@ -223,6 +235,91 @@ public class SettingPanel extends JPanel {
     }
     
     /**
+     * 创建系统前缀设置面板
+     * @return 系统前缀面板
+     */
+    private JPanel createSystemPrefixPanel() {
+        JPanel prefixPanel = new JPanel(new GridBagLayout());
+        prefixPanel.setBorder(BorderFactory.createTitledBorder(
+            BorderFactory.createEtchedBorder(),
+            "系统命令前缀设置",
+            TitledBorder.LEFT,
+            TitledBorder.TOP,
+            new Font("微软雅黑", Font.BOLD, 12)
+        ));
+        
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(10, 10, 10, 10);
+        gbc.anchor = GridBagConstraints.WEST;
+        
+        // 系统信息标签
+        gbc.gridx = 0; gbc.gridy = 0;
+        gbc.gridwidth = 4;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        systemInfoLabel = new JLabel("当前系统: " + OsUtils.getOsType() + " (" + OsUtils.getOsName() + ")");
+        systemInfoLabel.setFont(new Font("微软雅黑", Font.BOLD, 12));
+        systemInfoLabel.setForeground(new Color(46, 125, 50));
+        prefixPanel.add(systemInfoLabel, gbc);
+        
+        // 命令前缀标签
+        gbc.gridx = 0; gbc.gridy = 1;
+        gbc.gridwidth = 1;
+        gbc.fill = GridBagConstraints.NONE;
+        JLabel prefixLabel = new JLabel("命令前缀:");
+        prefixLabel.setFont(new Font("微软雅黑", Font.PLAIN, 12));
+        prefixPanel.add(prefixLabel, gbc);
+        
+        // 命令前缀输入框
+        gbc.gridx = 1; gbc.gridy = 1;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.weightx = 1.0;
+        commandPrefixField = new JTextField(20);
+        commandPrefixField.setFont(new Font("微软雅黑", Font.PLAIN, 11));
+        commandPrefixField.setToolTipText("设置命令执行前缀，如: cmd /c 或 /bin/bash -c");
+        prefixPanel.add(commandPrefixField, gbc);
+        
+        // 重置按钮
+        gbc.gridx = 2; gbc.gridy = 1;
+        gbc.fill = GridBagConstraints.NONE;
+        gbc.weightx = 0;
+        resetPrefixButton = createStyledButton("重置", "重置为系统默认前缀", new Color(255, 152, 0));
+        resetPrefixButton.setPreferredSize(new Dimension(70, 25));
+        prefixPanel.add(resetPrefixButton, gbc);
+        
+        // 应用按钮
+        gbc.gridx = 3; gbc.gridy = 1;
+        applyPrefixButton = createStyledButton("应用", "应用前缀设置", new Color(46, 125, 50));
+        applyPrefixButton.setPreferredSize(new Dimension(70, 25));
+        prefixPanel.add(applyPrefixButton, gbc);
+        
+        // 前缀状态标签
+        gbc.gridx = 0; gbc.gridy = 2;
+        gbc.gridwidth = 4;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        prefixStatusLabel = new JLabel("前缀状态: 使用系统默认");
+        prefixStatusLabel.setFont(new Font("微软雅黑", Font.PLAIN, 11));
+        prefixStatusLabel.setForeground(new Color(100, 100, 100));
+        prefixPanel.add(prefixStatusLabel, gbc);
+        
+        // 前缀说明
+        gbc.gridy = 3;
+        JTextArea prefixDescArea = new JTextArea(4, 50);
+        prefixDescArea.setText("命令前缀用于在操作系统中执行工具命令。\n" +
+                              "Windows系统默认: cmd /c\n" +
+                              "Linux/Unix系统默认: /bin/bash -c\n" +
+                              "您可以根据需要自定义前缀，如使用PowerShell: powershell -Command");
+        prefixDescArea.setEditable(false);
+        prefixDescArea.setBackground(getBackground());
+        prefixDescArea.setFont(new Font("微软雅黑", Font.PLAIN, 11));
+        prefixDescArea.setForeground(new Color(100, 100, 100));
+        prefixDescArea.setLineWrap(true);
+        prefixDescArea.setWrapStyleWord(true);
+        prefixPanel.add(prefixDescArea, gbc);
+        
+        return prefixPanel;
+    }
+    
+    /**
      * 创建插件信息面板
      * @return 插件信息面板
      */
@@ -355,7 +452,14 @@ public class SettingPanel extends JPanel {
                         browseToolDirectory();
                         break;
                     case "应用":
-                        applyToolDirectory();
+                        if (e.getSource() == applyDirectoryButton) {
+                            applyToolDirectory();
+                        } else if (e.getSource() == applyPrefixButton) {
+                            applyCommandPrefix();
+                        }
+                        break;
+                    case "重置":
+                        resetCommandPrefix();
                         break;
                 }
             }
@@ -616,6 +720,48 @@ public class SettingPanel extends JPanel {
     }
     
     /**
+     * 应用命令前缀设置
+     */
+    private void applyCommandPrefix() {
+        String prefix = commandPrefixField.getText().trim();
+        
+        try {
+            // 保存命令前缀设置
+            if (prefix.isEmpty()) {
+                toolSettings.remove("command.prefix");
+                updatePrefixStatus("已重置为系统默认前缀", Color.BLUE);
+            } else {
+                toolSettings.setProperty("command.prefix", prefix);
+                updatePrefixStatus("自定义前缀设置成功: " + prefix, Color.GREEN);
+            }
+            
+            saveToolSettings();
+            logInfo("命令前缀设置成功: " + (prefix.isEmpty() ? "系统默认" : prefix));
+            
+            JOptionPane.showMessageDialog(
+                this,
+                "命令前缀设置成功！\n前缀: " + (prefix.isEmpty() ? "系统默认" : prefix),
+                "设置成功",
+                JOptionPane.INFORMATION_MESSAGE
+            );
+            
+        } catch (Exception ex) {
+            updatePrefixStatus("保存设置失败: " + ex.getMessage(), Color.RED);
+            logError("保存命令前缀设置失败: " + ex.getMessage());
+        }
+    }
+    
+    /**
+     * 重置命令前缀
+     */
+    private void resetCommandPrefix() {
+        String[] defaultPrefix = OsUtils.getDefaultCommandPrefix();
+        String defaultPrefixString = String.join(" ", defaultPrefix);
+        commandPrefixField.setText(defaultPrefixString);
+        updatePrefixStatus("已重置为系统默认: " + defaultPrefixString, Color.BLUE);
+    }
+    
+    /**
      * 加载当前设置
      */
     private void loadCurrentSettings() {
@@ -632,6 +778,18 @@ public class SettingPanel extends JPanel {
             }
         } else {
             updateDirectoryStatus("工具目录未设置", Color.GRAY);
+        }
+        
+        // 加载命令前缀设置
+        String commandPrefix = toolSettings.getProperty("command.prefix", "");
+        if (!commandPrefix.isEmpty()) {
+            commandPrefixField.setText(commandPrefix);
+            updatePrefixStatus("自定义前缀: " + commandPrefix, Color.GREEN);
+        } else {
+            String[] defaultPrefix = OsUtils.getDefaultCommandPrefix();
+            String defaultPrefixString = String.join(" ", defaultPrefix);
+            commandPrefixField.setText(defaultPrefixString);
+            updatePrefixStatus("使用系统默认: " + defaultPrefixString, Color.BLUE);
         }
         
         // 更新配置状态
@@ -712,6 +870,16 @@ public class SettingPanel extends JPanel {
     }
     
     /**
+     * 更新前缀状态显示
+     * @param message 状态消息
+     * @param color 状态颜色
+     */
+    private void updatePrefixStatus(String message, Color color) {
+        prefixStatusLabel.setText("前缀状态: " + message);
+        prefixStatusLabel.setForeground(color);
+    }
+    
+    /**
      * 记录信息日志
      * @param message 日志消息
      */
@@ -745,6 +913,27 @@ public class SettingPanel extends JPanel {
      */
     public String getToolDirectory() {
         return toolSettings.getProperty("tool.directory", "");
+    }
+    
+    /**
+     * 获取命令前缀设置
+     * @return 命令前缀
+     */
+    public String getCommandPrefix() {
+        return toolSettings.getProperty("command.prefix", "");
+    }
+    
+    /**
+     * 获取格式化后的命令前缀数组
+     * @return 命令前缀数组
+     */
+    public String[] getCommandPrefixArray() {
+        String prefix = getCommandPrefix();
+        if (prefix.isEmpty()) {
+            return OsUtils.getDefaultCommandPrefix();
+        } else {
+            return prefix.split("\\s+");
+        }
     }
     
     /**

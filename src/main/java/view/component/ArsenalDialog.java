@@ -9,6 +9,8 @@ import manager.ConfigManager;
 import model.Config;
 import model.HttpTool;
 import model.HttpToolCommand;
+import util.OsUtils;
+import view.SettingPanel;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
@@ -45,8 +47,7 @@ public class ArsenalDialog extends JDialog {
     private JTextArea renderedCommandArea;  // 渲染后的命令
     
     private JTextArea commandResultArea;
-    private JButton runButton;
-    private JButton runOriginalButton;  // 运行原始命令按钮
+    private JButton runButton;  // 统一的运行按钮
     private JScrollPane resultScrollPane;
     
     private HttpRequest httpRequest;
@@ -130,19 +131,12 @@ public class ArsenalDialog extends JDialog {
         initializeCommandTabs();
         
         // 创建运行按钮
-        runButton = new JButton("运行渲染命令");
-        runButton.setFont(new Font("微软雅黑", Font.BOLD, 11));
-        runButton.setBackground(new Color(0, 123, 255));
+        runButton = new JButton("Run");
+        runButton.setFont(new Font("微软雅黑", Font.BOLD, 12));
+        runButton.setBackground(new Color(40, 167, 69));
         runButton.setForeground(Color.WHITE);
         runButton.setEnabled(false);
-        runButton.setPreferredSize(new Dimension(120, 30));
-        
-        runOriginalButton = new JButton("运行原始命令");
-        runOriginalButton.setFont(new Font("微软雅黑", Font.BOLD, 11));
-        runOriginalButton.setBackground(new Color(40, 167, 69));
-        runOriginalButton.setForeground(Color.WHITE);
-        runOriginalButton.setEnabled(false);
-        runOriginalButton.setPreferredSize(new Dimension(120, 30));
+        runButton.setPreferredSize(new Dimension(100, 30));
         
         // 创建执行结果文本框
         commandResultArea = new JTextArea(8, 50);
@@ -242,7 +236,6 @@ public class ArsenalDialog extends JDialog {
         
         // 按钮面板
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 5));
-        buttonPanel.add(runOriginalButton);
         buttonPanel.add(runButton);
         middlePanel.add(buttonPanel, BorderLayout.SOUTH);
         
@@ -322,35 +315,24 @@ public class ArsenalDialog extends JDialog {
                         selectedToolCommand = filteredToolCommands.get(modelRow);
                         updateCommandPreview();
                         runButton.setEnabled(true);
-                        runOriginalButton.setEnabled(true);
                     } else {
                         selectedToolCommand = null;
                         clearCommandAreas();
                         runButton.setEnabled(false);
-                        runOriginalButton.setEnabled(false);
                     }
                 } else {
                     selectedToolCommand = null;
                     clearCommandAreas();
                     runButton.setEnabled(false);
-                    runOriginalButton.setEnabled(false);
                 }
             }
         });
         
-        // 运行渲染命令按钮点击事件
+        // 运行按钮点击事件
         runButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                executeCommand(renderedCommandArea.getText(), "渲染命令");
-            }
-        });
-        
-        // 运行原始命令按钮点击事件
-        runOriginalButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                executeCommand(originalCommandArea.getText(), "原始命令");
+                executeSelectedCommand();
             }
         });
         
@@ -589,11 +571,22 @@ public class ArsenalDialog extends JDialog {
     }
     
     /**
-     * 执行指定的命令
-     * @param command 要执行的命令
-     * @param commandType 命令类型（用于日志）
+     * 执行选中的命令
      */
-    private void executeCommand(String command, String commandType) {
+    private void executeSelectedCommand() {
+        // 获取当前选中的选项卡中的命令
+        int selectedTab = commandTabbedPane.getSelectedIndex();
+        String command;
+        String commandType;
+        
+        if (selectedTab == 0) { // 原始命令选项卡
+            command = originalCommandArea.getText();
+            commandType = "原始命令";
+        } else { // 渲染命令选项卡
+            command = renderedCommandArea.getText();
+            commandType = "渲染命令";
+        }
+        
         if (command == null || command.trim().isEmpty()) {
             JOptionPane.showMessageDialog(this, "命令不能为空！", "错误", JOptionPane.ERROR_MESSAGE);
             return;
@@ -601,9 +594,7 @@ public class ArsenalDialog extends JDialog {
         
         // 禁用运行按钮防止重复执行
         runButton.setEnabled(false);
-        runOriginalButton.setEnabled(false);
         runButton.setText("Running...");
-        runOriginalButton.setText("Running...");
         
         // 清空之前的结果
         commandResultArea.setText("正在执行" + commandType + "...\n");
@@ -613,22 +604,27 @@ public class ArsenalDialog extends JDialog {
         commandResultArea.append("命令: " + command + "\n");
         commandResultArea.append("---执行结果---\n");
         
-        // 异步执行工具
+        // 使用ToolExecutor异步执行命令
         CompletableFuture.runAsync(() -> {
             try {
-                // 执行命令并捕获输出
-                Process process = new ProcessBuilder("cmd", "/c", command.trim())
-                    .redirectErrorStream(true)
-                    .start();
+                // 获取命令前缀设置，如果没有设置则使用系统默认
+                String[] commandPrefix = getCommandPrefix();
+                
+                // 格式化命令
+                String[] formattedCommand = new String[commandPrefix.length + 1];
+                System.arraycopy(commandPrefix, 0, formattedCommand, 0, commandPrefix.length);
+                formattedCommand[commandPrefix.length] = command.trim();
+                
+                // 创建进程并执行
+                ProcessBuilder processBuilder = new ProcessBuilder(formattedCommand);
+                processBuilder.redirectErrorStream(true);
+                Process process = processBuilder.start();
                 
                 // 读取命令输出
-                StringBuilder output = new StringBuilder();
                 try (BufferedReader reader = new BufferedReader(
-                        new InputStreamReader(process.getInputStream(), getSystemEncoding()))) {
+                        new InputStreamReader(process.getInputStream(), OsUtils.getSystemEncoding()))) {
                     String line;
                     while ((line = reader.readLine()) != null) {
-                        output.append(line).append("\n");
-                        
                         // 实时更新UI
                         final String currentLine = line;
                         SwingUtilities.invokeLater(() -> {
@@ -653,9 +649,7 @@ public class ArsenalDialog extends JDialog {
                     
                     // 恢复按钮状态
                     runButton.setEnabled(true);
-                    runOriginalButton.setEnabled(true);
-                    runButton.setText("运行渲染命令");
-                    runOriginalButton.setText("运行原始命令");
+                    runButton.setText("Run");
                     
                     // 滚动到底部
                     commandResultArea.setCaretPosition(commandResultArea.getDocument().getLength());
@@ -670,9 +664,7 @@ public class ArsenalDialog extends JDialog {
                     
                     // 恢复按钮状态
                     runButton.setEnabled(true);
-                    runOriginalButton.setEnabled(true);
-                    runButton.setText("运行渲染命令");
-                    runOriginalButton.setText("运行原始命令");
+                    runButton.setText("Run");
                     
                     // 滚动到底部
                     commandResultArea.setCaretPosition(commandResultArea.getDocument().getLength());
@@ -684,17 +676,25 @@ public class ArsenalDialog extends JDialog {
     }
     
     /**
+     * 获取命令前缀设置
+     * @return 命令前缀数组
+     */
+    private String[] getCommandPrefix() {
+        try {
+            // 尝试从设置面板获取命令前缀
+            // 这里我们直接使用工具类的方法，避免复杂的依赖关系
+            return OsUtils.getDefaultCommandPrefix();
+        } catch (Exception e) {
+            // 如果出错，使用系统默认
+            return OsUtils.getDefaultCommandPrefix();
+        }
+    }
+    
+    /**
      * 获取系统编码
      * @return 编码字符串
      */
     private String getSystemEncoding() {
-        String osName = System.getProperty("os.name").toLowerCase();
-        if (osName.contains("windows")) {
-            // Windows系统使用GBK编码
-            return "GBK";
-        } else {
-            // Unix/Linux系统使用UTF-8编码
-            return "UTF-8";
-        }
+        return OsUtils.getSystemEncoding();
     }
 } 
