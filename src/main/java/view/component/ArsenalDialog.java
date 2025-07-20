@@ -891,8 +891,8 @@ public class ArsenalDialog extends JDialog {
             }
             addExecutionLogEntry("格式化命令", toolName, "完整命令", commandDisplay.toString());
             
-            // 使用ToolExecutor执行命令
-            executeCommandWithExecutor(finalCommand, toolName);
+            // 使用ToolExecutor在终端中执行命令
+            executeCommandInTerminal(finalCommand, toolName);
             
         } catch (Exception e) {
             addExecutionLogEntry("执行异常", toolName, "错误", e.getMessage());
@@ -909,12 +909,12 @@ public class ArsenalDialog extends JDialog {
     }
     
     /**
-     * 使用ToolExecutor执行命令
+     * 使用ToolExecutor在终端中执行命令
      * @param command 要执行的命令
      * @param toolName 工具名称
      */
-    private void executeCommandWithExecutor(String command, String toolName) {
-        ToolExecutor.getInstance().executeCommandSync(command, toolName, new ToolExecutor.CommandExecutionCallback() {
+    private void executeCommandInTerminal(String command, String toolName) {
+        ToolExecutor.getInstance().executeCommandInTerminal(command, toolName, new ToolExecutor.CommandExecutionCallback() {
             @Override
             public void onCommandStart(String toolName, String command) {
                 SwingUtilities.invokeLater(() -> {
