@@ -1,11 +1,132 @@
 {
   "httpTool": [
    {
-    "type":"sql-inject",
+    "type":"SQL注入",
     "content":[
       {
         "toolName":"sqlmap",
-        "command":"python D:\\tools\\sqlmap\\sqlmap.py -u %http.request.url% --user-agent=\"%http.request.headers.user.agent%\" --cookie=\"%http.request.headers.cookies%\" --dbs",
+        "command":[
+          "python D:\\tools\\sqlmap\\sqlmap.py -u %http.request.url% --user-agent=\"%http.request.headers.user.agent%\" --cookie=\"%http.request.headers.cookies%\" --dbs",
+          "python D:\\tools\\sqlmap\\sqlmap.py -u %http.request.url% --cookie=\"%http.request.headers.cookies%\" --current-db",
+          "python D:\\tools\\sqlmap\\sqlmap.py -u %http.request.url% --forms --batch --crawl=2",
+          "python D:\\tools\\sqlmap\\sqlmap.py -u %http.request.url% --data=\"%http.request.body%\" --dbs"
+        ],
+        "favor":true
+      },
+      {
+        "toolName":"NoSQLMap",
+        "command":[
+          "python D:\\tools\\nosqlmap\\nosqlmap.py -u %http.request.url% --scan",
+          "python D:\\tools\\nosqlmap\\nosqlmap.py -u %http.request.url% --attack"
+        ],
+        "favor":false
+      }
+    ]
+   },
+   {
+    "type":"XSS检测",
+    "content":[
+      {
+        "toolName":"XSStrike",
+        "command":[
+          "python D:\\tools\\XSStrike\\xsstrike.py -u %http.request.url%",
+          "python D:\\tools\\XSStrike\\xsstrike.py -u %http.request.url% --crawl",
+          "python D:\\tools\\XSStrike\\xsstrike.py -u %http.request.url% --fuzzer"
+        ],
+        "favor":true
+      },
+      {
+        "toolName":"dalfox",
+        "command":[
+          "dalfox url %http.request.url%",
+          "dalfox url %http.request.url% --deep-domxss",
+          "dalfox pipe --mass-worker 100"
+        ],
+        "favor":false
+      }
+    ]
+   },
+   {
+    "type":"目录扫描",
+    "content":[
+      {
+        "toolName":"dirsearch",
+        "command":[
+          "python D:\\tools\\dirsearch\\dirsearch.py -u %http.request.url% -e php,asp,aspx,jsp,html",
+          "python D:\\tools\\dirsearch\\dirsearch.py -u %http.request.url% -e * --recursive",
+          "python D:\\tools\\dirsearch\\dirsearch.py -u %http.request.url% -w /usr/share/wordlists/dirb/big.txt"
+        ],
+        "favor":true
+      },
+      {
+        "toolName":"gobuster",
+        "command":[
+          "gobuster dir -u %http.request.url% -w /usr/share/wordlists/dirb/common.txt",
+          "gobuster dir -u %http.request.url% -w /usr/share/wordlists/dirb/big.txt -x php,asp,aspx,jsp",
+          "gobuster dir -u %http.request.url% -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt"
+        ],
+        "favor":false
+      },
+      {
+        "toolName":"ffuf",
+        "command":[
+          "ffuf -w /usr/share/wordlists/dirb/common.txt -u %http.request.url%/FUZZ",
+          "ffuf -w /usr/share/wordlists/dirb/big.txt -u %http.request.url%/FUZZ -e .php,.asp,.aspx,.jsp"
+        ],
+        "favor":true
+      }
+    ]
+   },
+   {
+    "type":"漏洞扫描",
+    "content":[
+      {
+        "toolName":"nikto",
+        "command":[
+          "nikto -h %http.request.url%",
+          "nikto -h %http.request.url% -Plugins @@ALL",
+          "nikto -h %http.request.url% -Format htm -output nikto_report.htm"
+        ],
+        "favor":true
+      },
+      {
+        "toolName":"nuclei",
+        "command":[
+          "nuclei -u %http.request.url%",
+          "nuclei -u %http.request.url% -t cves/",
+          "nuclei -u %http.request.url% -s high,critical",
+          "nuclei -u %http.request.url% -t vulnerabilities/ -severity medium,high,critical"
+        ],
+        "favor":true
+      },
+      {
+        "toolName":"whatweb",
+        "command":[
+          "whatweb %http.request.url%",
+          "whatweb %http.request.url% --aggression=3"
+        ],
+        "favor":false
+      }
+    ]
+   },
+   {
+    "type":"爆破工具",
+    "content":[
+      {
+        "toolName":"hydra",
+        "command":[
+          "hydra -L /usr/share/wordlists/usernames.txt -P /usr/share/wordlists/passwords.txt %http.request.host% http-get /admin",
+          "hydra -L /usr/share/wordlists/usernames.txt -P /usr/share/wordlists/passwords.txt %http.request.host% http-post-form \"/login:username=^USER^&password=^PASS^:Invalid\""
+        ],
+        "favor":false
+      },
+      {
+        "toolName":"wpscan",
+        "command":[
+          "wpscan --url %http.request.url%",
+          "wpscan --url %http.request.url% --enumerate u,p,t,tt",
+          "wpscan --url %http.request.url% --passwords /usr/share/wordlists/rockyou.txt"
+        ],
         "favor":true
       }
     ]
@@ -20,6 +141,29 @@
           "startCommand":"D:\\tools\\dirsearch\\dirsearch.exe",
           "favor":true,
           "autoStart":true
+        },
+        {
+          "toolName":"burpsuite",
+          "startCommand":"java -jar D:\\tools\\burpsuite\\burpsuite_pro.jar",
+          "favor":true,
+          "autoStart":false
+        }
+      ]
+    },
+    {
+      "type":"编辑器",
+      "content":[
+        {
+          "toolName":"VSCode",
+          "startCommand":"code",
+          "favor":true,
+          "autoStart":false
+        },
+        {
+          "toolName":"Notepad++",
+          "startCommand":"notepad++",
+          "favor":false,
+          "autoStart":false
         }
       ]
     }
@@ -32,14 +176,55 @@
           "url":"https://www.baidu.com",
           "desc":"百度",
           "favor":true
+        },
+        {
+          "url":"https://www.google.com",
+          "desc":"谷歌搜索",
+          "favor":true
+        },
+        {
+          "url":"https://shodan.io",
+          "desc":"Shodan搜索引擎",
+          "favor":true
         }
       ]
-    },{
-      "type":"Reacon",
+    },
+    {
+      "type":"Recon",
       "content":[
         {
           "url":"https://www.fofa.com",
           "desc":"fofa",
+          "favor":true
+        },
+        {
+          "url":"https://censys.io",
+          "desc":"Censys搜索",
+          "favor":true
+        },
+        {
+          "url":"https://hunter.io",
+          "desc":"Hunter邮箱搜索",
+          "favor":false
+        }
+      ]
+    },
+    {
+      "type":"漏洞库",
+      "content":[
+        {
+          "url":"https://cve.mitre.org",
+          "desc":"CVE官方数据库",
+          "favor":true
+        },
+        {
+          "url":"https://nvd.nist.gov",
+          "desc":"NVD漏洞数据库",
+          "favor":true
+        },
+        {
+          "url":"https://exploit-db.com",
+          "desc":"Exploit Database",
           "favor":true
         }
       ]

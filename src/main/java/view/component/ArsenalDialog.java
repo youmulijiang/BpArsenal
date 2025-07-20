@@ -8,6 +8,7 @@ import manager.ApiManager;
 import manager.ConfigManager;
 import model.Config;
 import model.HttpTool;
+import model.HttpToolCommand;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
@@ -44,9 +45,9 @@ public class ArsenalDialog extends JDialog {
     
     private HttpRequest httpRequest;
     private HttpResponse httpResponse;
-    private List<HttpTool> allTools;
-    private List<HttpTool> filteredTools;
-    private HttpTool selectedTool;
+    private List<HttpToolCommand> allToolCommands;
+    private List<HttpToolCommand> filteredToolCommands;
+    private HttpToolCommand selectedToolCommand;
     private Set<String> allCategories;
     
     /**
@@ -57,8 +58,8 @@ public class ArsenalDialog extends JDialog {
     public ArsenalDialog(HttpRequest httpRequest, HttpResponse httpResponse) {
         this.httpRequest = httpRequest;
         this.httpResponse = httpResponse;
-        this.allTools = loadAllTools();
-        this.filteredTools = new ArrayList<>(allTools);
+        this.allToolCommands = loadAllToolCommands();
+        this.filteredToolCommands = new ArrayList<>(allToolCommands);
         this.allCategories = extractAllCategories();
         
         initializeDialog();
@@ -264,17 +265,17 @@ public class ArsenalDialog extends JDialog {
                 if (selectedRow >= 0) {
                     // 获取实际的工具索引（考虑筛选和排序）
                     int modelRow = toolTable.convertRowIndexToModel(selectedRow);
-                    if (modelRow >= 0 && modelRow < filteredTools.size()) {
-                        selectedTool = filteredTools.get(modelRow);
+                    if (modelRow >= 0 && modelRow < filteredToolCommands.size()) {
+                        selectedToolCommand = filteredToolCommands.get(modelRow);
                         updateCommandPreview();
                         runButton.setEnabled(true);
                     } else {
-                        selectedTool = null;
+                        selectedToolCommand = null;
                         commandPreviewArea.setText("");
                         runButton.setEnabled(false);
                     }
                 } else {
-                    selectedTool = null;
+                    selectedToolCommand = null;
                     commandPreviewArea.setText("");
                     runButton.setEnabled(false);
                 }
@@ -313,26 +314,26 @@ public class ArsenalDialog extends JDialog {
         String toolNameFilter = toolNameFilterField.getText().trim().toLowerCase();
         String categoryFilter = (String) categoryFilterCombo.getSelectedItem();
         
-        filteredTools.clear();
+        filteredToolCommands.clear();
         
-        for (HttpTool tool : allTools) {
+        for (HttpToolCommand toolCommand : allToolCommands) {
             boolean matchesName = true;
             boolean matchesCategory = true;
             
             // 工具名称筛选
             if (!toolNameFilter.isEmpty()) {
-                String toolName = tool.getToolName() != null ? tool.getToolName().toLowerCase() : "";
+                String toolName = toolCommand.getToolName() != null ? toolCommand.getToolName().toLowerCase() : "";
                 matchesName = toolName.contains(toolNameFilter);
             }
             
             // 分类筛选
             if (categoryFilter != null && !categoryFilter.equals("全部分类")) {
-                String toolCategory = getToolCategory(tool);
+                String toolCategory = toolCommand.getCategory();
                 matchesCategory = categoryFilter.equals(toolCategory);
             }
             
             if (matchesName && matchesCategory) {
-                filteredTools.add(tool);
+                filteredToolCommands.add(toolCommand);
             }
         }
         
@@ -345,8 +346,8 @@ public class ArsenalDialog extends JDialog {
     private void clearFilters() {
         toolNameFilterField.setText("");
         categoryFilterCombo.setSelectedIndex(0);
-        filteredTools.clear();
-        filteredTools.addAll(allTools);
+        filteredToolCommands.clear();
+        filteredToolCommands.addAll(allToolCommands);
         loadToolData();
     }
     
@@ -374,12 +375,12 @@ public class ArsenalDialog extends JDialog {
     }
     
     /**
-     * 加载所有工具数据
-     * @return 工具列表
+     * 加载所有工具命令数据
+     * @return 工具命令列表
      */
-    private List<HttpTool> loadAllTools() {
+    private List<HttpToolCommand> loadAllToolCommands() {
         try {
-            List<HttpTool> tools = ToolController.getInstance().getAllTools();
+            List<HttpToolCommand> toolCommands = ToolController.getInstance().getAllToolCommands();
             
             // 初始化分类下拉框
             SwingUtilities.invokeLater(() -> {
@@ -392,7 +393,7 @@ public class ArsenalDialog extends JDialog {
                 }
             });
             
-            return tools;
+            return toolCommands;
         } catch (Exception e) {
             ApiManager.getInstance().getApi().logging().logToError("加载工具数据失败: " + e.getMessage());
             return new ArrayList<>();
@@ -405,10 +406,10 @@ public class ArsenalDialog extends JDialog {
     private void loadToolData() {
         tableModel.setRowCount(0); // 清空表格
         
-        for (HttpTool tool : filteredTools) {
-            String toolName = tool.getToolName() != null ? tool.getToolName() : "未知工具";
-            String command = tool.getCommand() != null ? tool.getCommand() : "";
-            String category = getToolCategory(tool);
+        for (HttpToolCommand toolCommand : filteredToolCommands) {
+            String toolName = toolCommand.getDisplayName() != null ? toolCommand.getDisplayName() : "未知工具";
+            String command = toolCommand.getCommand() != null ? toolCommand.getCommand() : "";
+            String category = toolCommand.getCategory() != null ? toolCommand.getCategory() : "未分类";
             
             // 截断过长的命令显示
             String displayCommand = command.length() > 50 ? 
@@ -429,8 +430,8 @@ public class ArsenalDialog extends JDialog {
      * 更新筛选状态显示
      */
     private void updateFilterStatus() {
-        String title = String.format("Arsenal - 武器库 (显示 %d/%d 个工具)", 
-                                    filteredTools.size(), allTools.size());
+        String title = String.format("Arsenal - 武器库 (显示 %d/%d 个命令)", 
+                                    filteredToolCommands.size(), allToolCommands.size());
         setTitle(title);
     }
     
@@ -459,10 +460,10 @@ public class ArsenalDialog extends JDialog {
      * 更新命令预览
      */
     private void updateCommandPreview() {
-        if (selectedTool != null && httpRequest != null) {
+        if (selectedToolCommand != null && httpRequest != null) {
             try {
-                // 使用ToolExecutor生成预览命令
-                String previewCommand = generatePreviewCommand(selectedTool, httpRequest);
+                // 使用命令内容生成预览
+                String previewCommand = generatePreviewCommand(selectedToolCommand, httpRequest);
                 commandPreviewArea.setText(previewCommand);
                 commandPreviewArea.setCaretPosition(0); // 滚动到顶部
             } catch (Exception e) {
@@ -474,22 +475,23 @@ public class ArsenalDialog extends JDialog {
     
     /**
      * 生成预览命令
-     * @param tool HTTP工具
+     * @param toolCommand HTTP工具命令
      * @param request HTTP请求
      * @return 预览命令字符串
      */
-    private String generatePreviewCommand(HttpTool tool, HttpRequest request) {
+    private String generatePreviewCommand(HttpToolCommand toolCommand, HttpRequest request) {
         try {
-            // 使用ToolExecutor的变量替换功能
-            return ToolExecutor.getInstance().previewCommand(tool, request);
-        } catch (Exception e) {
-            // 如果ToolExecutor没有预览方法，手动进行简单替换
-            String command = tool.getCommand();
+            // 手动进行变量替换
+            String command = toolCommand.getCommand();
             if (command != null && request != null) {
                 command = command.replace("%http.request.url%", request.url());
+                command = command.replace("%http.request.host%", request.httpService().host());
+                command = command.replace("%http.request.port%", String.valueOf(request.httpService().port()));
                 // 可以添加更多变量替换...
             }
             return command != null ? command : "";
+        } catch (Exception e) {
+            return "命令预览失败: " + e.getMessage();
         }
     }
     
@@ -497,7 +499,7 @@ public class ArsenalDialog extends JDialog {
      * 执行选中的工具
      */
     private void executeSelectedTool() {
-        if (selectedTool == null || httpRequest == null) {
+        if (selectedToolCommand == null || httpRequest == null) {
             return;
         }
         
@@ -507,15 +509,15 @@ public class ArsenalDialog extends JDialog {
         
         // 清空之前的结果
         commandResultArea.setText("正在执行命令...\n");
-        commandResultArea.append("工具: " + selectedTool.getToolName() + "\n");
-        commandResultArea.append("命令: " + selectedTool.getCommand() + "\n");
+        commandResultArea.append("工具: " + selectedToolCommand.getToolName() + "\n");
+        commandResultArea.append("命令: " + selectedToolCommand.getCommand() + "\n");
         commandResultArea.append("---执行结果---\n");
         
         // 异步执行工具
         CompletableFuture.runAsync(() -> {
             try {
                 // 执行命令并捕获输出
-                String command = ToolExecutor.getInstance().previewCommand(selectedTool, httpRequest);
+                String command = generatePreviewCommand(selectedToolCommand, httpRequest);
                 Process process = new ProcessBuilder("cmd", "/c", command)
                     .redirectErrorStream(true)
                     .start();
@@ -558,7 +560,7 @@ public class ArsenalDialog extends JDialog {
                     commandResultArea.setCaretPosition(commandResultArea.getDocument().getLength());
                 });
                 
-                ApiManager.getInstance().getApi().logging().logToOutput("工具执行完成: " + selectedTool.getToolName());
+                ApiManager.getInstance().getApi().logging().logToOutput("工具执行完成: " + selectedToolCommand.getToolName());
                 
             } catch (Exception e) {
                 SwingUtilities.invokeLater(() -> {

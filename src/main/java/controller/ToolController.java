@@ -2,6 +2,7 @@ package controller;
 
 import model.Config;
 import model.HttpTool;
+import model.HttpToolCommand;
 import manager.ConfigManager;
 import manager.ApiManager;
 import util.JsonUtil;
@@ -49,6 +50,45 @@ public class ToolController {
             
         } catch (Exception e) {
             logError("获取工具列表失败: " + e.getMessage());
+            return new ArrayList<>();
+        }
+    }
+    
+    /**
+     * 获取所有工具命令（展开命令数组）
+     * @return 工具命令列表
+     */
+    public List<HttpToolCommand> getAllToolCommands() {
+        try {
+            Config config = ConfigManager.getInstance().getConfig();
+            List<HttpToolCommand> toolCommands = new ArrayList<>();
+            
+            if (config.getHttpTool() != null) {
+                for (Config.HttpToolCategory category : config.getHttpTool()) {
+                    if (category.getContent() != null) {
+                        for (HttpTool tool : category.getContent()) {
+                            List<String> commands = tool.getCommands();
+                            for (int i = 0; i < commands.size(); i++) {
+                                HttpToolCommand toolCommand = new HttpToolCommand(
+                                    tool.getToolName(),
+                                    commands.get(i),
+                                    category.getType(),
+                                    tool.isFavor(),
+                                    i,
+                                    tool
+                                );
+                                toolCommands.add(toolCommand);
+                            }
+                        }
+                    }
+                }
+            }
+            
+            logInfo("成功加载 " + toolCommands.size() + " 个工具命令");
+            return toolCommands;
+            
+        } catch (Exception e) {
+            logError("获取工具命令列表失败: " + e.getMessage());
             return new ArrayList<>();
         }
     }

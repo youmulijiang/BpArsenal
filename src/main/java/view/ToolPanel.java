@@ -1,6 +1,7 @@
 package view;
 
 import model.HttpTool;
+import model.HttpToolCommand;
 import controller.ToolController;
 import view.component.ToolEditDialog;
 
@@ -243,9 +244,9 @@ public class ToolPanel extends JPanel {
      */
     public void loadData() {
         try {
-            List<HttpTool> tools = ToolController.getInstance().getAllTools();
-            tableModel.setTools(tools);
-            updateStatus("已加载 " + tools.size() + " 个工具");
+            List<HttpToolCommand> toolCommands = ToolController.getInstance().getAllToolCommands();
+            tableModel.setToolCommands(toolCommands);
+            updateStatus("已加载 " + toolCommands.size() + " 个工具命令");
             
         } catch (Exception e) {
             updateStatus("加载失败: " + e.getMessage());
@@ -265,9 +266,9 @@ public class ToolPanel extends JPanel {
             String category = dialog.getSelectedCategory();
             
             if (ToolController.getInstance().addTool(newTool, category)) {
-                tableModel.addTool(newTool);
-                updateStatus("已添加工具: " + newTool.getToolName() + " (分类: " + 
-                    ToolController.getInstance().getCategoryDisplayName(category) + ")");
+                // 重新加载数据以显示新添加的工具命令
+                loadData();
+                updateStatus("已添加工具: " + newTool.getToolName() + " (分类: " + category + ")");
             } else {
                 updateStatus("添加工具失败");
             }
@@ -284,7 +285,8 @@ public class ToolPanel extends JPanel {
             return;
         }
         
-        HttpTool tool = tableModel.getToolAt(selectedRow);
+        HttpToolCommand toolCommand = tableModel.getToolCommandAt(selectedRow);
+        HttpTool tool = toolCommand.getParentTool();
         ToolEditDialog dialog = new ToolEditDialog(SwingUtilities.getWindowAncestor(this), tool);
         dialog.setVisible(true);
         
@@ -293,9 +295,9 @@ public class ToolPanel extends JPanel {
             String newCategory = dialog.getSelectedCategory();
             
             if (ToolController.getInstance().updateTool(tool, updatedTool, newCategory)) {
-                tableModel.updateTool(selectedRow, updatedTool);
-                updateStatus("已更新工具: " + updatedTool.getToolName() + " (分类: " + 
-                    ToolController.getInstance().getCategoryDisplayName(newCategory) + ")");
+                // 重新加载数据以显示更新后的工具命令
+                loadData();
+                updateStatus("已更新工具: " + updatedTool.getToolName() + " (分类: " + newCategory + ")");
             } else {
                 updateStatus("更新工具失败");
             }
@@ -312,16 +314,18 @@ public class ToolPanel extends JPanel {
             return;
         }
         
-        HttpTool tool = tableModel.getToolAt(selectedRow);
+        HttpToolCommand toolCommand = tableModel.getToolCommandAt(selectedRow);
+        HttpTool tool = toolCommand.getParentTool();
         int result = JOptionPane.showConfirmDialog(this,
-            "确定要删除工具 \"" + tool.getToolName() + "\" 吗？",
+            "确定要删除工具 \"" + tool.getToolName() + "\" 吗？\n注意：这将删除该工具的所有命令。",
             "确认删除",
             JOptionPane.YES_NO_OPTION,
             JOptionPane.WARNING_MESSAGE);
             
         if (result == JOptionPane.YES_OPTION) {
             if (ToolController.getInstance().removeTool(tool)) {
-                tableModel.removeTool(selectedRow);
+                // 重新加载数据以反映删除操作
+                loadData();
                 updateStatus("已删除工具: " + tool.getToolName());
             } else {
                 updateStatus("删除工具失败");
@@ -339,11 +343,13 @@ public class ToolPanel extends JPanel {
             return;
         }
         
-        HttpTool tool = tableModel.getToolAt(selectedRow);
+        HttpToolCommand toolCommand = tableModel.getToolCommandAt(selectedRow);
+        HttpTool tool = toolCommand.getParentTool();
         boolean newFavoriteState = !tool.isFavor();
         
         if (ToolController.getInstance().updateToolFavorite(tool, newFavoriteState)) {
             tool.setFavor(newFavoriteState);
+            toolCommand.setFavor(newFavoriteState);
             tableModel.fireTableDataChanged();
             
             String status = tool.isFavor() ? "已收藏" : "已取消收藏";
@@ -401,11 +407,11 @@ public class ToolPanel extends JPanel {
  */
 class ToolTableModel extends AbstractTableModel {
     private final String[] columnNames = {"工具名称", "命令", "收藏", "分类"};
-    private List<HttpTool> tools = new ArrayList<>();
+    private List<HttpToolCommand> toolCommands = new ArrayList<>();
     
     @Override
     public int getRowCount() {
-        return tools.size();
+        return toolCommands.size();
     }
     
     @Override
@@ -420,12 +426,12 @@ class ToolTableModel extends AbstractTableModel {
     
     @Override
     public Object getValueAt(int rowIndex, int columnIndex) {
-        HttpTool tool = tools.get(rowIndex);
+        HttpToolCommand toolCommand = toolCommands.get(rowIndex);
         switch (columnIndex) {
-            case 0: return tool.getToolName();
-            case 1: return tool.getCommand();
-            case 2: return tool.isFavor();
-            case 3: return getToolCategory(tool);
+            case 0: return toolCommand.getDisplayName();
+            case 1: return toolCommand.getCommand();
+            case 2: return toolCommand.isFavor();
+            case 3: return toolCommand.getCategory();
             default: return null;
         }
     }
@@ -444,47 +450,39 @@ class ToolTableModel extends AbstractTableModel {
     @Override
     public void setValueAt(Object value, int rowIndex, int columnIndex) {
         if (columnIndex == 2) {
-            tools.get(rowIndex).setFavor((Boolean) value);
+            toolCommands.get(rowIndex).setFavor((Boolean) value);
             fireTableCellUpdated(rowIndex, columnIndex);
         }
     }
     
-    public void setTools(List<HttpTool> tools) {
-        this.tools = new ArrayList<>(tools);
+    public void setToolCommands(List<HttpToolCommand> toolCommands) {
+        this.toolCommands = new ArrayList<>(toolCommands);
         fireTableDataChanged();
     }
     
-    public void addTool(HttpTool tool) {
-        tools.add(tool);
-        fireTableRowsInserted(tools.size() - 1, tools.size() - 1);
+    public void addToolCommand(HttpToolCommand toolCommand) {
+        toolCommands.add(toolCommand);
+        fireTableRowsInserted(toolCommands.size() - 1, toolCommands.size() - 1);
     }
     
-    public void updateTool(int index, HttpTool tool) {
-        tools.set(index, tool);
+    public void updateToolCommand(int index, HttpToolCommand toolCommand) {
+        toolCommands.set(index, toolCommand);
         fireTableRowsUpdated(index, index);
     }
     
-    public void removeTool(int index) {
-        tools.remove(index);
+    public void removeToolCommand(int index) {
+        toolCommands.remove(index);
         fireTableRowsDeleted(index, index);
     }
     
-    public HttpTool getToolAt(int index) {
-        return tools.get(index);
+    public HttpToolCommand getToolCommandAt(int index) {
+        return toolCommands.get(index);
     }
     
-    public List<HttpTool> getTools() {
-        return new ArrayList<>(tools);
+    public List<HttpToolCommand> getToolCommands() {
+        return new ArrayList<>(toolCommands);
     }
-    
-    /**
-     * 获取工具分类
-     * @param tool HTTP工具
-     * @return 工具分类
-     */
-    private String getToolCategory(HttpTool tool) {
-        return ToolController.getInstance().getToolCategory(tool.getToolName());
-    }
+
 }
 
 /**
