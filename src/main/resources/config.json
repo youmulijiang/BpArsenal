@@ -6,18 +6,20 @@
       {
         "toolName":"sqlmap",
         "command":[
-          "python D:\\tools\\sqlmap\\sqlmap.py -u %http.request.url% --user-agent=\"%http.request.headers.user.agent%\" --cookie=\"%http.request.headers.cookies%\" --dbs",
-          "python D:\\tools\\sqlmap\\sqlmap.py -u %http.request.url% --cookie=\"%http.request.headers.cookies%\" --current-db",
-          "python D:\\tools\\sqlmap\\sqlmap.py -u %http.request.url% --forms --batch --crawl=2",
-          "python D:\\tools\\sqlmap\\sqlmap.py -u %http.request.url% --data=\"%http.request.body%\" --dbs"
+          "python D:\\tools\\sqlmap\\sqlmap.py -u \"%http.request.url%\" --user-agent=\"%http.request.headers.user-agent%\" --cookie=\"%http.request.headers.cookie%\" --dbs",
+          "python D:\\tools\\sqlmap\\sqlmap.py -u \"%http.request.url%\" --data=\"%http.request.body%\" --method=%http.request.method% --dbs",
+          "python D:\\tools\\sqlmap\\sqlmap.py -u \"%http.request.protocol%://%http.request.host%:%http.request.port%%http.request.path%\" --forms --batch --crawl=2",
+          "python D:\\tools\\sqlmap\\sqlmap.py -u \"%http.request.url%\" --cookie=\"%http.request.headers.cookie%\" --current-db --tamper=space2comment",
+          "python D:\\tools\\sqlmap\\sqlmap.py -u \"%http.request.url%\" --data=\"%http.request.body%\" --headers=\"Content-Type: %http.request.headers.content-type%\" --risk=3 --level=5"
         ],
         "favor":true
       },
       {
         "toolName":"NoSQLMap",
         "command":[
-          "python D:\\tools\\nosqlmap\\nosqlmap.py -u %http.request.url% --scan",
-          "python D:\\tools\\nosqlmap\\nosqlmap.py -u %http.request.url% --attack"
+          "python D:\\tools\\nosqlmap\\nosqlmap.py -u \"%http.request.url%\" --scan",
+          "python D:\\tools\\nosqlmap\\nosqlmap.py -u \"%http.request.url%\" --attack --verb=%http.request.method%",
+          "python D:\\tools\\nosqlmap\\nosqlmap.py -u \"%http.request.url%\" --data=\"%http.request.body%\" --attack"
         ],
         "favor":false
       }
@@ -29,18 +31,20 @@
       {
         "toolName":"XSStrike",
         "command":[
-          "python D:\\tools\\XSStrike\\xsstrike.py -u %http.request.url%",
-          "python D:\\tools\\XSStrike\\xsstrike.py -u %http.request.url% --crawl",
-          "python D:\\tools\\XSStrike\\xsstrike.py -u %http.request.url% --fuzzer"
+          "python D:\\tools\\XSStrike\\xsstrike.py -u \"%http.request.url%\" --headers",
+          "python D:\\tools\\XSStrike\\xsstrike.py -u \"%http.request.url%\" --crawl --level=3",
+          "python D:\\tools\\XSStrike\\xsstrike.py -u \"%http.request.url%\" --fuzzer --params",
+          "python D:\\tools\\XSStrike\\xsstrike.py -u \"%http.request.url%\" --data=\"%http.request.body%\" --encode"
         ],
         "favor":true
       },
       {
         "toolName":"dalfox",
         "command":[
-          "dalfox url %http.request.url%",
-          "dalfox url %http.request.url% --deep-domxss",
-          "dalfox pipe --mass-worker 100"
+          "dalfox url \"%http.request.url%\" --user-agent \"%http.request.headers.user-agent%\"",
+          "dalfox url \"%http.request.url%\" --deep-domxss --cookie \"%http.request.headers.cookie%\"",
+          "dalfox url \"%http.request.url%\" --data \"%http.request.body%\" --method %http.request.method%",
+          "dalfox url \"%http.request.url%\" --header \"Referer: %http.request.headers.referer%\" --mass-worker 50"
         ],
         "favor":false
       }
@@ -52,26 +56,30 @@
       {
         "toolName":"dirsearch",
         "command":[
-          "python D:\\tools\\dirsearch\\dirsearch.py -u %http.request.url% -e php,asp,aspx,jsp,html",
-          "python D:\\tools\\dirsearch\\dirsearch.py -u %http.request.url% -e * --recursive",
-          "python D:\\tools\\dirsearch\\dirsearch.py -u %http.request.url% -w /usr/share/wordlists/dirb/big.txt"
+          "python D:\\tools\\dirsearch\\dirsearch.py -u \"%http.request.protocol%://%http.request.host%:%http.request.port%\" -e %file.extension%,php,asp,aspx,jsp,html",
+          "python D:\\tools\\dirsearch\\dirsearch.py -u \"%http.request.protocol%://%http.request.host%:%http.request.port%%path.directory%\" --recursive --random-agent",
+          "python D:\\tools\\dirsearch\\dirsearch.py -u \"%http.request.protocol%://%http.request.host%:%http.request.port%\" -w /usr/share/wordlists/dirb/big.txt --cookie=\"%http.request.headers.cookie%\"",
+          "python D:\\tools\\dirsearch\\dirsearch.py -u \"%http.request.protocol%://%http.request.host%:%http.request.port%\" --extensions-list --exclude-status=400,401,403,404,500"
         ],
         "favor":true
       },
       {
         "toolName":"gobuster",
         "command":[
-          "gobuster dir -u %http.request.url% -w /usr/share/wordlists/dirb/common.txt",
-          "gobuster dir -u %http.request.url% -w /usr/share/wordlists/dirb/big.txt -x php,asp,aspx,jsp",
-          "gobuster dir -u %http.request.url% -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt"
+          "gobuster dir -u \"%http.request.protocol%://%http.request.host%:%http.request.port%\" -w /usr/share/wordlists/dirb/common.txt -U \"%http.request.headers.user-agent%\"",
+          "gobuster dir -u \"%http.request.protocol%://%http.request.host%:%http.request.port%%path.directory%\" -w /usr/share/wordlists/dirb/big.txt -x %file.extension%,php,asp,aspx,jsp",
+          "gobuster dir -u \"%http.request.protocol%://%http.request.host%:%http.request.port%\" -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -c \"%http.request.headers.cookie%\"",
+          "gobuster dir -u \"%http.request.protocol%://%http.request.host%:%http.request.port%\" -w /usr/share/wordlists/dirb/common.txt -s \"200,204,301,302,307,401,403\""
         ],
         "favor":false
       },
       {
         "toolName":"ffuf",
         "command":[
-          "ffuf -w /usr/share/wordlists/dirb/common.txt -u %http.request.url%/FUZZ",
-          "ffuf -w /usr/share/wordlists/dirb/big.txt -u %http.request.url%/FUZZ -e .php,.asp,.aspx,.jsp"
+          "ffuf -w /usr/share/wordlists/dirb/common.txt -u \"%http.request.protocol%://%http.request.host%:%http.request.port%/FUZZ\" -H \"User-Agent: %http.request.headers.user-agent%\"",
+          "ffuf -w /usr/share/wordlists/dirb/big.txt -u \"%http.request.protocol%://%http.request.host%:%http.request.port%/FUZZ\" -e .%file.extension%,.php,.asp,.aspx,.jsp",
+          "ffuf -w /usr/share/wordlists/parameters.txt -u \"%http.request.url%\" -X %http.request.method% -d \"FUZZ=test\" -H \"Content-Type: %http.request.headers.content-type%\"",
+          "ffuf -w /usr/share/wordlists/dirb/common.txt -u \"%http.request.protocol%://%http.request.host%:%http.request.port%%path.directory%/FUZZ\" -b \"%http.request.headers.cookie%\""
         ],
         "favor":true
       }
@@ -83,27 +91,30 @@
       {
         "toolName":"nikto",
         "command":[
-          "nikto -h %http.request.url%",
-          "nikto -h %http.request.url% -Plugins @@ALL",
-          "nikto -h %http.request.url% -Format htm -output nikto_report.htm"
+          "nikto -h \"%http.request.protocol%://%http.request.host%:%http.request.port%\" -useragent \"%http.request.headers.user-agent%\"",
+          "nikto -h \"%http.request.protocol%://%http.request.host%:%http.request.port%%path.directory%\" -Plugins @@ALL -Format htm",
+          "nikto -h \"%http.request.protocol%://%http.request.host%:%http.request.port%\" -C all -timeout 10",
+          "nikto -h \"%http.request.protocol%://%http.request.host%:%http.request.port%\" -root \"%path.directory%\" -ssl"
         ],
         "favor":true
       },
       {
         "toolName":"nuclei",
         "command":[
-          "nuclei -u %http.request.url%",
-          "nuclei -u %http.request.url% -t cves/",
-          "nuclei -u %http.request.url% -s high,critical",
-          "nuclei -u %http.request.url% -t vulnerabilities/ -severity medium,high,critical"
+          "nuclei -u \"%http.request.url%\" -H \"User-Agent: %http.request.headers.user-agent%\" -H \"Cookie: %http.request.headers.cookie%\"",
+          "nuclei -u \"%http.request.protocol%://%http.request.host%:%http.request.port%\" -t cves/ -severity high,critical",
+          "nuclei -u \"%http.request.url%\" -t vulnerabilities/ -H \"Referer: %http.request.headers.referer%\"",
+          "nuclei -u \"%http.request.protocol%://%http.request.host%:%http.request.port%\" -t technologies/ -t exposures/ -rate-limit 10",
+          "nuclei -u \"%http.request.url%\" -t fuzzing/ -var target=%http.request.host% -var port=%http.request.port%"
         ],
         "favor":true
       },
       {
         "toolName":"whatweb",
         "command":[
-          "whatweb %http.request.url%",
-          "whatweb %http.request.url% --aggression=3"
+          "whatweb \"%http.request.url%\" --user-agent=\"%http.request.headers.user-agent%\"",
+          "whatweb \"%http.request.protocol%://%http.request.host%:%http.request.port%\" --aggression=3 --no-errors",
+          "whatweb \"%http.request.url%\" --cookie=\"%http.request.headers.cookie%\" --log-verbose=whatweb.log"
         ],
         "favor":false
       }
@@ -115,19 +126,62 @@
       {
         "toolName":"hydra",
         "command":[
-          "hydra -L /usr/share/wordlists/usernames.txt -P /usr/share/wordlists/passwords.txt %http.request.host% http-get /admin",
-          "hydra -L /usr/share/wordlists/usernames.txt -P /usr/share/wordlists/passwords.txt %http.request.host% http-post-form \"/login:username=^USER^&password=^PASS^:Invalid\""
+          "hydra -L /usr/share/wordlists/usernames.txt -P /usr/share/wordlists/passwords.txt %http.request.host% -s %http.request.port% http-get \"%http.request.path%\"",
+          "hydra -L /usr/share/wordlists/usernames.txt -P /usr/share/wordlists/passwords.txt %http.request.host% -s %http.request.port% http-post-form \"%http.request.path%:username=^USER^&password=^PASS^:Invalid\"",
+          "hydra -L /usr/share/wordlists/usernames.txt -P /usr/share/wordlists/passwords.txt %http.request.host% -s %http.request.port% http-get \"%http.request.path%\" -I -f",
+          "hydra -l admin -P /usr/share/wordlists/passwords.txt %http.request.host% -s %http.request.port% https-post-form \"%http.request.path%:username=^USER^&password=^PASS^:Invalid\""
         ],
         "favor":false
       },
       {
         "toolName":"wpscan",
         "command":[
-          "wpscan --url %http.request.url%",
-          "wpscan --url %http.request.url% --enumerate u,p,t,tt",
-          "wpscan --url %http.request.url% --passwords /usr/share/wordlists/rockyou.txt"
+          "wpscan --url \"%http.request.protocol%://%http.request.host%:%http.request.port%%path.directory%\" --user-agent \"%http.request.headers.user-agent%\"",
+          "wpscan --url \"%http.request.protocol%://%http.request.host%:%http.request.port%%path.directory%\" --enumerate u,p,t,tt --random-user-agent",
+          "wpscan --url \"%http.request.protocol%://%http.request.host%:%http.request.port%%path.directory%\" --passwords /usr/share/wordlists/rockyou.txt --usernames admin",
+          "wpscan --url \"%http.request.protocol%://%http.request.host%:%http.request.port%%path.directory%\" --cookie-string \"%http.request.headers.cookie%\" --disable-tls-checks"
         ],
         "favor":true
+      }
+    ]
+   },
+   {
+    "type":"编码分析",
+    "content":[
+      {
+        "toolName":"参数模糊测试",
+        "command":[
+          "python -c \"import urllib.parse; print('URL编码:', urllib.parse.quote('%http.request.url%'))\"",
+          "python -c \"import urllib.parse; print('URL解码:', urllib.parse.unquote('%http.url.encoded%'))\"",
+          "echo '%http.request.body%' | base64 -d",
+          "echo '%http.request.query%' | sed 's/&/\\n/g' | sort"
+        ],
+        "favor":false
+      },
+      {
+        "toolName":"请求分析",
+        "command":[
+          "curl -X %http.request.method% \"%http.request.url%\" -H \"User-Agent: %http.request.headers.user-agent%\" -H \"Cookie: %http.request.headers.cookie%\" -v",
+          "curl -X %http.request.method% \"%http.request.url%\" -d \"%http.request.body%\" -H \"Content-Type: %http.request.headers.content-type%\" -i",
+          "curl -X %http.request.method% \"%http.request.protocol%://%http.request.host%:%http.request.port%%http.request.path%\" --data-urlencode \"param=%http.query.param.names%\" -s",
+          "wget --spider --server-response \"%http.request.url%\" --user-agent=\"%http.request.headers.user-agent%\" 2>&1"
+        ],
+        "favor":false
+      }
+    ]
+   },
+   {
+    "type":"认证测试",
+    "content":[
+      {
+        "toolName":"认证绕过",
+        "command":[
+          "python -c \"import base64; print('Basic Auth:', base64.b64decode('%auth.token%' if '%auth.type%' == 'bearer' else '').decode() if '%auth.type%' else 'No Auth')\"",
+          "curl -X %http.request.method% \"%http.request.url%\" -H \"Authorization: %http.request.headers.authorization%\" -v",
+          "curl -X %http.request.method% \"%http.request.url%\" -u \"%auth.username%:%auth.password%\" -v",
+          "curl -X %http.request.method% \"%http.request.url%\" -H \"Authorization: Bearer %auth.token%\" -v"
+        ],
+        "favor":false
       }
     ]
    }
