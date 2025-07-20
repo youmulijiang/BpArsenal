@@ -4,13 +4,13 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * HTTP工具占位符文档
- * 提供所有可用变量的说明和示例（规范化命名体系）
+ * HTTP Tool Placeholder Documentation
+ * Provides descriptions and examples for all available variables (standardized naming system)
  */
 public class PlaceholderDocumentation {
     
     /**
-     * 占位符变量类
+     * Placeholder Variable Class
      */
     public static class PlaceholderVariable {
         private final String name;
@@ -32,34 +32,34 @@ public class PlaceholderDocumentation {
         
         @Override
         public String toString() {
-            return String.format("%s - %s\n  示例: %s", name, description, example);
+            return String.format("%s - %s\n  Example: %s", name, description, example);
         }
     }
     
     /**
-     * 获取HTTP请求基础信息变量
-     * @return 请求基础信息变量列表
+     * Get HTTP request basic variables
+     * @return Request basic variables list
      */
     public static List<PlaceholderVariable> getRequestBasicVariables() {
         return Arrays.asList(
-            new PlaceholderVariable("%http.request.url%", "完整的请求URL", "https://example.com/api/users?id=123", "请求基础"),
-            new PlaceholderVariable("%http.request.method%", "HTTP请求方法", "GET, POST, PUT, DELETE", "请求基础"),
-            new PlaceholderVariable("%http.request.path%", "请求路径", "/api/users", "请求基础"),
-            new PlaceholderVariable("%http.request.query%", "查询字符串", "id=123&name=test", "请求基础"),
-            new PlaceholderVariable("%http.request.host%", "目标主机名", "example.com", "请求基础"),
-            new PlaceholderVariable("%http.request.port%", "目标端口", "80, 443, 8080", "请求基础"),
-            new PlaceholderVariable("%http.request.secure%", "是否使用HTTPS", "true, false", "请求基础"),
-            new PlaceholderVariable("%http.request.protocol%", "协议类型", "http, https", "请求基础")
+            new PlaceholderVariable("%http.request.url%", "Complete request URL", "https://example.com/api/users?id=123", "Request Basic"),
+            new PlaceholderVariable("%http.request.method%", "HTTP request method", "GET, POST, PUT, DELETE", "Request Basic"),
+            new PlaceholderVariable("%http.request.path%", "Request path", "/api/users", "Request Basic"),
+            new PlaceholderVariable("%http.request.query%", "Query string", "id=123&name=test", "Request Basic"),
+            new PlaceholderVariable("%http.request.host%", "Target hostname", "example.com", "Request Basic"),
+            new PlaceholderVariable("%http.request.port%", "Target port", "80, 443, 8080", "Request Basic"),
+            new PlaceholderVariable("%http.request.secure%", "Whether using HTTPS", "true, false", "Request Basic"),
+            new PlaceholderVariable("%http.request.protocol%", "Protocol type", "http, https", "Request Basic")
         );
     }
     
     /**
-     * 获取HTTP请求头部变量
-     * @return 请求头部变量列表
+     * Get HTTP request header variables
+     * @return Request header variables list
      */
     public static List<PlaceholderVariable> getRequestHeaderVariables() {
         return Arrays.asList(
-            new PlaceholderVariable("%http.request.headers.user.agent%", "用户代理字符串", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)", "请求头部"),
+            new PlaceholderVariable("%http.request.headers.user.agent%", "User agent string", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)", "Request Headers"),
             new PlaceholderVariable("%http.request.headers.content.type%", "请求内容类型", "application/json", "请求头部"),
             new PlaceholderVariable("%http.request.headers.content.length%", "请求内容长度", "1024", "请求头部"),
             new PlaceholderVariable("%http.request.headers.authorization%", "认证头信息", "Bearer eyJhbGciOiJIUzI1NiIs...", "请求头部"),
@@ -218,12 +218,12 @@ public class PlaceholderDocumentation {
     }
     
     /**
-     * 生成占位符使用示例
-     * @return 使用示例字符串
+     * Generate placeholder usage examples
+     * @return Usage examples string
      */
     public static String generateUsageExamples() {
         StringBuilder examples = new StringBuilder();
-        examples.append("=== HTTP工具占位符使用示例（规范化命名体系）===\n\n");
+        examples.append("=== HTTP Tool Placeholder Usage Examples (Standardized Naming System) ===\n\n");
         
         examples.append("1. SQLMap注入测试:\n");
         examples.append("   python sqlmap.py -u %http.request.url% --user-agent=\"%http.request.headers.user.agent%\" --cookie=\"%http.request.headers.cookies%\" --dbs\n\n");

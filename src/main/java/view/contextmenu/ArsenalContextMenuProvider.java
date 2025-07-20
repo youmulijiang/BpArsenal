@@ -15,6 +15,7 @@ import javax.swing.*;
 import java.awt.Component;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Arsenal上下文菜单提供者
@@ -22,36 +23,30 @@ import java.util.List;
  */
 public class ArsenalContextMenuProvider implements ContextMenuItemsProvider {
     
+    // 防止重复弹窗的标志
+    private final AtomicBoolean arsenalDialogOpen = new AtomicBoolean(false);
+    
     @Override
     public List<Component> provideMenuItems(ContextMenuEvent event) {
         List<Component> menuItems = new ArrayList<>();
         
         // 只在HTTP请求/响应上下文中显示菜单
-//        if (event.invocationType() == InvocationType.MESSAGE_EDITOR_REQUEST ||
-//            event.invocationType() == InvocationType.MESSAGE_EDITOR_RESPONSE ||
-//            event.invocationType() == InvocationType.PROXY_HISTORY ||
-//            event.invocationType() == InvocationType.SITE_MAP_TREE ||
-//            event.invocationType() == InvocationType.SITE_MAP_TABLE) {
-//
-//            // 创建Favorite菜单项
-//            JMenuItem favoriteItem = new JMenuItem("Favorite");
-//            favoriteItem.addActionListener(e -> handleFavoriteAction(event));
-//            menuItems.add(favoriteItem);
-//
-//            // 创建Arsenal菜单项
-//            JMenuItem arsenalItem = new JMenuItem("Arsenal");
-//            arsenalItem.addActionListener(e -> handleArsenalAction(event));
-//            menuItems.add(arsenalItem);
-//        }
+        if (event.invocationType() == InvocationType.MESSAGE_EDITOR_REQUEST ||
+            event.invocationType() == InvocationType.MESSAGE_EDITOR_RESPONSE ||
+            event.invocationType() == InvocationType.PROXY_HISTORY ||
+            event.invocationType() == InvocationType.SITE_MAP_TREE ||
+            event.invocationType() == InvocationType.SITE_MAP_TABLE) {
 
-        JMenuItem favoriteItem = new JMenuItem("Favorite");
-        favoriteItem.addActionListener(e -> handleFavoriteAction(event));
-        menuItems.add(favoriteItem);
+            // 创建Favorite菜单项
+            JMenuItem favoriteItem = new JMenuItem("Favorite");
+            favoriteItem.addActionListener(e -> handleFavoriteAction(event));
+            menuItems.add(favoriteItem);
 
-        // 创建Arsenal菜单项
-        JMenuItem arsenalItem = new JMenuItem("Arsenal");
-        arsenalItem.addActionListener(e -> handleArsenalAction(event));
-        menuItems.add(arsenalItem);
+            // 创建Arsenal菜单项
+            JMenuItem arsenalItem = new JMenuItem("Arsenal");
+            arsenalItem.addActionListener(e -> handleArsenalAction(event));
+            menuItems.add(arsenalItem);
+        }
         
         return menuItems;
     }
@@ -90,20 +85,43 @@ public class ArsenalContextMenuProvider implements ContextMenuItemsProvider {
      */
     private void handleArsenalAction(ContextMenuEvent event) {
         try {
-            // 获取选中的HTTP消息
-            HttpRequest httpRequest = getHttpRequestFromEvent(event);
-            HttpResponse httpResponse = getHttpResponseFromEvent(event);
-            
-            if (httpRequest != null) {
-                // 创建并显示Arsenal工具对话框
-                SwingUtilities.invokeLater(() -> {
-                    ArsenalDialog dialog = new ArsenalDialog(httpRequest, httpResponse);
-                    dialog.setVisible(true);
-                });
+            // 检查是否已有对话框打开，避免重复弹窗
+            if (arsenalDialogOpen.compareAndSet(false, true)) {
+                // 获取选中的HTTP消息
+                HttpRequest httpRequest = getHttpRequestFromEvent(event);
+                HttpResponse httpResponse = getHttpResponseFromEvent(event);
                 
-                ApiManager.getInstance().getApi().logging().logToOutput("Arsenal工具对话框已打开");
+                if (httpRequest != null) {
+                    // 创建并显示Arsenal工具对话框
+                    SwingUtilities.invokeLater(() -> {
+                        ArsenalDialog dialog = new ArsenalDialog(httpRequest, httpResponse);
+                        
+                        // 添加窗口关闭监听器，重置标志
+                        dialog.addWindowListener(new java.awt.event.WindowAdapter() {
+                            @Override
+                            public void windowClosed(java.awt.event.WindowEvent e) {
+                                arsenalDialogOpen.set(false);
+                            }
+                            
+                            @Override
+                            public void windowClosing(java.awt.event.WindowEvent e) {
+                                arsenalDialogOpen.set(false);
+                            }
+                        });
+                        
+                        dialog.setVisible(true);
+                    });
+                    
+                    ApiManager.getInstance().getApi().logging().logToOutput("Arsenal工具对话框已打开");
+                } else {
+                    arsenalDialogOpen.set(false); // 重置标志
+                    ApiManager.getInstance().getApi().logging().logToError("无法获取HTTP请求数据");
+                }
+            } else {
+                ApiManager.getInstance().getApi().logging().logToOutput("Arsenal对话框已经打开，忽略重复请求");
             }
         } catch (Exception ex) {
+            arsenalDialogOpen.set(false); // 出错时重置标志
             ApiManager.getInstance().getApi().logging().logToError("打开Arsenal对话框失败: " + ex.getMessage());
         }
     }
