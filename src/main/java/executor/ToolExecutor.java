@@ -9,17 +9,22 @@ import java.io.IOException;
 import java.awt.Desktop;
 import java.net.URI;
 import java.util.concurrent.CompletableFuture;
+import java.util.Map;
 import javax.swing.JOptionPane;
 
 /**
  * 工具执行器，负责执行外部工具和命令
  * 采用单例模式确保全局唯一实例
  * 使用策略模式处理HTTP报文解析
+ * 集成操作系统工具功能
  */
 public class ToolExecutor {
     private static ToolExecutor instance;
     private final HttpVariableReplacer variableReplacer;
     private HttpMessageParser currentParser;
+    
+    // 操作系统相关常量
+    private static final String OS_NAME = System.getProperty("os.name").toLowerCase();
     
     /**
      * 私有构造函数，防止外部实例化
@@ -161,12 +166,9 @@ public class ToolExecutor {
     private void executeCommand(String command, String toolName) throws IOException {
         ProcessBuilder processBuilder = new ProcessBuilder();
         
-        // 根据操作系统设置命令
-        if (System.getProperty("os.name").toLowerCase().contains("windows")) {
-            processBuilder.command("cmd", "/c", command);
-        } else {
-            processBuilder.command("sh", "-c", command);
-        }
+        // 使用集成的操作系统工具格式化命令
+        String[] formattedCommand = formatCommandForRunningOnOperatingSystem(command);
+        processBuilder.command(formattedCommand);
         
         Process process = processBuilder.start();
         
@@ -185,6 +187,205 @@ public class ToolExecutor {
                 Thread.currentThread().interrupt();
             }
         });
+    }
+    
+    /**
+     * 执行系统命令（同步版本，用于UI组件）
+     * @param command 命令字符串
+     * @param toolName 工具名称
+     * @param callback 执行结果回调
+     */
+    public void executeCommandSync(String command, String toolName, CommandExecutionCallback callback) {
+        CompletableFuture.runAsync(() -> {
+            try {
+                if (callback != null) {
+                    callback.onCommandStart(toolName, command);
+                }
+                
+                // 使用集成的操作系统工具格式化命令
+                String[] formattedCommand = formatCommandForRunningOnOperatingSystem(command);
+                ProcessBuilder processBuilder = new ProcessBuilder(formattedCommand);
+                processBuilder.redirectErrorStream(true);
+                
+                Process process = processBuilder.start();
+                
+                // 读取输出
+                java.io.BufferedReader reader = new java.io.BufferedReader(
+                    new java.io.InputStreamReader(process.getInputStream(), getSystemEncoding()));
+                
+                String line;
+                StringBuilder output = new StringBuilder();
+                while ((line = reader.readLine()) != null) {
+                    output.append(line).append("\n");
+                    if (callback != null) {
+                        callback.onOutputReceived(line);
+                    }
+                }
+                
+                int exitCode = process.waitFor();
+                
+                if (callback != null) {
+                    callback.onCommandComplete(toolName, exitCode, output.toString());
+                }
+                
+                // 记录到Burp日志
+                if (ApiManager.getInstance().isInitialized()) {
+                    String logMsg = String.format("工具执行完成: %s (退出码: %d)", toolName, exitCode);
+                    if (exitCode == 0) {
+                        ApiManager.getInstance().getApi().logging().logToOutput(logMsg);
+                    } else {
+                        ApiManager.getInstance().getApi().logging().logToError(logMsg);
+                    }
+                }
+                
+            } catch (Exception e) {
+                if (callback != null) {
+                    callback.onCommandError(toolName, e);
+                }
+                
+                if (ApiManager.getInstance().isInitialized()) {
+                    ApiManager.getInstance().getApi().logging().logToError("命令执行异常: " + e.getMessage());
+                }
+            }
+        });
+    }
+    
+    // ===== 集成的操作系统工具方法 =====
+    
+    /**
+     * 判断是否为Windows系统
+     * @return 是否为Windows系统
+     */
+    public static boolean isWindows() {
+        return OS_NAME.contains("win");
+    }
+    
+    /**
+     * 判断是否为Linux系统
+     * @return 是否为Linux系统
+     */
+    public static boolean isLinux() {
+        return OS_NAME.contains("nix") || OS_NAME.contains("nux") || OS_NAME.contains("aix");
+    }
+    
+    /**
+     * 判断是否为Mac系统
+     * @return 是否为Mac系统
+     */
+    public static boolean isMac() {
+        return OS_NAME.contains("mac");
+    }
+    
+    /**
+     * 判断是否为Unix-like系统（Linux, Mac, Unix等）
+     * @return 是否为Unix-like系统
+     */
+    public static boolean isUnixLike() {
+        return isLinux() || isMac() || OS_NAME.contains("freebsd") || OS_NAME.contains("openbsd") || OS_NAME.contains("netbsd");
+    }
+    
+    /**
+     * 获取系统类型字符串
+     * @return 系统类型（Windows, Linux, Mac, Unknown）
+     */
+    public static String getOsType() {
+        if (isWindows()) {
+            return "Windows";
+        } else if (isLinux()) {
+            return "Linux";
+        } else if (isMac()) {
+            return "Mac";
+        } else {
+            return "Unknown";
+        }
+    }
+    
+    /**
+     * 获取默认的命令执行前缀
+     * @return 命令执行前缀数组
+     */
+    public static String[] getDefaultCommandPrefix() {
+        if (isWindows()) {
+            return new String[]{"cmd", "/c"};
+        } else {
+            return new String[]{"/bin/bash", "-c"};
+        }
+    }
+    
+    /**
+     * 格式化命令以在当前操作系统上运行
+     * @param command 原始命令
+     * @return 格式化后的命令数组
+     */
+    public static String[] formatCommandForRunningOnOperatingSystem(String command) {
+        if (isWindows()) {
+            return new String[]{"cmd", "/c", command};
+        } else {
+            return new String[]{"/bin/bash", "-c", command};
+        }
+    }
+    
+    /**
+     * 使用自定义前缀格式化命令
+     * @param command 原始命令
+     * @param prefix 自定义前缀
+     * @return 格式化后的命令数组
+     */
+    public static String[] formatCommandWithPrefix(String command, String prefix) {
+        if (prefix == null || prefix.trim().isEmpty()) {
+            return formatCommandForRunningOnOperatingSystem(command);
+        }
+        
+        String[] prefixParts = prefix.trim().split("\\s+");
+        String[] result = new String[prefixParts.length + 1];
+        System.arraycopy(prefixParts, 0, result, 0, prefixParts.length);
+        result[prefixParts.length] = command;
+        return result;
+    }
+    
+    /**
+     * 获取系统编码
+     * @return 编码字符串
+     */
+    public static String getSystemEncoding() {
+        if (isWindows()) {
+            return "GBK";
+        } else {
+            return "UTF-8";
+        }
+    }
+    
+    /**
+     * 命令执行回调接口
+     */
+    public interface CommandExecutionCallback {
+        /**
+         * 命令开始执行
+         * @param toolName 工具名称
+         * @param command 执行的命令
+         */
+        void onCommandStart(String toolName, String command);
+        
+        /**
+         * 接收到输出
+         * @param output 输出内容
+         */
+        void onOutputReceived(String output);
+        
+        /**
+         * 命令执行完成
+         * @param toolName 工具名称
+         * @param exitCode 退出码
+         * @param fullOutput 完整输出
+         */
+        void onCommandComplete(String toolName, int exitCode, String fullOutput);
+        
+        /**
+         * 命令执行出错
+         * @param toolName 工具名称
+         * @param error 错误信息
+         */
+        void onCommandError(String toolName, Exception error);
     }
     
     /**

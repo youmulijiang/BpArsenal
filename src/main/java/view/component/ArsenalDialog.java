@@ -11,8 +11,6 @@ import manager.ConfigManager;
 import model.Config;
 import model.HttpTool;
 import model.HttpToolCommand;
-import util.OsUtils;
-import view.SettingPanel;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
@@ -152,13 +150,13 @@ public class ArsenalDialog extends JDialog {
         refreshVariablesButton.setEnabled(false);
         refreshVariablesButton.setPreferredSize(new Dimension(100, 30));
         
-        // 创建执行结果文本框
+        // 创建执行日志文本框 - 修改为白色背景
         commandResultArea = new JTextArea(8, 50);
         commandResultArea.setEditable(false);
-        commandResultArea.setFont(new Font("Consolas", Font.PLAIN, 12));
-        commandResultArea.setBackground(Color.BLACK);
-        commandResultArea.setForeground(Color.GREEN);
-        commandResultArea.setBorder(BorderFactory.createTitledBorder("执行结果"));
+        commandResultArea.setFont(new Font("Consolas", Font.PLAIN, 11));
+        commandResultArea.setBackground(Color.WHITE);  // 修改为白色背景
+        commandResultArea.setForeground(Color.BLACK);  // 修改为黑色文字
+        commandResultArea.setBorder(BorderFactory.createTitledBorder("执行日志"));  // 修改标题
         
         resultScrollPane = new JScrollPane(commandResultArea);
         resultScrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
@@ -274,7 +272,7 @@ public class ArsenalDialog extends JDialog {
         centerPanel.add(tableScrollPane, BorderLayout.NORTH);
         centerPanel.add(middlePanel, BorderLayout.CENTER);
         
-        // 底部：执行结果
+        // 底部：执行日志
         resultScrollPane.setPreferredSize(new Dimension(930, 180));
         
         // 添加到主面板
@@ -784,7 +782,7 @@ public class ArsenalDialog extends JDialog {
         
         // 如果包含空格，在Windows下用双引号包围，在Unix下转义空格
         if (escaped.contains(" ")) {
-            if (OsUtils.isWindows()) {
+            if (ToolExecutor.isWindows()) {
                 // Windows: 用双引号包围，内部的双引号转义
                 escaped = "\"" + escaped.replace("\"", "\\\"") + "\"";
             } else {
@@ -829,9 +827,12 @@ public class ArsenalDialog extends JDialog {
         if (selectedTab == 0) { // 原始命令选项卡
             command = originalCommandArea.getText();
             commandType = "原始命令";
-        } else { // 渲染命令选项卡
+        } else if (selectedTab == 1) { // 渲染命令选项卡
             command = renderedCommandArea.getText();
             commandType = "渲染命令";
+        } else {
+            JOptionPane.showMessageDialog(this, "请选择原始命令或渲染命令选项卡进行执行！", "提示", JOptionPane.WARNING_MESSAGE);
+            return;
         }
         
         if (command == null || command.trim().isEmpty()) {
@@ -843,57 +844,47 @@ public class ArsenalDialog extends JDialog {
         runButton.setEnabled(false);
         runButton.setText("Running...");
         
-        // 清空之前的结果
-        commandResultArea.setText("正在执行" + commandType + "...\n");
-        if (selectedToolCommand != null) {
-            commandResultArea.append("工具: " + selectedToolCommand.getToolName() + "\n");
-        }
-        commandResultArea.append("命令: " + command + "\n");
-        commandResultArea.append("---执行结果---\n");
+        // 清空之前的日志
+        commandResultArea.setText("");
         
-        // 使用ToolExecutor异步执行命令
-        CompletableFuture.runAsync(() -> {
-            try {
-                // 获取命令前缀设置，如果没有设置则使用系统默认
-                String[] commandPrefix = getCommandPrefix();
-                
-                // 格式化命令
-                String[] formattedCommand = new String[commandPrefix.length + 1];
-                System.arraycopy(commandPrefix, 0, formattedCommand, 0, commandPrefix.length);
-                formattedCommand[commandPrefix.length] = command.trim();
-                
-                // 创建进程并执行
-                ProcessBuilder processBuilder = new ProcessBuilder(formattedCommand);
-                processBuilder.redirectErrorStream(true);
-                Process process = processBuilder.start();
-                
-                // 读取命令输出
-                try (BufferedReader reader = new BufferedReader(
-                        new InputStreamReader(process.getInputStream(), OsUtils.getSystemEncoding()))) {
-                    String line;
-                    while ((line = reader.readLine()) != null) {
-                        // 实时更新UI
-                        final String currentLine = line;
-                        SwingUtilities.invokeLater(() -> {
-                            commandResultArea.append(currentLine + "\n");
-                            commandResultArea.setCaretPosition(commandResultArea.getDocument().getLength());
-                        });
-                    }
-                }
-                
-                // 等待进程完成
-                int exitCode = process.waitFor();
-                
+        // 获取工具名称
+        String toolName = selectedToolCommand != null ? selectedToolCommand.getToolName() : "手动命令";
+        
+        // 使用ToolExecutor执行命令
+        ToolExecutor.getInstance().executeCommandSync(command.trim(), toolName, new ToolExecutor.CommandExecutionCallback() {
+            @Override
+            public void onCommandStart(String toolName, String command) {
                 SwingUtilities.invokeLater(() -> {
-                    commandResultArea.append("\n---执行完成---\n");
-                    commandResultArea.append("退出码: " + exitCode + "\n");
-                    
+                    appendToLog("🚀 开始执行: " + toolName);
+                    appendToLog("📝 命令类型: " + commandType);
+                    appendToLog("⚡ 执行命令: " + command);
+                    appendToLog("📊 系统平台: " + ToolExecutor.getOsType());
+                    appendToLog(createSeparator(60));
+                });
+            }
+            
+            @Override
+            public void onOutputReceived(String output) {
+                SwingUtilities.invokeLater(() -> {
+                    appendToLog(output);
+                });
+            }
+            
+            @Override
+            public void onCommandComplete(String toolName, int exitCode, String fullOutput) {
+                SwingUtilities.invokeLater(() -> {
+                    appendToLog(createSeparator(60));
                     if (exitCode == 0) {
-                        commandResultArea.append(commandType + "执行成功！\n");
+                        appendToLog("✅ 执行成功: " + toolName + " (退出码: " + exitCode + ")");
                     } else {
-                        commandResultArea.append(commandType + "执行失败，退出码: " + exitCode + "\n");
+                        appendToLog("❌ 执行失败: " + toolName + " (退出码: " + exitCode + ")");
                     }
                     
+                    // 添加时间戳
+                    java.text.SimpleDateFormat formatter = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                    appendToLog("🕒 完成时间: " + formatter.format(new java.util.Date()));
+                    appendToLog("");
+                    
                     // 恢复按钮状态
                     runButton.setEnabled(true);
                     runButton.setText("Run");
@@ -901,13 +892,19 @@ public class ArsenalDialog extends JDialog {
                     // 滚动到底部
                     commandResultArea.setCaretPosition(commandResultArea.getDocument().getLength());
                 });
-                
-                String toolName = selectedToolCommand != null ? selectedToolCommand.getToolName() : "未知工具";
-                ApiManager.getInstance().getApi().logging().logToOutput("工具执行完成: " + toolName + " (" + commandType + ")");
-                
-            } catch (Exception e) {
+            }
+            
+            @Override
+            public void onCommandError(String toolName, Exception error) {
                 SwingUtilities.invokeLater(() -> {
-                    commandResultArea.append("\n执行异常: " + e.getMessage() + "\n");
+                    appendToLog(createSeparator(60));
+                    appendToLog("💥 执行异常: " + toolName);
+                    appendToLog("🔥 错误信息: " + error.getMessage());
+                    
+                    // 添加时间戳
+                    java.text.SimpleDateFormat formatter = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                    appendToLog("🕒 异常时间: " + formatter.format(new java.util.Date()));
+                    appendToLog("");
                     
                     // 恢复按钮状态
                     runButton.setEnabled(true);
@@ -916,10 +913,30 @@ public class ArsenalDialog extends JDialog {
                     // 滚动到底部
                     commandResultArea.setCaretPosition(commandResultArea.getDocument().getLength());
                 });
-                
-                ApiManager.getInstance().getApi().logging().logToError("工具执行失败: " + e.getMessage());
             }
         });
+    }
+    
+    /**
+     * 添加日志到执行结果区域
+     * @param message 日志消息
+     */
+    private void appendToLog(String message) {
+        commandResultArea.append(message + "\n");
+        commandResultArea.setCaretPosition(commandResultArea.getDocument().getLength());
+    }
+    
+    /**
+     * 创建分隔符字符串
+     * @param length 分隔符长度
+     * @return 分隔符字符串
+     */
+    private String createSeparator(int length) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < length; i++) {
+            sb.append("=");
+        }
+        return sb.toString();
     }
     
     /**
@@ -930,10 +947,10 @@ public class ArsenalDialog extends JDialog {
         try {
             // 尝试从设置面板获取命令前缀
             // 这里我们直接使用工具类的方法，避免复杂的依赖关系
-            return OsUtils.getDefaultCommandPrefix();
+            return ToolExecutor.getDefaultCommandPrefix();
         } catch (Exception e) {
             // 如果出错，使用系统默认
-            return OsUtils.getDefaultCommandPrefix();
+            return ToolExecutor.getDefaultCommandPrefix();
         }
     }
     
@@ -942,6 +959,6 @@ public class ArsenalDialog extends JDialog {
      * @return 编码字符串
      */
     private String getSystemEncoding() {
-        return OsUtils.getSystemEncoding();
+        return ToolExecutor.getSystemEncoding();
     }
 } 
