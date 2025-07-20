@@ -38,9 +38,15 @@ public class ArsenalDialog extends JDialog {
     private JTextField toolNameFilterField;
     private JComboBox<String> categoryFilterCombo;
     private JButton clearFilterButton;
-    private JTextArea commandPreviewArea;
+    
+    // 修改为选项卡面板
+    private JTabbedPane commandTabbedPane;
+    private JTextArea originalCommandArea;  // 原始命令（未渲染）
+    private JTextArea renderedCommandArea;  // 渲染后的命令
+    
     private JTextArea commandResultArea;
     private JButton runButton;
+    private JButton runOriginalButton;  // 运行原始命令按钮
     private JScrollPane resultScrollPane;
     
     private HttpRequest httpRequest;
@@ -74,7 +80,7 @@ public class ArsenalDialog extends JDialog {
      */
     private void initializeDialog() {
         setTitle("Arsenal - 武器库");
-        setSize(950, 750);
+        setSize(950, 800);  // 增加高度以适应选项卡
         setLocationRelativeTo(null);
         setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
         setModal(false); // 非模态对话框
@@ -120,24 +126,25 @@ public class ArsenalDialog extends JDialog {
         tableSorter = new TableRowSorter<>(tableModel);
         toolTable.setRowSorter(tableSorter);
         
-        // 创建命令预览文本框
-        commandPreviewArea = new JTextArea(4, 50);
-        commandPreviewArea.setEditable(false);
-        commandPreviewArea.setFont(new Font("Consolas", Font.PLAIN, 11));
-        commandPreviewArea.setBackground(new Color(248, 248, 248));
-        commandPreviewArea.setBorder(BorderFactory.createTitledBorder("命令预览"));
-        commandPreviewArea.setLineWrap(true);
-        commandPreviewArea.setWrapStyleWord(true);
+        // 创建命令选项卡面板
+        initializeCommandTabs();
         
         // 创建运行按钮
-        runButton = new JButton("Run");
-        runButton.setFont(new Font("微软雅黑", Font.BOLD, 12));
+        runButton = new JButton("运行渲染命令");
+        runButton.setFont(new Font("微软雅黑", Font.BOLD, 11));
         runButton.setBackground(new Color(0, 123, 255));
         runButton.setForeground(Color.WHITE);
         runButton.setEnabled(false);
-        runButton.setPreferredSize(new Dimension(80, 30));
+        runButton.setPreferredSize(new Dimension(120, 30));
         
-        // 创建执行结果文本框，修复字体编码问题
+        runOriginalButton = new JButton("运行原始命令");
+        runOriginalButton.setFont(new Font("微软雅黑", Font.BOLD, 11));
+        runOriginalButton.setBackground(new Color(40, 167, 69));
+        runOriginalButton.setForeground(Color.WHITE);
+        runOriginalButton.setEnabled(false);
+        runOriginalButton.setPreferredSize(new Dimension(120, 30));
+        
+        // 创建执行结果文本框
         commandResultArea = new JTextArea(8, 50);
         commandResultArea.setEditable(false);
         commandResultArea.setFont(new Font("Consolas", Font.PLAIN, 12));
@@ -147,6 +154,48 @@ public class ArsenalDialog extends JDialog {
         
         resultScrollPane = new JScrollPane(commandResultArea);
         resultScrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
+    }
+    
+    /**
+     * 初始化命令选项卡
+     */
+    private void initializeCommandTabs() {
+        commandTabbedPane = new JTabbedPane();
+        commandTabbedPane.setFont(new Font("微软雅黑", Font.PLAIN, 12));
+        
+        // 原始命令选项卡
+        originalCommandArea = new JTextArea(5, 50);
+        originalCommandArea.setEditable(true);  // 可编辑
+        originalCommandArea.setFont(new Font("Consolas", Font.PLAIN, 11));
+        originalCommandArea.setBackground(new Color(255, 255, 240));  // 浅黄色背景
+        originalCommandArea.setLineWrap(true);
+        originalCommandArea.setWrapStyleWord(true);
+        originalCommandArea.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
+        
+        JScrollPane originalScrollPane = new JScrollPane(originalCommandArea);
+        originalScrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+        originalScrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        
+        // 渲染命令选项卡
+        renderedCommandArea = new JTextArea(5, 50);
+        renderedCommandArea.setEditable(true);  // 可编辑
+        renderedCommandArea.setFont(new Font("Consolas", Font.PLAIN, 11));
+        renderedCommandArea.setBackground(new Color(240, 255, 240));  // 浅绿色背景
+        renderedCommandArea.setLineWrap(true);
+        renderedCommandArea.setWrapStyleWord(true);
+        renderedCommandArea.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
+        
+        JScrollPane renderedScrollPane = new JScrollPane(renderedCommandArea);
+        renderedScrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+        renderedScrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        
+        // 添加选项卡
+        commandTabbedPane.addTab("原始命令", originalScrollPane);
+        commandTabbedPane.addTab("渲染命令", renderedScrollPane);
+        
+        // 设置选项卡提示
+        commandTabbedPane.setToolTipTextAt(0, "显示未经变量替换的原始命令模板，可以手动编辑");
+        commandTabbedPane.setToolTipTextAt(1, "显示经过变量替换的命令，可以手动编辑后执行");
     }
     
     /**
@@ -181,15 +230,19 @@ public class ArsenalDialog extends JDialog {
         
         // 中部：工具表格
         JScrollPane tableScrollPane = new JScrollPane(toolTable);
-        tableScrollPane.setPreferredSize(new Dimension(930, 220));
+        tableScrollPane.setPreferredSize(new Dimension(930, 200));
         tableScrollPane.setBorder(BorderFactory.createTitledBorder("工具列表"));
         
-        // 命令预览和运行按钮面板
+        // 命令预览选项卡和运行按钮面板
         JPanel middlePanel = new JPanel(new BorderLayout());
-        JScrollPane previewScrollPane = new JScrollPane(commandPreviewArea);
-        middlePanel.add(previewScrollPane, BorderLayout.CENTER);
         
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        // 选项卡面板
+        commandTabbedPane.setPreferredSize(new Dimension(930, 150));
+        middlePanel.add(commandTabbedPane, BorderLayout.CENTER);
+        
+        // 按钮面板
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 5));
+        buttonPanel.add(runOriginalButton);
         buttonPanel.add(runButton);
         middlePanel.add(buttonPanel, BorderLayout.SOUTH);
         
@@ -269,24 +322,35 @@ public class ArsenalDialog extends JDialog {
                         selectedToolCommand = filteredToolCommands.get(modelRow);
                         updateCommandPreview();
                         runButton.setEnabled(true);
+                        runOriginalButton.setEnabled(true);
                     } else {
                         selectedToolCommand = null;
-                        commandPreviewArea.setText("");
+                        clearCommandAreas();
                         runButton.setEnabled(false);
+                        runOriginalButton.setEnabled(false);
                     }
                 } else {
                     selectedToolCommand = null;
-                    commandPreviewArea.setText("");
+                    clearCommandAreas();
                     runButton.setEnabled(false);
+                    runOriginalButton.setEnabled(false);
                 }
             }
         });
         
-        // 运行按钮点击事件
+        // 运行渲染命令按钮点击事件
         runButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                executeSelectedTool();
+                executeCommand(renderedCommandArea.getText(), "渲染命令");
+            }
+        });
+        
+        // 运行原始命令按钮点击事件
+        runOriginalButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                executeCommand(originalCommandArea.getText(), "原始命令");
             }
         });
         
@@ -305,6 +369,19 @@ public class ArsenalDialog extends JDialog {
         
         // 清除筛选按钮事件
         clearFilterButton.addActionListener(e -> clearFilters());
+        
+        // 选项卡切换事件（可选，用于同步编辑）
+        commandTabbedPane.addChangeListener(e -> {
+            // 可以在这里添加选项卡切换时的逻辑
+        });
+    }
+    
+    /**
+     * 清空命令文本区域
+     */
+    private void clearCommandAreas() {
+        originalCommandArea.setText("");
+        renderedCommandArea.setText("");
     }
     
     /**
@@ -460,26 +537,37 @@ public class ArsenalDialog extends JDialog {
      * 更新命令预览
      */
     private void updateCommandPreview() {
-        if (selectedToolCommand != null && httpRequest != null) {
+        if (selectedToolCommand != null) {
             try {
-                // 使用命令内容生成预览
-                String previewCommand = generatePreviewCommand(selectedToolCommand, httpRequest);
-                commandPreviewArea.setText(previewCommand);
-                commandPreviewArea.setCaretPosition(0); // 滚动到顶部
+                // 设置原始命令（未渲染）
+                String originalCommand = selectedToolCommand.getCommand() != null ? selectedToolCommand.getCommand() : "";
+                originalCommandArea.setText(originalCommand);
+                originalCommandArea.setCaretPosition(0);
+                
+                // 设置渲染后的命令
+                if (httpRequest != null) {
+                    String renderedCommand = generateRenderedCommand(selectedToolCommand, httpRequest);
+                    renderedCommandArea.setText(renderedCommand);
+                    renderedCommandArea.setCaretPosition(0);
+                } else {
+                    renderedCommandArea.setText("无HTTP请求数据，无法渲染变量");
+                }
+                
             } catch (Exception e) {
-                commandPreviewArea.setText("命令预览生成失败: " + e.getMessage());
-                ApiManager.getInstance().getApi().logging().logToError("命令预览生成失败: " + e.getMessage());
+                originalCommandArea.setText("命令加载失败: " + e.getMessage());
+                renderedCommandArea.setText("命令渲染失败: " + e.getMessage());
+                ApiManager.getInstance().getApi().logging().logToError("命令预览更新失败: " + e.getMessage());
             }
         }
     }
     
     /**
-     * 生成预览命令
+     * 生成渲染后的命令
      * @param toolCommand HTTP工具命令
      * @param request HTTP请求
-     * @return 预览命令字符串
+     * @return 渲染后的命令字符串
      */
-    private String generatePreviewCommand(HttpToolCommand toolCommand, HttpRequest request) {
+    private String generateRenderedCommand(HttpToolCommand toolCommand, HttpRequest request) {
         try {
             // 手动进行变量替换
             String command = toolCommand.getCommand();
@@ -487,42 +575,53 @@ public class ArsenalDialog extends JDialog {
                 command = command.replace("%http.request.url%", request.url());
                 command = command.replace("%http.request.host%", request.httpService().host());
                 command = command.replace("%http.request.port%", String.valueOf(request.httpService().port()));
+                command = command.replace("%http.request.method%", request.method());
+                command = command.replace("%http.request.path%", request.path());
+                
                 // 可以添加更多变量替换...
+                // command = command.replace("%http.request.headers%", request.headers().toString());
+                // command = command.replace("%http.request.body%", request.bodyToString());
             }
             return command != null ? command : "";
         } catch (Exception e) {
-            return "命令预览失败: " + e.getMessage();
+            return "命令渲染失败: " + e.getMessage();
         }
     }
     
     /**
-     * 执行选中的工具
+     * 执行指定的命令
+     * @param command 要执行的命令
+     * @param commandType 命令类型（用于日志）
      */
-    private void executeSelectedTool() {
-        if (selectedToolCommand == null || httpRequest == null) {
+    private void executeCommand(String command, String commandType) {
+        if (command == null || command.trim().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "命令不能为空！", "错误", JOptionPane.ERROR_MESSAGE);
             return;
         }
         
         // 禁用运行按钮防止重复执行
         runButton.setEnabled(false);
+        runOriginalButton.setEnabled(false);
         runButton.setText("Running...");
+        runOriginalButton.setText("Running...");
         
         // 清空之前的结果
-        commandResultArea.setText("正在执行命令...\n");
-        commandResultArea.append("工具: " + selectedToolCommand.getToolName() + "\n");
-        commandResultArea.append("命令: " + selectedToolCommand.getCommand() + "\n");
+        commandResultArea.setText("正在执行" + commandType + "...\n");
+        if (selectedToolCommand != null) {
+            commandResultArea.append("工具: " + selectedToolCommand.getToolName() + "\n");
+        }
+        commandResultArea.append("命令: " + command + "\n");
         commandResultArea.append("---执行结果---\n");
         
         // 异步执行工具
         CompletableFuture.runAsync(() -> {
             try {
                 // 执行命令并捕获输出
-                String command = generatePreviewCommand(selectedToolCommand, httpRequest);
-                Process process = new ProcessBuilder("cmd", "/c", command)
+                Process process = new ProcessBuilder("cmd", "/c", command.trim())
                     .redirectErrorStream(true)
                     .start();
                 
-                // 读取命令输出，修复编码问题
+                // 读取命令输出
                 StringBuilder output = new StringBuilder();
                 try (BufferedReader reader = new BufferedReader(
                         new InputStreamReader(process.getInputStream(), getSystemEncoding()))) {
@@ -547,20 +646,23 @@ public class ArsenalDialog extends JDialog {
                     commandResultArea.append("退出码: " + exitCode + "\n");
                     
                     if (exitCode == 0) {
-                        commandResultArea.append("命令执行成功！\n");
+                        commandResultArea.append(commandType + "执行成功！\n");
                     } else {
-                        commandResultArea.append("命令执行失败，退出码: " + exitCode + "\n");
+                        commandResultArea.append(commandType + "执行失败，退出码: " + exitCode + "\n");
                     }
                     
                     // 恢复按钮状态
                     runButton.setEnabled(true);
-                    runButton.setText("Run");
+                    runOriginalButton.setEnabled(true);
+                    runButton.setText("运行渲染命令");
+                    runOriginalButton.setText("运行原始命令");
                     
                     // 滚动到底部
                     commandResultArea.setCaretPosition(commandResultArea.getDocument().getLength());
                 });
                 
-                ApiManager.getInstance().getApi().logging().logToOutput("工具执行完成: " + selectedToolCommand.getToolName());
+                String toolName = selectedToolCommand != null ? selectedToolCommand.getToolName() : "未知工具";
+                ApiManager.getInstance().getApi().logging().logToOutput("工具执行完成: " + toolName + " (" + commandType + ")");
                 
             } catch (Exception e) {
                 SwingUtilities.invokeLater(() -> {
@@ -568,7 +670,9 @@ public class ArsenalDialog extends JDialog {
                     
                     // 恢复按钮状态
                     runButton.setEnabled(true);
-                    runButton.setText("Run");
+                    runOriginalButton.setEnabled(true);
+                    runButton.setText("运行渲染命令");
+                    runOriginalButton.setText("运行原始命令");
                     
                     // 滚动到底部
                     commandResultArea.setCaretPosition(commandResultArea.getDocument().getLength());
