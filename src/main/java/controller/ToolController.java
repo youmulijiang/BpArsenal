@@ -4,6 +4,7 @@ import model.Config;
 import model.HttpTool;
 import model.HttpToolCommand;
 import model.ThirdPartyTool;
+import model.WebSite;
 import manager.ConfigManager;
 import manager.ApiManager;
 import util.JsonUtil;
@@ -13,7 +14,7 @@ import java.util.List;
 
 /**
  * 工具控制器 (Controller层)
- * 处理HTTP工具和第三方工具的业务逻辑和数据操作
+ * 处理HTTP工具、第三方工具和网站的业务逻辑和数据操作
  */
 public class ToolController {
     
@@ -515,6 +516,235 @@ public class ToolController {
                 return "网络工具";
             case "analysis":
                 return "分析工具";
+            default:
+                return type;
+        }
+    }
+    
+    /**
+     * 获取所有网站
+     * @return 网站列表
+     */
+    public List<WebSite> getAllWebSites() {
+        try {
+            Config config = ConfigManager.getInstance().getConfig();
+            List<WebSite> websites = new ArrayList<>();
+            
+            if (config.getWebSite() != null) {
+                for (Config.WebSiteCategory category : config.getWebSite()) {
+                    if (category.getContent() != null) {
+                        websites.addAll(category.getContent());
+                    }
+                }
+            }
+            
+            logInfo("成功加载 " + websites.size() + " 个网站");
+            return websites;
+            
+        } catch (Exception e) {
+            logError("获取网站列表失败: " + e.getMessage());
+            return new ArrayList<>();
+        }
+    }
+    
+    /**
+     * 添加网站
+     * @param website 网站对象
+     * @param categoryType 分类类型
+     * @return 是否成功
+     */
+    public boolean addWebSite(WebSite website, String categoryType) {
+        try {
+            Config config = ConfigManager.getInstance().getConfig();
+            if (config.getWebSite() == null) {
+                config.setWebSite(new ArrayList<>());
+            }
+            
+            // 查找或创建对应分类
+            Config.WebSiteCategory targetCategory = findOrCreateWebSiteCategory(config, categoryType);
+            
+            if (targetCategory.getContent() == null) {
+                targetCategory.setContent(new ArrayList<>());
+            }
+            
+            targetCategory.getContent().add(website);
+            
+            // 保存配置
+            saveConfiguration();
+            
+            logInfo("成功添加网站: " + website.getDesc() + " (分类: " + categoryType + ")");
+            return true;
+            
+        } catch (Exception e) {
+            logError("添加网站失败: " + e.getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * 更新网站
+     * @param oldWebsite 原网站
+     * @param newWebsite 新网站
+     * @param newCategoryType 新分类类型
+     * @return 是否成功
+     */
+    public boolean updateWebSite(WebSite oldWebsite, WebSite newWebsite, String newCategoryType) {
+        try {
+            // 先删除原网站
+            removeWebSite(oldWebsite);
+            
+            // 再添加新网站
+            boolean result = addWebSite(newWebsite, newCategoryType);
+            
+            if (result) {
+                logInfo("成功更新网站: " + newWebsite.getDesc());
+            }
+            
+            return result;
+            
+        } catch (Exception e) {
+            logError("更新网站失败: " + e.getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * 删除网站
+     * @param website 要删除的网站
+     * @return 是否成功
+     */
+    public boolean removeWebSite(WebSite website) {
+        try {
+            Config config = ConfigManager.getInstance().getConfig();
+            if (config.getWebSite() == null) return false;
+            
+            boolean removed = false;
+            for (Config.WebSiteCategory category : config.getWebSite()) {
+                if (category.getContent() != null) {
+                    removed = category.getContent().removeIf(w -> 
+                        w.getUrl().equals(website.getUrl()) && 
+                        w.getDesc().equals(website.getDesc())) || removed;
+                }
+            }
+            
+            if (removed) {
+                saveConfiguration();
+                logInfo("成功删除网站: " + website.getDesc());
+            }
+            
+            return removed;
+            
+        } catch (Exception e) {
+            logError("删除网站失败: " + e.getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * 更新网站收藏状态
+     * @param website 网站对象
+     * @param favorite 收藏状态
+     * @return 是否成功
+     */
+    public boolean updateWebSiteFavorite(WebSite website, boolean favorite) {
+        try {
+            Config config = ConfigManager.getInstance().getConfig();
+            if (config.getWebSite() == null) return false;
+            
+            boolean updated = false;
+            for (Config.WebSiteCategory category : config.getWebSite()) {
+                if (category.getContent() != null) {
+                    for (WebSite w : category.getContent()) {
+                        if (w.getUrl().equals(website.getUrl()) && 
+                            w.getDesc().equals(website.getDesc())) {
+                            w.setFavor(favorite);
+                            updated = true;
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            if (updated) {
+                saveConfiguration();
+                logInfo("更新网站收藏状态: " + website.getDesc() + " -> " + favorite);
+            }
+            
+            return updated;
+            
+        } catch (Exception e) {
+            logError("更新网站收藏状态失败: " + e.getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * 根据网站描述获取分类
+     * @param websiteDesc 网站描述
+     * @return 分类显示名称
+     */
+    public String getWebSiteCategory(String websiteDesc) {
+        try {
+            Config config = ConfigManager.getInstance().getConfig();
+            if (config.getWebSite() != null) {
+                for (Config.WebSiteCategory category : config.getWebSite()) {
+                    if (category.getContent() != null) {
+                        for (WebSite website : category.getContent()) {
+                            if (website.getDesc().equals(websiteDesc)) {
+                                return getWebSiteCategoryDisplayName(category.getType());
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            logError("获取网站分类失败: " + e.getMessage());
+        }
+        return "未分类";
+    }
+    
+    /**
+     * 查找或创建网站分类
+     * @param config 配置对象
+     * @param categoryType 分类类型
+     * @return 分类对象
+     */
+    private Config.WebSiteCategory findOrCreateWebSiteCategory(Config config, String categoryType) {
+        // 查找现有分类
+        for (Config.WebSiteCategory category : config.getWebSite()) {
+            if (categoryType.equals(category.getType())) {
+                return category;
+            }
+        }
+        
+        // 创建新分类
+        Config.WebSiteCategory newCategory = new Config.WebSiteCategory();
+        newCategory.setType(categoryType);
+        newCategory.setContent(new ArrayList<>());
+        config.getWebSite().add(newCategory);
+        
+        return newCategory;
+    }
+    
+    /**
+     * 获取网站分类显示名称
+     * @param type 分类类型
+     * @return 显示名称
+     */
+    public String getWebSiteCategoryDisplayName(String type) {
+        if (type == null) return "未分类";
+        
+        switch (type.toLowerCase()) {
+            case "osint":
+                return "OSINT";
+            case "recon":
+                return "信息收集";
+            case "漏洞库":
+                return "漏洞库";
+            case "tools":
+                return "在线工具";
+            case "learning":
+                return "学习资源";
             default:
                 return type;
         }
