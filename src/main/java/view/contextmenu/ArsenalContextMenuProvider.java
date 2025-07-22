@@ -31,22 +31,31 @@ public class ArsenalContextMenuProvider implements ContextMenuItemsProvider {
         List<Component> menuItems = new ArrayList<>();
         
         // 只在HTTP请求/响应上下文中显示菜单
-        if (event.invocationType() == InvocationType.MESSAGE_EDITOR_REQUEST ||
-            event.invocationType() == InvocationType.MESSAGE_EDITOR_RESPONSE ||
-            event.invocationType() == InvocationType.PROXY_HISTORY ||
-            event.invocationType() == InvocationType.SITE_MAP_TREE ||
-            event.invocationType() == InvocationType.SITE_MAP_TABLE) {
+//        if (event.invocationType() == InvocationType.MESSAGE_EDITOR_REQUEST ||
+//            event.invocationType() == InvocationType.MESSAGE_EDITOR_RESPONSE ||
+//            event.invocationType() == InvocationType.PROXY_HISTORY ||
+//            event.invocationType() == InvocationType.SITE_MAP_TREE ||
+//            event.invocationType() == InvocationType.SITE_MAP_TABLE) {
+//
+//            // 创建Favorite菜单项
+//            JMenuItem favoriteItem = new JMenuItem("Favorite");
+//            favoriteItem.addActionListener(e -> handleFavoriteAction(event));
+//            menuItems.add(favoriteItem);
+//
+//            // 创建Arsenal菜单项
+//            JMenuItem arsenalItem = new JMenuItem("Arsenal");
+//            arsenalItem.addActionListener(e -> handleArsenalAction(event));
+//            menuItems.add(arsenalItem);
+//        }
 
-            // 创建Favorite菜单项
-            JMenuItem favoriteItem = new JMenuItem("Favorite");
-            favoriteItem.addActionListener(e -> handleFavoriteAction(event));
-            menuItems.add(favoriteItem);
+        JMenuItem favoriteItem = new JMenuItem("Favorite");
+        favoriteItem.addActionListener(e -> handleFavoriteAction(event));
+        menuItems.add(favoriteItem);
 
-            // 创建Arsenal菜单项
-            JMenuItem arsenalItem = new JMenuItem("Arsenal");
-            arsenalItem.addActionListener(e -> handleArsenalAction(event));
-            menuItems.add(arsenalItem);
-        }
+        // 创建Arsenal菜单项
+        JMenuItem arsenalItem = new JMenuItem("Arsenal");
+        arsenalItem.addActionListener(e -> handleArsenalAction(event));
+        menuItems.add(arsenalItem);
         
         return menuItems;
     }

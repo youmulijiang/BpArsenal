@@ -191,7 +191,7 @@ public class WebsitePanel extends JPanel {
         // 设置表头
         JTableHeader header = websiteTable.getTableHeader();
         header.setFont(new Font("微软雅黑", Font.BOLD, 12));
-        header.setBackground(new Color(245, 245, 245));
+//        header.setBackground(new Color(245, 245, 245));
         header.setReorderingAllowed(false);
         
         // 设置列宽
@@ -208,7 +208,7 @@ public class WebsitePanel extends JPanel {
         columnModel.getColumn(1).setCellRenderer(new WebSiteUrlRenderer());
         
         // 设置行颜色交替
-        websiteTable.setDefaultRenderer(Object.class, new WebSiteAlternateRowRenderer());
+//        websiteTable.setDefaultRenderer(Object.class, new WebSiteAlternateRowRenderer());
     }
     
     /**
@@ -229,11 +229,11 @@ public class WebsitePanel extends JPanel {
         });
         
         // 选择变化处理
-        websiteTable.getSelectionModel().addListSelectionListener(e -> {
-            if (!e.getValueIsAdjusting()) {
-                updateButtonStates();
-            }
-        });
+//        websiteTable.getSelectionModel().addListSelectionListener(e -> {
+//            if (!e.getValueIsAdjusting()) {
+//                updateButtonStates();
+//            }
+//        });
         
         // 按钮事件
         addButton.addActionListener(e -> addNewWebsite());
@@ -593,30 +593,70 @@ class WebSiteTableModel extends AbstractTableModel {
  * 收藏状态渲染器
  */
 class WebSiteFavoriteRenderer extends DefaultTableCellRenderer {
-    @Override
-    public Component getTableCellRendererComponent(JTable table, Object value, 
-            boolean isSelected, boolean hasFocus, int row, int column) {
-        
-        JLabel label = new JLabel();
-        label.setHorizontalAlignment(JLabel.CENTER);
-        label.setOpaque(true);
-        
-        if (isSelected) {
-            label.setBackground(table.getSelectionBackground());
-            label.setForeground(table.getSelectionForeground());
-        } else {
-            label.setBackground(table.getBackground());
-            label.setForeground(table.getForeground());
-        }
-        
-        if (value instanceof Boolean) {
-            label.setText(((Boolean) value) ? "★" : "☆");
-            label.setForeground(((Boolean) value) ? new Color(255, 152, 0) : new Color(158, 158, 158));
-        }
-        
-        return label;
-    }
+   @Override
+   public Component getTableCellRendererComponent(JTable table, Object value,
+           boolean isSelected, boolean hasFocus, int row, int column) {
+
+       JLabel label = new JLabel();
+
+       label.setHorizontalAlignment(JLabel.CENTER);
+//        label.setOpaque(true);
+
+       if (isSelected) {
+           label.setBackground(table.getSelectionBackground());
+           label.setForeground(table.getSelectionForeground());
+       } else {
+           label.setBackground(table.getBackground());
+           label.setForeground(table.getForeground());
+       }
+
+       if (value instanceof Boolean) {
+           label.setText(((Boolean) value) ? "★" : "☆");
+           label.setForeground(((Boolean) value) ? new Color(255, 152, 0) : new Color(158, 158, 158));
+       }
+
+       return label;
+   }
+
+
 }
+// class WebSiteFavoriteRenderer  extends DefaultTableCellRenderer {
+//     private final JToggleButton toggleButton;
+
+//     public WebSiteFavoriteRenderer() {
+//         toggleButton = new JToggleButton();
+//         toggleButton.setMargin(new Insets(0, 0, 0, 0)); // 减少按钮边距
+//         toggleButton.setBorderPainted(false); // 不绘制边框
+//         toggleButton.setContentAreaFilled(false); // 不填充内容区域
+//         toggleButton.setFocusPainted(false); // 不绘制焦点状态
+//         toggleButton.setHorizontalAlignment(SwingConstants.CENTER);
+//     }
+
+//     @Override
+//     public Component getTableCellRendererComponent(JTable table, Object value,
+//                                                    boolean isSelected, boolean hasFocus, int row, int column) {
+//         toggleButton.setText("☆");
+//         // 设置按钮的选中状态
+//         if (value instanceof Boolean) {
+//             boolean selected = (Boolean) value;
+//             toggleButton.setSelected(selected);
+//             toggleButton.setText(selected ? "★" : "☆");
+//             toggleButton.setForeground(selected ? new Color(255, 152, 0) : new Color(158, 158, 158));
+//         }
+
+//         // 设置选中行的背景色
+//         if (isSelected) {
+//             toggleButton.setBackground(table.getSelectionBackground());
+//             toggleButton.setForeground(table.getSelectionForeground());
+//         } else {
+//             toggleButton.setBackground(table.getBackground());
+//             toggleButton.setForeground(table.getForeground());
+//         }
+
+//         return toggleButton;
+//     }
+// }
+
 
 /**
  * URL渲染器 - 链接样式
@@ -640,10 +680,10 @@ class WebSiteUrlRenderer extends DefaultTableCellRenderer {
             }
             
             // 显示完整URL作为提示
-            setToolTipText("<html><a href='" + url + "'>" + url + "</a></html>");
+            setToolTipText(url);
             
             // 如果URL太长，截断显示
-            if (url.length() > 60) {
+            if (url.length() > 100) {
                 setText(url.substring(0, 57) + "...");
             } else {
                 setText(url);

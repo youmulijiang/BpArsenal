@@ -204,7 +204,7 @@ public class ToolPanel extends JPanel {
         columnModel.getColumn(1).setCellRenderer(new PlainTextRenderer());
         
         // 设置行颜色交替
-        toolTable.setDefaultRenderer(Object.class, new AlternateRowRenderer());
+//        toolTable.setDefaultRenderer(Object.class, new AlternateRowRenderer());
     }
     
     /**
@@ -222,12 +222,12 @@ public class ToolPanel extends JPanel {
         });
         
         // 选择变化处理
-        toolTable.getSelectionModel().addListSelectionListener(e -> {
-            if (!e.getValueIsAdjusting()) {
-                updateButtonStates();
-            }
-        });
-        
+//        toolTable.getSelectionModel().addListSelectionListener(e -> {
+//            if (!e.getValueIsAdjusting()) {
+//                updateButtonStates();
+//            }
+//        });
+//
         // 按钮事件
         addButton.addActionListener(e -> addNewTool());
         editButton.addActionListener(e -> editSelectedTool());
@@ -530,10 +530,10 @@ class PlainTextRenderer extends DefaultTableCellRenderer {
             setFont(new Font("Consolas", Font.PLAIN, 10));
             
             // 显示完整命令作为提示
-            setToolTipText("<html><pre>" + command + "</pre></html>");
+            setToolTipText(command);
             
             // 如果命令太长，截断显示
-            if (command.length() > 60) {
+            if (command.length() > 130) {
                 setText(command.substring(0, 57) + "...");
             } else {
                 setText(command);

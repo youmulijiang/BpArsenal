@@ -68,7 +68,7 @@ public class MainPanel extends JPanel {
         titlePanel.setBackground(new Color(245, 245, 245));
         
         // 标题标签
-        JLabel titleLabel = new JLabel("BpArsenal - Burp扩展工具集");
+        JLabel titleLabel = new JLabel("BpArsenal");
         titleLabel.setFont(new Font("微软雅黑", Font.BOLD, 18));
         titleLabel.setForeground(new Color(51, 51, 51));
         

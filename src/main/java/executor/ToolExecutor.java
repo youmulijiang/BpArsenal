@@ -6,10 +6,13 @@ import manager.ApiManager;
 import burp.api.montoya.http.message.requests.HttpRequest;
 import burp.api.montoya.http.message.responses.HttpResponse;
 import java.io.IOException;
+import java.io.FileWriter;
+import java.io.File;
 import java.awt.Desktop;
 import java.net.URI;
 import java.util.concurrent.CompletableFuture;
 import java.util.Map;
+import java.util.UUID;
 import javax.swing.JOptionPane;
 
 /**
@@ -17,6 +20,7 @@ import javax.swing.JOptionPane;
  * 采用单例模式确保全局唯一实例
  * 使用策略模式处理HTTP报文解析
  * 集成操作系统工具功能
+ * 统一使用脚本文件执行命令
  */
 public class ToolExecutor {
     private static ToolExecutor instance;
@@ -26,6 +30,10 @@ public class ToolExecutor {
     // 操作系统相关常量
     private static final String OS_NAME = System.getProperty("os.name").toLowerCase();
     
+    // 临时脚本目录和文件管理
+    private String tempScriptDir;
+    private String extensionPath;
+    
     /**
      * 私有构造函数，防止外部实例化
      * 初始化HTTP解析器和变量替换器
@@ -34,6 +42,9 @@ public class ToolExecutor {
         // 默认使用高级解析器
         this.currentParser = new AdvancedHttpParser();
         this.variableReplacer = new HttpVariableReplacer(currentParser);
+        
+        // 初始化脚本目录
+        initializeScriptDirectory();
     }
     
     /**
@@ -45,6 +56,55 @@ public class ToolExecutor {
             instance = new ToolExecutor();
         }
         return instance;
+    }
+    
+    /**
+     * 初始化脚本目录
+     */
+    private void initializeScriptDirectory() {
+        try {
+            // 获取插件路径
+            if (ApiManager.getInstance().isInitialized()) {
+                extensionPath = ApiManager.getInstance().getApi().extension().filename();
+                
+                // 获取插件所在目录
+                File extensionFile = new File(extensionPath);
+                String extensionDir = extensionFile.getParent();
+                
+                // 创建临时脚本目录
+                tempScriptDir = extensionDir + File.separator + "temp_scripts";
+                File scriptDir = new File(tempScriptDir);
+                if (!scriptDir.exists()) {
+                    scriptDir.mkdirs();
+                }
+                
+                if (ApiManager.getInstance().isInitialized()) {
+                    ApiManager.getInstance().getApi().logging().logToOutput(
+                        "BpArsenal: 脚本目录初始化成功 - " + tempScriptDir
+                    );
+                }
+            } else {
+                // 如果API未初始化，使用系统临时目录
+                tempScriptDir = System.getProperty("java.io.tmpdir") + File.separator + "bparsenal_scripts";
+                File scriptDir = new File(tempScriptDir);
+                if (!scriptDir.exists()) {
+                    scriptDir.mkdirs();
+                }
+            }
+        } catch (Exception e) {
+            // fallback到系统临时目录
+            tempScriptDir = System.getProperty("java.io.tmpdir") + File.separator + "bparsenal_scripts";
+            File scriptDir = new File(tempScriptDir);
+            if (!scriptDir.exists()) {
+                scriptDir.mkdirs();
+            }
+            
+            if (ApiManager.getInstance().isInitialized()) {
+                ApiManager.getInstance().getApi().logging().logToError(
+                    "BpArsenal: 使用fallback脚本目录 - " + tempScriptDir + ", 原因: " + e.getMessage()
+                );
+            }
+        }
     }
     
     /**
@@ -81,7 +141,7 @@ public class ToolExecutor {
                     command = variableReplacer.replaceRequestVariables(tool.getCommand(), httpRequest);
                 }
                 
-                executeCommand(command, tool.getToolName());
+                executeCommandViaScript(command, tool.getToolName());
                 
             } catch (Exception e) {
                 handleError("HTTP工具执行失败", tool.getToolName(), e);
@@ -96,11 +156,242 @@ public class ToolExecutor {
     public void executeThirdPartyTool(ThirdPartyTool tool) {
         CompletableFuture.runAsync(() -> {
             try {
-                executeCommand(tool.getStartCommand(), tool.getToolName());
+                executeCommandViaScript(tool.getStartCommand(), tool.getToolName());
             } catch (Exception e) {
                 handleError("第三方工具启动失败", tool.getToolName(), e);
             }
         });
+    }
+    
+    /**
+     * 通过脚本文件执行命令（统一入口）
+     * @param command 命令字符串
+     * @param toolName 工具名称
+     * @throws IOException 执行异常
+     */
+    private void executeCommandViaScript(String command, String toolName) throws IOException {
+        File scriptFile = null;
+        try {
+            // 生成临时脚本文件
+            scriptFile = createTemporaryScript(command, toolName);
+            
+            // 执行脚本文件
+            executeScriptFile(scriptFile, toolName);
+            
+            if (ApiManager.getInstance().isInitialized()) {
+                ApiManager.getInstance().getApi().logging().logToOutput(
+                    "执行工具: " + toolName + " - " + command
+                );
+            }
+            
+        } finally {
+            // 延迟清理脚本文件
+            if (scriptFile != null) {
+                scheduleScriptCleanup(scriptFile);
+            }
+        }
+    }
+    
+    /**
+     * 创建临时脚本文件
+     * @param command 要执行的命令
+     * @param toolName 工具名称
+     * @return 创建的脚本文件
+     * @throws IOException 文件创建异常
+     */
+    private File createTemporaryScript(String command, String toolName) throws IOException {
+        String scriptFileName;
+        String scriptContent;
+        
+        if (isWindows()) {
+            // Windows: 创建 .bat 文件
+            scriptFileName = "bparsenal_" + sanitizeFileName(toolName) + "_" + UUID.randomUUID().toString().substring(0, 8) + ".bat";
+            scriptContent = generateWindowsBatchScript(command, toolName);
+        } else {
+            // Linux/Unix: 创建 .sh 文件
+            scriptFileName = "bparsenal_" + sanitizeFileName(toolName) + "_" + UUID.randomUUID().toString().substring(0, 8) + ".sh";
+            scriptContent = generateLinuxShellScript(command, toolName);
+        }
+        
+        File scriptFile = new File(tempScriptDir, scriptFileName);
+        
+        // 写入脚本内容
+        try (FileWriter writer = new FileWriter(scriptFile, java.nio.charset.StandardCharsets.UTF_8)) {
+            writer.write(scriptContent);
+        }
+        
+        // 设置可执行权限（Linux/Unix）
+        if (!isWindows()) {
+            scriptFile.setExecutable(true, true);
+        }
+        
+        if (ApiManager.getInstance().isInitialized()) {
+            ApiManager.getInstance().getApi().logging().logToOutput(
+                "BpArsenal: 创建临时脚本 - " + scriptFile.getAbsolutePath()
+            );
+        }
+        
+        return scriptFile;
+    }
+    
+    /**
+     * 生成Windows批处理脚本内容
+     * @param command 要执行的命令
+     * @param toolName 工具名称
+     * @return 脚本内容
+     */
+    private String generateWindowsBatchScript(String command, String toolName) {
+        StringBuilder script = new StringBuilder();
+        script.append("@echo off\n");
+        script.append("chcp 65001 >nul\n"); // 设置UTF-8编码
+        script.append("title BpArsenal - ").append(toolName).append("\n");
+        script.append("echo ================================================\n");
+        script.append("echo BpArsenal 工具执行器\n");
+        script.append("echo 工具名称: ").append(toolName).append("\n");
+        script.append("echo 执行时间: %date% %time%\n");
+        script.append("echo ================================================\n");
+        script.append("echo.\n");
+        script.append("echo 执行命令: ").append(command).append("\n");
+        script.append("echo.\n");
+        script.append("echo 开始执行...\n");
+        script.append("echo ------------------------------------------------\n");
+        script.append("\n");
+        
+        // 执行实际命令
+        script.append(command).append("\n");
+        script.append("\n");
+        
+        script.append("echo ------------------------------------------------\n");
+        script.append("echo 命令执行完成\n");
+        script.append("echo 退出码: %ERRORLEVEL%\n");
+        script.append("echo ================================================\n");
+        script.append("pause\n");
+        
+        return script.toString();
+    }
+    
+    /**
+     * 生成Linux Shell脚本内容
+     * @param command 要执行的命令
+     * @param toolName 工具名称
+     * @return 脚本内容
+     */
+    private String generateLinuxShellScript(String command, String toolName) {
+        StringBuilder script = new StringBuilder();
+        script.append("#!/bin/bash\n");
+        script.append("\n");
+        script.append("# BpArsenal 工具执行器\n");
+        script.append("# 工具名称: ").append(toolName).append("\n");
+        script.append("# 生成时间: $(date)\n");
+        script.append("\n");
+        script.append("echo \"================================================\"\n");
+        script.append("echo \"BpArsenal 工具执行器\"\n");
+        script.append("echo \"工具名称: ").append(toolName).append("\"\n");
+        script.append("echo \"执行时间: $(date)\"\n");
+        script.append("echo \"================================================\"\n");
+        script.append("echo\n");
+        script.append("echo \"执行命令: ").append(command).append("\"\n");
+        script.append("echo\n");
+        script.append("echo \"开始执行...\"\n");
+        script.append("echo \"------------------------------------------------\"\n");
+        script.append("\n");
+        
+        // 执行实际命令
+        script.append(command).append("\n");
+        script.append("EXIT_CODE=$?\n");
+        script.append("\n");
+        
+        script.append("echo \"------------------------------------------------\"\n");
+        script.append("echo \"命令执行完成\"\n");
+        script.append("echo \"退出码: $EXIT_CODE\"\n");
+        script.append("echo \"================================================\"\n");
+        script.append("echo \"按 Enter 键继续...\"\n");
+        script.append("read\n");
+        
+        return script.toString();
+    }
+    
+    /**
+     * 执行脚本文件
+     * @param scriptFile 脚本文件
+     * @param toolName 工具名称
+     * @throws IOException 执行异常
+     */
+    private void executeScriptFile(File scriptFile, String toolName) throws IOException {
+        ProcessBuilder processBuilder;
+        
+        if (isWindows()) {
+            // Windows: 直接执行 .bat 文件
+            processBuilder = new ProcessBuilder("cmd", "/c", "start", "\"" + toolName + "\"", "/wait", scriptFile.getAbsolutePath());
+        } else {
+            // Linux: 在终端中执行 .sh 文件
+            if (isMac()) {
+                // macOS: 使用 Terminal.app
+                String applescript = String.format(
+                    "tell application \"Terminal\" to do script \"'%s'; exit\"",
+                    scriptFile.getAbsolutePath().replace("'", "'\"'\"'")
+                );
+                processBuilder = new ProcessBuilder("osascript", "-e", applescript);
+            } else {
+                // Linux: 尝试使用常见的终端模拟器
+                processBuilder = new ProcessBuilder("x-terminal-emulator", "-e", "bash", "-c", 
+                    scriptFile.getAbsolutePath() + "; exec bash");
+            }
+        }
+        
+        // 确保ProcessBuilder具有正确的环境变量
+        ensureProperEnvironment(processBuilder);
+        
+        Process process = processBuilder.start();
+        
+        // 异步等待进程完成
+        CompletableFuture.runAsync(() -> {
+            try {
+                int exitCode = process.waitFor();
+                if (exitCode != 0 && ApiManager.getInstance().isInitialized()) {
+                    ApiManager.getInstance().getApi().logging().logToError(
+                        toolName + " 脚本执行完成，退出码: " + exitCode
+                    );
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        });
+    }
+    
+    /**
+     * 安排脚本文件清理
+     * @param scriptFile 要清理的脚本文件
+     */
+    private void scheduleScriptCleanup(File scriptFile) {
+        // 延迟30秒后删除脚本文件，给执行足够的时间
+        CompletableFuture.runAsync(() -> {
+            try {
+                Thread.sleep(30000); // 等待30秒
+                if (scriptFile.exists() && scriptFile.delete()) {
+                    if (ApiManager.getInstance().isInitialized()) {
+                        ApiManager.getInstance().getApi().logging().logToOutput(
+                            "BpArsenal: 清理临时脚本 - " + scriptFile.getName()
+                        );
+                    }
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        });
+    }
+    
+    /**
+     * 清理文件名，移除不安全字符
+     * @param fileName 原始文件名
+     * @return 安全的文件名
+     */
+    private String sanitizeFileName(String fileName) {
+        if (fileName == null) {
+            return "unknown";
+        }
+        // 移除或替换不安全的文件名字符
+        return fileName.replaceAll("[^a-zA-Z0-9._-]", "_");
     }
     
     /**
@@ -158,35 +449,14 @@ public class ToolExecutor {
     }
     
     /**
-     * 执行系统命令
+     * 执行系统命令（保留原方法以兼容性）
      * @param command 命令字符串
      * @param toolName 工具名称
      * @throws IOException 执行异常
      */
     private void executeCommand(String command, String toolName) throws IOException {
-        ProcessBuilder processBuilder = new ProcessBuilder();
-        
-        // 使用集成的操作系统工具格式化命令
-        String[] formattedCommand = formatCommandForRunningOnOperatingSystem(command);
-        processBuilder.command(formattedCommand);
-        
-        Process process = processBuilder.start();
-        
-        if (ApiManager.getInstance().isInitialized()) {
-            ApiManager.getInstance().getApi().logging().logToOutput("执行工具: " + toolName + " - " + command);
-        }
-        
-        // 异步等待进程完成
-        CompletableFuture.runAsync(() -> {
-            try {
-                int exitCode = process.waitFor();
-                if (exitCode != 0 && ApiManager.getInstance().isInitialized()) {
-                    ApiManager.getInstance().getApi().logging().logToError(toolName + " 执行完成，退出码: " + exitCode);
-                }
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-        });
+        // 重定向到新的脚本执行方法
+        executeCommandViaScript(command, toolName);
     }
     
     /**
@@ -202,44 +472,25 @@ public class ToolExecutor {
                     callback.onCommandStart(toolName, command);
                 }
                 
-                // 使用终端模式格式化命令，让用户能看到执行过程
-                String[] formattedCommand = formatCommandForRunningInTerminal(command);
-                ProcessBuilder processBuilder = new ProcessBuilder(formattedCommand);
+                // 使用脚本执行
+                executeCommandViaScript(command, toolName);
                 
-                // 确保ProcessBuilder具有正确的环境变量
-                ensureProperEnvironment(processBuilder);
-                
-                // 对于终端执行，不重定向输出流，让终端自己处理
-                // processBuilder.redirectErrorStream(true);
-                
-                Process process = processBuilder.start();
-                
-                // 由于命令在新终端窗口中执行，我们无法直接读取输出
-                // 但可以等待进程完成
-                int exitCode = process.waitFor();
-                
-                // 构建模拟输出信息
+                // 构建输出信息
                 StringBuilder output = new StringBuilder();
-                output.append("命令已在新终端窗口中启动执行\n");
-                output.append("终端窗口应该已经弹出，请查看终端输出\n");
+                output.append("命令已通过脚本文件启动执行\n");
+                output.append("脚本类型: ").append(isWindows() ? "Windows Batch (.bat)" : "Shell Script (.sh)").append("\n");
+                output.append("脚本目录: ").append(tempScriptDir).append("\n");
                 
                 if (callback != null) {
-                    callback.onOutputReceived("命令已在新终端窗口中启动执行");
-                    callback.onOutputReceived("终端窗口应该已经弹出，请查看终端输出");
-                }
-                
-                if (callback != null) {
-                    callback.onCommandComplete(toolName, exitCode, output.toString());
+                    callback.onOutputReceived("命令已通过脚本文件启动执行");
+                    callback.onOutputReceived("脚本类型: " + (isWindows() ? "Windows Batch (.bat)" : "Shell Script (.sh)"));
+                    callback.onCommandComplete(toolName, 0, output.toString());
                 }
                 
                 // 记录到Burp日志
                 if (ApiManager.getInstance().isInitialized()) {
-                    String logMsg = String.format("工具执行完成: %s (退出码: %d)", toolName, exitCode);
-                    if (exitCode == 0) {
-                        ApiManager.getInstance().getApi().logging().logToOutput(logMsg);
-                    } else {
-                        ApiManager.getInstance().getApi().logging().logToError(logMsg);
-                    }
+                    String logMsg = String.format("工具通过脚本执行: %s", toolName);
+                    ApiManager.getInstance().getApi().logging().logToOutput(logMsg);
                 }
                 
             } catch (Exception e) {
@@ -248,7 +499,7 @@ public class ToolExecutor {
                 }
                 
                 if (ApiManager.getInstance().isInitialized()) {
-                    ApiManager.getInstance().getApi().logging().logToError("命令执行异常: " + e.getMessage());
+                    ApiManager.getInstance().getApi().logging().logToError("脚本执行异常: " + e.getMessage());
                 }
             }
         });
@@ -261,55 +512,8 @@ public class ToolExecutor {
      * @param callback 执行结果回调
      */
     public void executeCommandInTerminal(String command, String toolName, CommandExecutionCallback callback) {
-        CompletableFuture.runAsync(() -> {
-            try {
-                if (callback != null) {
-                    callback.onCommandStart(toolName, command);
-                }
-                
-                // 使用终端模式格式化命令
-                String[] formattedCommand = formatCommandForRunningInTerminal(command);
-                ProcessBuilder processBuilder = new ProcessBuilder(formattedCommand);
-                
-                // 确保ProcessBuilder具有正确的环境变量
-                ensureProperEnvironment(processBuilder);
-                
-                Process process = processBuilder.start();
-                
-                // 由于命令在新终端窗口中执行，我们无法直接读取输出
-                int exitCode = process.waitFor();
-                
-                // 构建模拟输出信息
-                StringBuilder output = new StringBuilder();
-                output.append("命令已在新终端窗口中启动执行\n");
-                output.append("终端窗口应该已经弹出，请查看终端输出\n");
-                
-                if (callback != null) {
-                    callback.onOutputReceived("命令已在新终端窗口中启动执行");
-                    callback.onOutputReceived("终端窗口应该已经弹出，请查看终端输出");
-                    callback.onCommandComplete(toolName, exitCode, output.toString());
-                }
-                
-                // 记录到Burp日志
-                if (ApiManager.getInstance().isInitialized()) {
-                    String logMsg = String.format("工具在终端中执行完成: %s (退出码: %d)", toolName, exitCode);
-                    if (exitCode == 0) {
-                        ApiManager.getInstance().getApi().logging().logToOutput(logMsg);
-                    } else {
-                        ApiManager.getInstance().getApi().logging().logToError(logMsg);
-                    }
-                }
-                
-            } catch (Exception e) {
-                if (callback != null) {
-                    callback.onCommandError(toolName, e);
-                }
-                
-                if (ApiManager.getInstance().isInitialized()) {
-                    ApiManager.getInstance().getApi().logging().logToError("终端命令执行异常: " + e.getMessage());
-                }
-            }
-        });
+        // 重定向到统一的脚本执行方法
+        executeCommandSync(command, toolName, callback);
     }
     
     // ===== 集成的操作系统工具方法 =====
@@ -535,6 +739,59 @@ public class ToolExecutor {
      */
     public java.util.Map<String, String> getAvailableResponseVariables(HttpResponse httpResponse) {
         return variableReplacer.getAvailableResponseVariables(httpResponse);
+    }
+    
+    /**
+     * 获取临时脚本目录路径
+     * @return 脚本目录路径
+     */
+    public String getTempScriptDirectory() {
+        return tempScriptDir;
+    }
+    
+    /**
+     * 获取插件路径
+     * @return 插件文件路径
+     */
+    public String getExtensionPath() {
+        return extensionPath;
+    }
+    
+    /**
+     * 手动清理所有临时脚本文件
+     */
+    public void cleanupAllTempScripts() {
+        CompletableFuture.runAsync(() -> {
+            try {
+                File scriptDir = new File(tempScriptDir);
+                if (scriptDir.exists() && scriptDir.isDirectory()) {
+                    File[] scriptFiles = scriptDir.listFiles((dir, name) -> 
+                        name.startsWith("bparsenal_") && (name.endsWith(".bat") || name.endsWith(".sh"))
+                    );
+                    
+                    if (scriptFiles != null) {
+                        int deletedCount = 0;
+                        for (File file : scriptFiles) {
+                            if (file.delete()) {
+                                deletedCount++;
+                            }
+                        }
+                        
+                        if (ApiManager.getInstance().isInitialized() && deletedCount > 0) {
+                            ApiManager.getInstance().getApi().logging().logToOutput(
+                                "BpArsenal: 清理了 " + deletedCount + " 个临时脚本文件"
+                            );
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                if (ApiManager.getInstance().isInitialized()) {
+                    ApiManager.getInstance().getApi().logging().logToError(
+                        "BpArsenal: 清理临时脚本失败 - " + e.getMessage()
+                    );
+                }
+            }
+        });
     }
     
     /**
