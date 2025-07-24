@@ -215,8 +215,8 @@ public class ToolExecutor {
         
         File scriptFile = new File(tempScriptDir, scriptFileName);
         
-        // 写入脚本内容
-        try (FileWriter writer = new FileWriter(scriptFile, java.nio.charset.StandardCharsets.UTF_8)) {
+        // 写入脚本内容 - 使用系统默认编码
+        try (FileWriter writer = new FileWriter(scriptFile)) {
             writer.write(scriptContent);
         }
         
@@ -242,30 +242,33 @@ public class ToolExecutor {
      */
     private String generateWindowsBatchScript(String command, String toolName) {
         StringBuilder script = new StringBuilder();
-        script.append("@echo off\n");
-        script.append("chcp 65001 >nul\n"); // 设置UTF-8编码
-        script.append("title BpArsenal - ").append(toolName).append("\n");
-        script.append("echo ================================================\n");
-        script.append("echo BpArsenal 工具执行器\n");
-        script.append("echo 工具名称: ").append(toolName).append("\n");
-        script.append("echo 执行时间: %date% %time%\n");
-        script.append("echo ================================================\n");
-        script.append("echo.\n");
-        script.append("echo 执行命令: ").append(command).append("\n");
-        script.append("echo.\n");
-        script.append("echo 开始执行...\n");
-        script.append("echo ------------------------------------------------\n");
-        script.append("\n");
+        script.append("@echo off\r\n");
+        // 移除chcp 65001设置，使用系统默认编码
+        script.append("chcp 65001\r\n");
+        script.append("title BpArsenal - ").append(toolName).append("\r\n");
+        script.append("echo ================================================\r\n");
+        script.append("echo BpArsenal Weapon Arsenal Tool Execution\r\n");
+        script.append("echo Tool Name: ").append(toolName).append("\r\n");
+        script.append("echo Time: %date% %time%\r\n");
+        script.append("echo ================================================\r\n");
+        script.append("echo.\r\n");
+        script.append("echo Executing command:\r\n");
+        script.append("echo ").append(command).append("\r\n");
+        script.append("echo.\r\n");
+        script.append("echo ========================================\r\n");
+        script.append("echo.\r\n");
         
         // 执行实际命令
-        script.append(command).append("\n");
-        script.append("\n");
+        script.append(command).append("\r\n");
+        script.append("set EXEC_CODE=%ERRORLEVEL%\r\n");
+        script.append("\r\n");
         
-        script.append("echo ------------------------------------------------\n");
-        script.append("echo 命令执行完成\n");
-        script.append("echo 退出码: %ERRORLEVEL%\n");
-        script.append("echo ================================================\n");
-        script.append("pause\n");
+        script.append("echo.\r\n");
+        script.append("echo ========================================\r\n");
+        script.append("echo Command completed with exit code: %EXEC_CODE%\r\n");
+        script.append("echo ========================================\r\n");
+        script.append("echo.\r\n");
+        script.append("pause\r\n");
         
         return script.toString();
     }
@@ -321,8 +324,8 @@ public class ToolExecutor {
         ProcessBuilder processBuilder;
         
         if (isWindows()) {
-            // Windows: 直接执行 .bat 文件
-            processBuilder = new ProcessBuilder("cmd", "/c", "start", "\"" + toolName + "\"", "/wait", scriptFile.getAbsolutePath());
+            // Windows: 在新窗口中执行 .bat 文件
+            processBuilder = new ProcessBuilder("cmd", "/c", "start", "\"" + toolName + "\"", "cmd", "/c", scriptFile.getAbsolutePath());
         } else {
             // Linux: 在终端中执行 .sh 文件
             if (isMac()) {
@@ -339,9 +342,7 @@ public class ToolExecutor {
             }
         }
         
-        // 确保ProcessBuilder具有正确的环境变量
-        ensureProperEnvironment(processBuilder);
-        
+        // 使用系统默认环境变量，不进行额外设置
         Process process = processBuilder.start();
         
         // 异步等待进程完成
@@ -640,39 +641,7 @@ public class ToolExecutor {
         }
     }
     
-    /**
-     * 确保ProcessBuilder具有正确的环境变量
-     * @param processBuilder ProcessBuilder实例
-     */
-    public static void ensureProperEnvironment(ProcessBuilder processBuilder) {
-        Map<String, String> env = processBuilder.environment();
-        
-        if (isWindows()) {
-            // 确保Windows系统的关键路径在PATH中
-            String path = env.get("PATH");
-            if (path == null) {
-                path = System.getenv("PATH");
-            }
-            
-            if (path != null) {
-                // 添加System32和System目录
-                String winDir = System.getenv("WINDIR");
-                if (winDir != null) {
-                    String system32 = winDir + "\\System32";
-                    String system = winDir + "\\System";
-                    
-                    if (!path.toLowerCase().contains("system32")) {
-                        path += ";" + system32;
-                    }
-                    if (!path.toLowerCase().contains("system\\") && !path.toLowerCase().contains("system;")) {
-                        path += ";" + system;
-                    }
-                    
-                    env.put("PATH", path);
-                }
-            }
-        }
-    }
+
     
     /**
      * 命令执行回调接口

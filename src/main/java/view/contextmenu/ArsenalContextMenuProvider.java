@@ -13,6 +13,7 @@ import view.component.ArsenalDialog;
 
 import javax.swing.*;
 import java.awt.Component;
+import java.awt.Frame;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -103,25 +104,74 @@ public class ArsenalContextMenuProvider implements ContextMenuItemsProvider {
                 if (httpRequest != null) {
                     // 创建并显示Arsenal工具对话框
                     SwingUtilities.invokeLater(() -> {
-                        ArsenalDialog dialog = new ArsenalDialog(httpRequest, httpResponse);
-                        
-                        // 添加窗口关闭监听器，重置标志
-                        dialog.addWindowListener(new java.awt.event.WindowAdapter() {
-                            @Override
-                            public void windowClosed(java.awt.event.WindowEvent e) {
-                                arsenalDialogOpen.set(false);
+                        try {
+                            ArsenalDialog dialog = new ArsenalDialog(httpRequest, httpResponse);
+                            
+                            // 获取Burp Suite主窗口并将对话框居中显示
+                            Frame burpFrame = ApiManager.getInstance().getApi().userInterface().swingUtils().suiteFrame();
+                            if (burpFrame != null) {
+                                dialog.setLocationRelativeTo(burpFrame);
+                                // 确保对话框始终在最前面
+                                dialog.setAlwaysOnTop(true);
+                                // 显示对话框后立即取消置顶，避免影响用户操作其他应用
+                                SwingUtilities.invokeLater(() -> {
+                                    dialog.setAlwaysOnTop(false);
+                                    dialog.toFront();
+                                    dialog.requestFocus();
+                                });
+                            } else {
+                                // 如果无法获取Burp Suite主窗口，使用屏幕居中
+                                dialog.setLocationRelativeTo(null);
+                                dialog.toFront();
+                                dialog.requestFocus();
                             }
                             
-                            @Override
-                            public void windowClosing(java.awt.event.WindowEvent e) {
-                                arsenalDialogOpen.set(false);
+                            // 添加窗口关闭监听器，重置标志
+                            dialog.addWindowListener(new java.awt.event.WindowAdapter() {
+                                @Override
+                                public void windowClosed(java.awt.event.WindowEvent e) {
+                                    arsenalDialogOpen.set(false);
+                                }
+                                
+                                @Override
+                                public void windowClosing(java.awt.event.WindowEvent e) {
+                                    arsenalDialogOpen.set(false);
+                                }
+                                
+                                @Override
+                                public void windowActivated(java.awt.event.WindowEvent e) {
+                                    // 当窗口被激活时，确保它在前面
+                                    dialog.toFront();
+                                }
+                            });
+                            
+                            dialog.setVisible(true);
+                            
+                            // 再次确保对话框在最前面（解决某些系统的窗口管理问题）
+                            dialog.bringToFront();
+                            
+                            if (ApiManager.getInstance().isInitialized()) {
+                                ApiManager.getInstance().getApi().logging().logToOutput(
+                                    "BpArsenal: Arsenal工具对话框已在Burp Suite主窗口上方居中显示"
+                                );
                             }
-                        });
-                        
-                        dialog.setVisible(true);
+                            
+                        } catch (Exception ex) {
+                            arsenalDialogOpen.set(false); // 出错时重置标志
+                            ApiManager.getInstance().getApi().logging().logToError(
+                                "BpArsenal: 创建Arsenal对话框失败: " + ex.getMessage()
+                            );
+                            
+                            // 显示错误提示
+                            JOptionPane.showMessageDialog(
+                                null,
+                                "打开Arsenal对话框失败:\n" + ex.getMessage(),
+                                "错误",
+                                JOptionPane.ERROR_MESSAGE
+                            );
+                        }
                     });
                     
-                    ApiManager.getInstance().getApi().logging().logToOutput("Arsenal工具对话框已打开");
                 } else {
                     arsenalDialogOpen.set(false); // 重置标志
                     ApiManager.getInstance().getApi().logging().logToError("无法获取HTTP请求数据");

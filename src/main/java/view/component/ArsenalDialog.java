@@ -18,6 +18,8 @@ import javax.swing.table.TableRowSorter;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.datatransfer.StringSelection;
+import java.awt.datatransfer.Clipboard;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
@@ -51,7 +53,7 @@ public class ArsenalDialog extends JDialog {
     
     private JTextArea commandResultArea;
     private JButton runButton;  // 统一的运行按钮
-    private JButton refreshVariablesButton; // 刷新变量按钮
+    private JButton copyCommandButton; // 复制命令按钮（替换原来的刷新变量按钮）
     private JScrollPane resultScrollPane;
     
     private HttpRequest httpRequest;
@@ -86,7 +88,7 @@ public class ArsenalDialog extends JDialog {
     private void initializeDialog() {
         setTitle("Arsenal - 武器库");
         setSize(950, 800);  // 增加高度以适应选项卡
-        setLocationRelativeTo(null);
+        // 不在这里设置位置，由调用方决定位置
         setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
         setModal(false); // 非模态对话框
         
@@ -96,6 +98,39 @@ public class ArsenalDialog extends JDialog {
         } catch (Exception e) {
             // 图标加载失败，忽略
         }
+    }
+    
+    /**
+     * 重写setVisible方法，确保对话框总是在前面显示
+     */
+    @Override
+    public void setVisible(boolean visible) {
+        super.setVisible(visible);
+        if (visible) {
+            // 延迟执行，避免递归调用
+            SwingUtilities.invokeLater(() -> {
+                toFront();
+                requestFocus();
+            });
+        }
+    }
+    
+    /**
+     * 将对话框置于前台
+     */
+    public void bringToFront() {
+        SwingUtilities.invokeLater(() -> {
+            // 多重保障确保窗口在前面
+            toFront();
+            requestFocus();
+            
+            // 确保窗口可见且获得焦点
+            if (!isVisible()) {
+                super.setVisible(true);  // 使用super避免递归
+            }
+            toFront();
+            requestFocus();
+        });
     }
     
     /**
@@ -142,13 +177,13 @@ public class ArsenalDialog extends JDialog {
         runButton.setEnabled(false);
         runButton.setPreferredSize(new Dimension(100, 30));
         
-        // 创建刷新变量按钮
-        refreshVariablesButton = new JButton("刷新变量");
-        refreshVariablesButton.setFont(new Font("微软雅黑", Font.BOLD, 11));
-        refreshVariablesButton.setBackground(new Color(0, 123, 255));
-        refreshVariablesButton.setForeground(Color.WHITE);
-        refreshVariablesButton.setEnabled(false);
-        refreshVariablesButton.setPreferredSize(new Dimension(100, 30));
+        // 创建复制命令按钮（替换原来的刷新变量按钮）
+        copyCommandButton = new JButton("复制命令");
+        copyCommandButton.setFont(new Font("微软雅黑", Font.BOLD, 11));
+        copyCommandButton.setBackground(new Color(255, 193, 7));
+        copyCommandButton.setForeground(Color.BLACK);
+        copyCommandButton.setEnabled(false);
+        copyCommandButton.setPreferredSize(new Dimension(100, 30));
         
         // 创建执行历史文本框 - 修改为白色背景
         commandResultArea = new JTextArea(8, 50);
@@ -210,7 +245,7 @@ public class ArsenalDialog extends JDialog {
         variablesScrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         
         // 添加选项卡
-        commandTabbedPane.addTab("原始命令", originalScrollPane);
+        commandTabbedPane.addTab("模板命令", originalScrollPane);
         commandTabbedPane.addTab("渲染命令", renderedScrollPane);
         commandTabbedPane.addTab("变量预览", variablesScrollPane);
         
@@ -264,7 +299,7 @@ public class ArsenalDialog extends JDialog {
         
         // 按钮面板
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 5));
-        buttonPanel.add(refreshVariablesButton);
+        buttonPanel.add(copyCommandButton);
         buttonPanel.add(runButton);
         middlePanel.add(buttonPanel, BorderLayout.SOUTH);
         
@@ -344,18 +379,18 @@ public class ArsenalDialog extends JDialog {
                         selectedToolCommand = filteredToolCommands.get(modelRow);
                         updateCommandPreview();
                         runButton.setEnabled(true);
-                        refreshVariablesButton.setEnabled(true);
+                        copyCommandButton.setEnabled(true);
                     } else {
                         selectedToolCommand = null;
                         clearCommandAreas();
                         runButton.setEnabled(false);
-                        refreshVariablesButton.setEnabled(false);
+                        copyCommandButton.setEnabled(false);
                     }
                 } else {
                     selectedToolCommand = null;
                     clearCommandAreas();
                     runButton.setEnabled(false);
-                    refreshVariablesButton.setEnabled(false);
+                    copyCommandButton.setEnabled(false);
                 }
             }
         });
@@ -368,11 +403,11 @@ public class ArsenalDialog extends JDialog {
             }
         });
         
-        // 刷新变量按钮点击事件
-        refreshVariablesButton.addActionListener(new ActionListener() {
+        // 复制命令按钮点击事件（替换原来的刷新变量按钮事件）
+        copyCommandButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                updateVariablesPreview();
+                copyRenderedCommand();
             }
         });
         
@@ -665,33 +700,10 @@ public class ArsenalDialog extends JDialog {
                 originalCommandArea.setText(originalCommand);
                 originalCommandArea.setCaretPosition(0);
                 
-                // 设置渲染后的命令
+                // 设置渲染后的命令 - 只显示纯命令，不包含调试注释
                 if (httpRequest != null) {
                     String renderedCommand = generateRenderedCommand(selectedToolCommand, httpRequest);
-                    
-                    // 添加调试信息到UI显示
-                    StringBuilder displayCommand = new StringBuilder();
-                    displayCommand.append(renderedCommand);
-                    
-                    if (renderedCommand.equals(originalCommand)) {
-                        displayCommand.append("\n\n# 提示: 命令中未找到可替换的变量");
-                    } else {
-                        // 计算替换的变量数量
-                        AdvancedHttpParser advancedParser = new AdvancedHttpParser();
-                        Map<String, String> requestVariables = advancedParser.parseRequest(httpRequest);
-                        Map<String, String> responseVariables = new HashMap<>();
-                        if (httpResponse != null) {
-                            responseVariables = advancedParser.parseResponse(httpResponse);
-                        }
-                        Map<String, String> allVariables = new HashMap<>();
-                        allVariables.putAll(requestVariables);
-                        allVariables.putAll(responseVariables);
-                        
-                        int variableCount = countReplacedVariables(originalCommand, allVariables);
-                        displayCommand.append(String.format("\n\n# 已替换 %d 个变量", variableCount));
-                    }
-                    
-                    renderedCommandArea.setText(displayCommand.toString());
+                    renderedCommandArea.setText(renderedCommand);
                     renderedCommandArea.setCaretPosition(0);
                 } else {
                     renderedCommandArea.setText("无HTTP请求数据，无法渲染变量");
@@ -712,7 +724,7 @@ public class ArsenalDialog extends JDialog {
      * 生成渲染后的命令
      * @param toolCommand HTTP工具命令
      * @param request HTTP请求
-     * @return 渲染后的命令字符串
+     * @return 渲染后的命令字符串（纯命令，不包含注释）
      */
     private String generateRenderedCommand(HttpToolCommand toolCommand, HttpRequest request) {
         try {
@@ -722,7 +734,7 @@ public class ArsenalDialog extends JDialog {
             }
             
             if (request == null) {
-                return command + "\n\n# 警告: 无HTTP请求数据，无法渲染变量";
+                return command; // 返回原始命令，不添加警告注释
             }
             
             // 使用AdvancedHttpParser解析请求，获取完整的变量映射
@@ -746,9 +758,9 @@ public class ArsenalDialog extends JDialog {
             return renderedCommand;
             
         } catch (Exception e) {
-            String errorMsg = "命令渲染失败: " + e.getMessage();
-            ApiManager.getInstance().getApi().logging().logToError(errorMsg);
-            return toolCommand.getCommand() + "\n\n# 错误: " + errorMsg;
+            // 记录错误到日志，但返回原始命令
+            ApiManager.getInstance().getApi().logging().logToError("命令渲染失败: " + e.getMessage());
+            return toolCommand.getCommand();
         }
     }
     
@@ -866,33 +878,20 @@ public class ArsenalDialog extends JDialog {
         // 记录执行开始
         addExecutionLogEntry("开始执行", toolName, commandType, command.trim());
         
-        // 使用ToolExecutor直接执行命令
         try {
             // 对于原始命令，需要进行变量替换；对于渲染命令，直接使用
             String finalCommand = command.trim();
             if (selectedTab == 0 && httpRequest != null && selectedToolCommand != null) {
                 // 原始命令需要进行变量替换
                 finalCommand = generateRenderedCommand(selectedToolCommand, httpRequest);
-            } else if (selectedTab == 1) {
-                // 渲染命令可能包含调试信息，需要提取实际命令
-                String[] lines = finalCommand.split("\n");
-                finalCommand = lines[0]; // 取第一行作为实际命令
             }
+            // 渲染命令选项卡中的内容已经是纯命令，直接使用
             
             // 记录最终执行的命令
             addExecutionLogEntry("实际执行", toolName, "系统命令", finalCommand);
             
-            // 显示格式化后的命令（用于调试）
-            String[] formattedCommand = ToolExecutor.formatCommandForRunningOnOperatingSystem(finalCommand);
-            StringBuilder commandDisplay = new StringBuilder();
-            for (int i = 0; i < formattedCommand.length; i++) {
-                if (i > 0) commandDisplay.append(" ");
-                commandDisplay.append(formattedCommand[i]);
-            }
-            addExecutionLogEntry("格式化命令", toolName, "完整命令", commandDisplay.toString());
-            
-            // 使用ToolExecutor在终端中执行命令
-            executeCommandInTerminal(finalCommand, toolName);
+            // 生成并执行临时脚本
+            executeCommandViaScript(finalCommand, toolName);
             
         } catch (Exception e) {
             addExecutionLogEntry("执行异常", toolName, "错误", e.getMessage());
@@ -909,66 +908,268 @@ public class ArsenalDialog extends JDialog {
     }
     
     /**
-     * 使用ToolExecutor在终端中执行命令
+     * 通过临时脚本执行命令
      * @param command 要执行的命令
      * @param toolName 工具名称
      */
-    private void executeCommandInTerminal(String command, String toolName) {
-        ToolExecutor.getInstance().executeCommandInTerminal(command, toolName, new ToolExecutor.CommandExecutionCallback() {
-            @Override
-            public void onCommandStart(String toolName, String command) {
-                SwingUtilities.invokeLater(() -> {
-                    addExecutionLogEntry("命令启动", toolName, "状态", "命令已提交到系统执行");
-                });
+    private void executeCommandViaScript(String command, String toolName) {
+        try {
+            // 获取插件路径
+            String extensionPath = getExtensionPath();
+            if (extensionPath == null) {
+                throw new Exception("无法获取插件路径");
             }
             
-            @Override
-            public void onOutputReceived(String output) {
-                // 不在UI中显示输出，命令在后台运行
-                // 可以选择记录到Burp的日志中
-                if (ApiManager.getInstance().isInitialized()) {
-                    ApiManager.getInstance().getApi().logging().logToOutput("工具输出: " + output);
+            // 生成临时脚本文件
+            java.io.File scriptFile = createTemporaryScript(command, extensionPath);
+            addExecutionLogEntry("脚本生成", toolName, "脚本路径", scriptFile.getAbsolutePath());
+            
+            // 执行脚本
+            executeScript(scriptFile, toolName);
+            
+        } catch (Exception e) {
+            addExecutionLogEntry("脚本执行异常", toolName, "错误", e.getMessage());
+            // 恢复按钮状态
+            runButton.setEnabled(true);
+            runButton.setText("Run");
+            
+            // 显示错误对话框
+            JOptionPane.showMessageDialog(this, 
+                "脚本执行失败: " + e.getMessage(), 
+                "执行错误", 
+                JOptionPane.ERROR_MESSAGE);
+        }
+    }
+    
+    /**
+     * 获取插件路径
+     * @return 插件路径
+     */
+    private String getExtensionPath() {
+        try {
+            if (ApiManager.getInstance().isInitialized()) {
+                String filename = ApiManager.getInstance().getApi().extension().filename();
+                if (filename != null && !filename.isEmpty()) {
+                    // 获取插件所在目录
+                    java.io.File file = new java.io.File(filename);
+                    return file.getParent();
+                }
+            }
+            // 如果无法获取插件路径，使用系统临时目录
+            return System.getProperty("java.io.tmpdir");
+        } catch (Exception e) {
+            addExecutionLogEntry("路径获取", "系统", "警告", "无法获取插件路径，使用系统临时目录: " + e.getMessage());
+            return System.getProperty("java.io.tmpdir");
+        }
+    }
+    
+    /**
+     * 创建临时脚本文件
+     * @param command 要执行的命令
+     * @param extensionPath 插件路径
+     * @return 脚本文件
+     * @throws Exception 创建异常
+     */
+    private java.io.File createTemporaryScript(String command, String extensionPath) throws Exception {
+        java.io.File scriptFile;
+        String scriptContent;
+        
+        if (ToolExecutor.isWindows()) {
+            // Windows: 创建批处理文件
+            scriptFile = new java.io.File(extensionPath, "bparsenal_temp_" + System.currentTimeMillis() + ".bat");
+            scriptContent = generateBatchScript(command);
+        } else {
+            // Linux/Unix: 创建shell脚本
+            scriptFile = new java.io.File(extensionPath, "bparsenal_temp_" + System.currentTimeMillis() + ".sh");
+            scriptContent = generateShellScript(command);
+        }
+        
+        // 写入脚本内容，Windows使用系统默认编码(GBK)，Linux使用UTF-8
+        String encoding = ToolExecutor.isWindows() ? "GBK" : "UTF-8";
+        try (java.io.OutputStreamWriter writer = new java.io.OutputStreamWriter(
+                new java.io.FileOutputStream(scriptFile), encoding)) {
+            writer.write(scriptContent);
+        } catch (java.io.UnsupportedEncodingException e) {
+            // 如果指定编码不支持，使用默认编码
+            try (java.io.FileWriter writer = new java.io.FileWriter(scriptFile)) {
+                writer.write(scriptContent);
+            }
+        }
+        
+        // 设置脚本为可执行
+        if (!ToolExecutor.isWindows()) {
+            scriptFile.setExecutable(true);
+        }
+        
+        // 设置脚本在程序退出时自动删除
+        scriptFile.deleteOnExit();
+        
+        return scriptFile;
+    }
+    
+    /**
+     * 生成Windows批处理脚本
+     * @param command 要执行的命令
+     * @return 脚本内容
+     */
+    private String generateBatchScript(String command) {
+        StringBuilder script = new StringBuilder();
+        script.append("@echo off\r\n");
+        script.append("title BpArsenal Tool Execution\r\n");
+        script.append("color 0A\r\n"); // 设置绿色文本
+        script.append("echo.\r\n");
+        script.append("echo ========================================\r\n");
+        script.append("echo BpArsenal Weapon Arsenal Tool Execution\r\n");
+        script.append("echo Time: %date% %time%\r\n");
+        script.append("echo ========================================\r\n");
+        script.append("echo.\r\n");
+        script.append("echo Executing command:\r\n");
+        
+        // 显示命令但转义特殊字符
+        String displayCommand = command.replace("%", "%%").replace("^", "^^");
+        script.append("echo ").append(displayCommand).append("\r\n");
+        script.append("echo.\r\n");
+        script.append("echo ========================================\r\n");
+        script.append("echo.\r\n");
+        
+        // 执行实际命令
+        script.append(command).append("\r\n");
+        script.append("set EXEC_CODE=%ERRORLEVEL%\r\n");
+        
+        script.append("\r\n");
+        script.append("echo.\r\n");
+        script.append("echo ========================================\r\n");
+        script.append("echo Command completed with exit code: %EXEC_CODE%\r\n");
+        script.append("echo ========================================\r\n");
+        script.append("echo.\r\n");
+        script.append("pause\r\n"); // 暂停以便查看结果
+        
+        return script.toString();
+    }
+    
+    /**
+     * 生成Linux Shell脚本
+     * @param command 要执行的命令
+     * @return 脚本内容
+     */
+    private String generateShellScript(String command) {
+        StringBuilder script = new StringBuilder();
+        script.append("#!/bin/bash\n");
+        script.append("# BpArsenal 武器库工具执行脚本\n");
+        script.append("# 自动生成于: $(date)\n\n");
+        
+        script.append("echo \"========================================\"\n");
+        script.append("echo \"BpArsenal 武器库工具执行\"\n");
+        script.append("echo \"时间: $(date)\"\n");
+        script.append("echo \"========================================\"\n");
+        script.append("echo\n");
+        script.append("echo \"正在执行命令:\"\n");
+        script.append("echo \"").append(command.replace("\"", "\\\"")).append("\"\n"); // 转义双引号
+        script.append("echo\n");
+        script.append("echo \"========================================\"\n");
+        script.append("echo\n");
+        
+        // 执行实际命令
+        script.append(command).append("\n");
+        script.append("EXIT_CODE=$?\n");
+        
+        script.append("\n");
+        script.append("echo\n");
+        script.append("echo \"========================================\"\n");
+        script.append("echo \"命令执行完成，退出码: $EXIT_CODE\"\n");
+        script.append("echo \"========================================\"\n");
+        script.append("read -p \"按回车键继续...\"\n"); // 暂停以便查看结果
+        
+        return script.toString();
+    }
+    
+    /**
+     * 执行脚本文件
+     * @param scriptFile 脚本文件
+     * @param toolName 工具名称
+     */
+    private void executeScript(java.io.File scriptFile, String toolName) {
+        try {
+            ProcessBuilder processBuilder = null;
+            
+            if (ToolExecutor.isWindows()) {
+                // Windows: 在新命令窗口中执行批处理文件
+                processBuilder = new ProcessBuilder("cmd", "/c", "start", "\"BpArsenal Tool Execution\"", 
+                    "cmd", "/k", "\"" + scriptFile.getAbsolutePath() + "\"");
+            } else {
+                // Linux: 尝试在终端中执行
+                String[] terminalCommands = {
+                    "x-terminal-emulator", "-e", "bash", scriptFile.getAbsolutePath(),
+                    "gnome-terminal", "--", "bash", scriptFile.getAbsolutePath(),
+                    "xterm", "-e", "bash", scriptFile.getAbsolutePath(),
+                    "konsole", "-e", "bash", scriptFile.getAbsolutePath()
+                };
+                
+                for (int i = 0; i < terminalCommands.length; i += 3) {
+                    try {
+                        processBuilder = new ProcessBuilder(terminalCommands[i], terminalCommands[i+1], 
+                            terminalCommands[i+2], scriptFile.getAbsolutePath());
+                        break;
+                    } catch (Exception e) {
+                        if (i + 3 >= terminalCommands.length) {
+                            // 如果所有终端都失败，直接执行脚本
+                            processBuilder = new ProcessBuilder("bash", scriptFile.getAbsolutePath());
+                        }
+                    }
+                }
+                
+                // 如果仍然没有成功创建，使用默认方式
+                if (processBuilder == null) {
+                    processBuilder = new ProcessBuilder("bash", scriptFile.getAbsolutePath());
                 }
             }
             
-            @Override
-            public void onCommandComplete(String toolName, int exitCode, String fullOutput) {
-                SwingUtilities.invokeLater(() -> {
-                    String status = exitCode == 0 ? "执行成功" : "执行失败";
-                    addExecutionLogEntry("执行完成", toolName, status, "退出码: " + exitCode);
-                    
-                    // 恢复按钮状态
-                    runButton.setEnabled(true);
-                    runButton.setText("Run");
-                    
-                    // 记录完整输出到Burp日志
-                    if (ApiManager.getInstance().isInitialized()) {
-                        String logMessage = String.format("工具执行完成: %s (退出码: %d)", toolName, exitCode);
-                        if (exitCode == 0) {
-                            ApiManager.getInstance().getApi().logging().logToOutput(logMessage);
-                        } else {
-                            ApiManager.getInstance().getApi().logging().logToError(logMessage);
-                        }
-                    }
-                });
-            }
+            // 设置工作目录
+            processBuilder.directory(scriptFile.getParentFile());
             
-            @Override
-            public void onCommandError(String toolName, Exception error) {
-                SwingUtilities.invokeLater(() -> {
-                    addExecutionLogEntry("执行异常", toolName, "错误", error.getMessage());
+            // 启动进程
+            Process process = processBuilder.start();
+            
+            addExecutionLogEntry("脚本启动", toolName, "成功", "脚本已在新窗口中启动执行");
+            
+            // 异步等待进程完成并清理
+            CompletableFuture.runAsync(() -> {
+                try {
+                    int exitCode = process.waitFor();
                     
-                    // 恢复按钮状态
-                    runButton.setEnabled(true);
-                    runButton.setText("Run");
+                    SwingUtilities.invokeLater(() -> {
+                        String status = exitCode == 0 ? "执行成功" : "执行完成";
+                        addExecutionLogEntry("脚本完成", toolName, status, "退出码: " + exitCode);
+                        
+                        // 恢复按钮状态
+                        runButton.setEnabled(true);
+                        runButton.setText("Run");
+                    });
                     
-                    // 记录错误到Burp日志
-                    if (ApiManager.getInstance().isInitialized()) {
-                        ApiManager.getInstance().getApi().logging().logToError("工具执行异常: " + toolName + " - " + error.getMessage());
+                    // 延迟删除脚本文件（给进程时间完成）
+                    Thread.sleep(5000);
+                    if (scriptFile.exists()) {
+                        scriptFile.delete();
                     }
-                });
-            }
-        });
+                    
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                } catch (Exception e) {
+                    SwingUtilities.invokeLater(() -> {
+                        addExecutionLogEntry("脚本异常", toolName, "错误", e.getMessage());
+                        runButton.setEnabled(true);
+                        runButton.setText("Run");
+                    });
+                }
+            });
+            
+        } catch (Exception e) {
+            addExecutionLogEntry("脚本启动失败", toolName, "错误", e.getMessage());
+            // 恢复按钮状态
+            runButton.setEnabled(true);
+            runButton.setText("Run");
+            throw new RuntimeException("脚本启动失败: " + e.getMessage(), e);
+        }
     }
     
     /**
@@ -1034,5 +1235,68 @@ public class ArsenalDialog extends JDialog {
      */
     private String getSystemEncoding() {
         return ToolExecutor.getSystemEncoding();
+    }
+
+    /**
+     * 复制渲染后的命令到剪贴板
+     */
+    private void copyRenderedCommand() {
+        if (selectedToolCommand == null) {
+            JOptionPane.showMessageDialog(this, "请先选择一个工具！", "提示", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        
+        try {
+            // 获取当前选中的选项卡中的命令
+            int selectedTab = commandTabbedPane.getSelectedIndex();
+            String commandToCopy;
+            String commandType;
+            
+            if (selectedTab == 0) { // 原始命令选项卡
+                commandToCopy = originalCommandArea.getText();
+                commandType = "原始命令";
+            } else if (selectedTab == 1) { // 渲染命令选项卡
+                commandToCopy = renderedCommandArea.getText();
+                commandType = "渲染命令";
+            } else {
+                // 如果在变量预览选项卡，默认复制渲染命令
+                commandToCopy = renderedCommandArea.getText();
+                commandType = "渲染命令";
+            }
+            
+            if (commandToCopy == null || commandToCopy.trim().isEmpty()) {
+                JOptionPane.showMessageDialog(this, "命令内容为空，无法复制！", "提示", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            
+            // 复制到系统剪贴板
+            StringSelection stringSelection = new StringSelection(commandToCopy.trim());
+            Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
+            clipboard.setContents(stringSelection, null);
+            
+            // 显示成功提示
+            String toolName = selectedToolCommand.getToolName();
+            String message = String.format("已将%s复制到剪贴板\n\n工具: %s\n命令长度: %d 字符", 
+                                          commandType, toolName, commandToCopy.trim().length());
+            JOptionPane.showMessageDialog(this, message, "复制成功", JOptionPane.INFORMATION_MESSAGE);
+            
+            // 记录到执行历史
+            addExecutionLogEntry("命令复制", toolName, commandType, "已复制到剪贴板，长度: " + commandToCopy.trim().length() + " 字符");
+            
+            // 记录到Burp日志
+            if (ApiManager.getInstance().isInitialized()) {
+                ApiManager.getInstance().getApi().logging().logToOutput(
+                    String.format("BpArsenal: 复制命令到剪贴板 - 工具: %s, 类型: %s", toolName, commandType)
+                );
+            }
+            
+        } catch (Exception ex) {
+            String errorMsg = "复制命令失败: " + ex.getMessage();
+            JOptionPane.showMessageDialog(this, errorMsg, "复制失败", JOptionPane.ERROR_MESSAGE);
+            
+            if (ApiManager.getInstance().isInitialized()) {
+                ApiManager.getInstance().getApi().logging().logToError(errorMsg);
+            }
+        }
     }
 } 

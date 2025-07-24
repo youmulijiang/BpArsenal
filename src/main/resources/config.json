@@ -13,6 +13,12 @@
           "python D:\\tools\\sqlmap\\sqlmap.py -u \"%http.request.url%\" --data=\"%http.request.body%\" --headers=\"Content-Type: %http.request.headers.content-type%\" --risk=3 --level=5"
         ],
         "favor":true
+      },{
+        "toolName":"python",
+        "command":[
+          "python"
+        ],
+        "favor":true
       },
       {
         "toolName":"NoSQLMap",
