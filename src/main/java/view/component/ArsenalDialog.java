@@ -123,7 +123,7 @@ public class ArsenalDialog extends JDialog {
             // 多重保障确保窗口在前面
             toFront();
             requestFocus();
-            
+
             // 确保窗口可见且获得焦点
             if (!isVisible()) {
                 super.setVisible(true);  // 使用super避免递归
@@ -1247,25 +1247,12 @@ public class ArsenalDialog extends JDialog {
         }
         
         try {
-            // 获取当前选中的选项卡中的命令
-            int selectedTab = commandTabbedPane.getSelectedIndex();
-            String commandToCopy;
-            String commandType;
-            
-            if (selectedTab == 0) { // 原始命令选项卡
-                commandToCopy = originalCommandArea.getText();
-                commandType = "原始命令";
-            } else if (selectedTab == 1) { // 渲染命令选项卡
-                commandToCopy = renderedCommandArea.getText();
-                commandType = "渲染命令";
-            } else {
-                // 如果在变量预览选项卡，默认复制渲染命令
-                commandToCopy = renderedCommandArea.getText();
-                commandType = "渲染命令";
-            }
+            // 总是复制渲染后的命令，不依赖当前选中的选项卡
+            String commandToCopy = renderedCommandArea.getText();
+            String commandType = "渲染命令";
             
             if (commandToCopy == null || commandToCopy.trim().isEmpty()) {
-                JOptionPane.showMessageDialog(this, "命令内容为空，无法复制！", "提示", JOptionPane.WARNING_MESSAGE);
+                JOptionPane.showMessageDialog(this, "渲染命令内容为空，无法复制！", "提示", JOptionPane.WARNING_MESSAGE);
                 return;
             }
             
