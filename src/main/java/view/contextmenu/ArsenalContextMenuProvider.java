@@ -8,14 +8,26 @@ import burp.api.montoya.http.message.responses.HttpResponse;
 import manager.ApiManager;
 import manager.ConfigManager;
 import model.HttpTool;
+import model.HttpToolCommand;
 import model.Config;
 import view.component.ArsenalDialog;
+import controller.ToolController;
+import executor.AdvancedHttpParser;
+import executor.ToolExecutor;
 
 import javax.swing.*;
 import java.awt.Component;
 import java.awt.Frame;
+import java.awt.Font;
+import java.awt.Graphics;
+import java.awt.Color;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.stream.Collectors;
 
 /**
  * Arsenal上下文菜单提供者
@@ -45,9 +57,11 @@ public class ArsenalContextMenuProvider implements ContextMenuItemsProvider {
 //            menuItems.add(arsenalItem);
 //        }
 
-        JMenuItem favoriteItem = new JMenuItem("Favorite");
-        favoriteItem.addActionListener(e -> handleFavoriteAction(event));
-        menuItems.add(favoriteItem);
+        // 创建Favorite子菜单
+        JMenu favoriteMenu = createFavoriteMenu(event);
+        if (favoriteMenu != null) {
+            menuItems.add(favoriteMenu);
+        }
 
         // 创建Arsenal菜单项
         JMenuItem arsenalItem = new JMenuItem("Arsenal");
@@ -58,30 +72,61 @@ public class ArsenalContextMenuProvider implements ContextMenuItemsProvider {
     }
     
     /**
-     * 处理Favorite菜单项点击事件
+     * 创建Favorite菜单
      * @param event 上下文菜单事件
+     * @return Favorite菜单，如果没有收藏工具则返回null
      */
-    private void handleFavoriteAction(ContextMenuEvent event) {
+    private JMenu createFavoriteMenu(ContextMenuEvent event) {
         try {
             // 获取选中的HTTP消息
             HttpRequest httpRequest = getHttpRequestFromEvent(event);
-            if (httpRequest != null) {
-                // 添加到收藏夹的逻辑
-                String url = httpRequest.url();
-                ApiManager.getInstance().getApi().logging().logToOutput("已添加到收藏夹: " + url);
-                
-                // 显示成功提示
-                SwingUtilities.invokeLater(() -> {
-                    JOptionPane.showMessageDialog(
-                        null, 
-                        "已添加到收藏夹:\n" + url, 
-                        "收藏成功", 
-                        JOptionPane.INFORMATION_MESSAGE
-                    );
-                });
+            HttpResponse httpResponse = getHttpResponseFromEvent(event);
+            
+            if (httpRequest == null) {
+                return null;
             }
+            
+            // 获取所有收藏的工具命令
+            List<HttpToolCommand> favoriteCommands = getFavoriteToolCommands();
+            
+            if (favoriteCommands.isEmpty()) {
+                return null;
+            }
+            
+            // 创建Favorite主菜单
+            JMenu favoriteMenu = new JMenu("Favorite");
+            favoriteMenu.setFont(new Font("微软雅黑", Font.PLAIN, 12));
+            
+            // 按分类分组收藏的命令
+            Map<String, List<HttpToolCommand>> commandsByCategory = groupCommandsByCategory(favoriteCommands);
+            
+            // 为每个分类创建子菜单
+            List<String> sortedCategories = commandsByCategory.keySet().stream()
+                    .sorted()
+                    .collect(Collectors.toList());
+            
+            for (String category : sortedCategories) {
+                List<HttpToolCommand> categoryCommands = commandsByCategory.get(category);
+                
+                // 创建分类子菜单
+                JMenu categoryMenu = new JMenu(category + " (" + categoryCommands.size() + ")");
+                categoryMenu.setFont(new Font("微软雅黑", Font.PLAIN, 11));
+                categoryMenu.setIcon(createCategoryIcon(category));
+                
+                // 添加该分类下的所有命令
+                for (HttpToolCommand command : categoryCommands) {
+                    JMenuItem commandItem = createToolMenuItem(command, httpRequest, httpResponse);
+                    categoryMenu.add(commandItem);
+                }
+                
+                favoriteMenu.add(categoryMenu);
+            }
+            
+            return favoriteMenu;
+            
         } catch (Exception ex) {
-            ApiManager.getInstance().getApi().logging().logToError("处理收藏夹操作失败: " + ex.getMessage());
+            ApiManager.getInstance().getApi().logging().logToError("创建收藏菜单失败: " + ex.getMessage());
+            return null;
         }
     }
     
@@ -146,6 +191,447 @@ public class ArsenalContextMenuProvider implements ContextMenuItemsProvider {
             }
         } catch (Exception ex) {
             ApiManager.getInstance().getApi().logging().logToError("打开Arsenal对话框失败: " + ex.getMessage());
+        }
+    }
+    
+
+    
+    /**
+     * 按分类分组命令
+     */
+    private Map<String, List<HttpToolCommand>> groupCommandsByCategory(List<HttpToolCommand> commands) {
+        Map<String, List<HttpToolCommand>> grouped = new HashMap<>();
+        
+        for (HttpToolCommand command : commands) {
+            String category = command.getCategory();
+            if (category == null || category.trim().isEmpty()) {
+                category = "未分类";
+            }
+            
+            grouped.computeIfAbsent(category, k -> new ArrayList<>()).add(command);
+        }
+        
+        return grouped;
+    }
+    
+    /**
+     * 创建分类图标
+     */
+    private Icon createCategoryIcon(String category) {
+        return new Icon() {
+            @Override
+            public void paintIcon(Component c, Graphics g, int x, int y) {
+                // 根据分类显示不同颜色的图标
+                Color iconColor = getCategoryColor(category);
+                g.setColor(iconColor);
+                g.fillOval(x + 2, y + 2, 8, 8);
+                g.setColor(iconColor.darker());
+                g.drawOval(x + 2, y + 2, 8, 8);
+            }
+            
+            @Override
+            public int getIconWidth() { return 12; }
+            
+            @Override
+            public int getIconHeight() { return 12; }
+        };
+    }
+    
+    /**
+     * 根据分类获取对应颜色
+     */
+    private Color getCategoryColor(String category) {
+        switch (category.toLowerCase()) {
+            case "sql注入":
+            case "sql":
+                return new Color(220, 53, 69);    // 红色
+            case "xss":
+            case "跨站脚本":
+                return new Color(255, 193, 7);    // 黄色
+            case "扫描工具":
+            case "扫描":
+                return new Color(40, 167, 69);    // 绿色
+            case "爆破工具":
+            case "爆破":
+                return new Color(255, 87, 34);    // 橙色
+            case "漏洞利用":
+            case "exploit":
+                return new Color(156, 39, 176);   // 紫色
+            case "信息收集":
+            case "reconnaissance":
+                return new Color(3, 169, 244);    // 蓝色
+            default:
+                return new Color(108, 117, 125);  // 灰色
+        }
+    }
+    
+    /**
+     * 创建工具菜单项
+     */
+    private JMenuItem createToolMenuItem(HttpToolCommand command, HttpRequest httpRequest, HttpResponse httpResponse) {
+        String displayText = String.format("%s - %s", 
+            command.getDisplayName(), 
+            truncateCommand(command.getCommand(), 60));
+        
+        JMenuItem menuItem = new JMenuItem(displayText);
+        menuItem.setFont(new Font("微软雅黑", Font.PLAIN, 11));
+        menuItem.setToolTipText(String.format("<html><b>%s</b><br/>%s<br/><i>分类: %s</i></html>", 
+            command.getDisplayName(), 
+            command.getCommand(),
+            command.getCategory()));
+        
+        // 添加点击事件处理器
+        menuItem.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                executeToolCommand(command, httpRequest, httpResponse);
+            }
+        });
+        
+        return menuItem;
+    }
+    
+    /**
+     * 获取所有收藏的工具命令
+     */
+    private List<HttpToolCommand> getFavoriteToolCommands() {
+        try {
+            List<HttpToolCommand> allCommands = ToolController.getInstance().getAllToolCommands();
+            return allCommands.stream()
+                    .filter(HttpToolCommand::isFavor)
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            ApiManager.getInstance().getApi().logging().logToError("获取收藏工具失败: " + e.getMessage());
+            return new ArrayList<>();
+        }
+    }
+    
+    /**
+     * 截断命令显示
+     */
+    private String truncateCommand(String command, int maxLength) {
+        if (command == null) return "";
+        if (command.length() <= maxLength) return command;
+        return command.substring(0, maxLength) + "...";
+    }
+    
+    /**
+     * 执行工具命令
+     */
+    private void executeToolCommand(HttpToolCommand toolCommand, HttpRequest httpRequest, HttpResponse httpResponse) {
+        try {
+            // 记录执行信息
+            String toolName = toolCommand.getToolName();
+            ApiManager.getInstance().getApi().logging().logToOutput(
+                "BpArsenal: 执行收藏工具 - " + toolName
+            );
+            
+            // 渲染命令
+            String renderedCommand = generateRenderedCommand(toolCommand, httpRequest, httpResponse);
+            
+            if (renderedCommand == null || renderedCommand.trim().isEmpty()) {
+                JOptionPane.showMessageDialog(null, 
+                    "命令渲染失败或为空，无法执行", 
+                    "执行失败", 
+                    JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            
+            // 执行命令
+            executeCommandViaScript(renderedCommand, toolName);
+            
+        } catch (Exception e) {
+            String errorMsg = "执行工具命令失败: " + e.getMessage();
+            ApiManager.getInstance().getApi().logging().logToError(errorMsg);
+            JOptionPane.showMessageDialog(null, errorMsg, "执行失败", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+    
+    /**
+     * 生成渲染后的命令
+     */
+    private String generateRenderedCommand(HttpToolCommand toolCommand, HttpRequest httpRequest, HttpResponse httpResponse) {
+        try {
+            String command = toolCommand.getCommand();
+            if (command == null || command.isEmpty()) {
+                return "";
+            }
+            
+            if (httpRequest == null) {
+                return command;
+            }
+            
+            // 使用AdvancedHttpParser解析请求
+            AdvancedHttpParser advancedParser = new AdvancedHttpParser();
+            Map<String, String> requestVariables = advancedParser.parseRequest(httpRequest);
+            
+            // 解析响应（如果有）
+            Map<String, String> responseVariables = new HashMap<>();
+            if (httpResponse != null) {
+                responseVariables = advancedParser.parseResponse(httpResponse);
+            }
+            
+            // 合并变量映射
+            Map<String, String> allVariables = new HashMap<>();
+            allVariables.putAll(requestVariables);
+            allVariables.putAll(responseVariables);
+            
+            // 进行变量替换
+            return replaceVariables(command, allVariables);
+            
+        } catch (Exception e) {
+            ApiManager.getInstance().getApi().logging().logToError("命令渲染失败: " + e.getMessage());
+            return toolCommand.getCommand();
+        }
+    }
+    
+    /**
+     * 替换命令中的变量
+     */
+    private String replaceVariables(String command, Map<String, String> variables) {
+        String result = command;
+        
+        // 按变量名长度排序，优先替换长变量名
+        List<String> sortedKeys = variables.keySet().stream()
+                .sorted((a, b) -> b.length() - a.length())
+                .collect(Collectors.toList());
+        
+        for (String key : sortedKeys) {
+            String value = variables.get(key);
+            if (value != null) {
+                String placeholder = "%" + key + "%";
+                if (result.contains(placeholder)) {
+                    String escapedValue = escapeCommandValue(value);
+                    result = result.replace(placeholder, escapedValue);
+                }
+            }
+        }
+        
+        return result;
+    }
+    
+    /**
+     * 转义命令值中的特殊字符
+     */
+    private String escapeCommandValue(String value) {
+        if (value == null) {
+            return "";
+        }
+        
+        String escaped = value.replace("\n", " ")
+                             .replace("\r", " ")
+                             .replace("\t", " ");
+        
+        if (escaped.contains(" ")) {
+            if (ToolExecutor.isWindows()) {
+                escaped = "\"" + escaped.replace("\"", "\\\"") + "\"";
+            } else {
+                escaped = escaped.replace(" ", "\\ ")
+                                .replace("\"", "\\\"")
+                                .replace("'", "\\'")
+                                .replace("`", "\\`")
+                                .replace("$", "\\$");
+            }
+        }
+        
+        return escaped;
+    }
+    
+    /**
+     * 通过临时脚本执行命令
+     */
+    private void executeCommandViaScript(String command, String toolName) {
+        try {
+            String extensionPath = getExtensionPath();
+            if (extensionPath == null) {
+                throw new Exception("无法获取插件路径");
+            }
+            
+            java.io.File scriptFile = createTemporaryScript(command, extensionPath);
+            executeScript(scriptFile, toolName);
+            
+        } catch (Exception e) {
+            ApiManager.getInstance().getApi().logging().logToError("脚本执行失败: " + e.getMessage());
+            throw new RuntimeException("脚本执行失败: " + e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * 获取插件路径
+     */
+    private String getExtensionPath() {
+        try {
+            if (ApiManager.getInstance().isInitialized()) {
+                String filename = ApiManager.getInstance().getApi().extension().filename();
+                if (filename != null && !filename.isEmpty()) {
+                    java.io.File file = new java.io.File(filename);
+                    return file.getParent();
+                }
+            }
+            return System.getProperty("java.io.tmpdir");
+        } catch (Exception e) {
+            return System.getProperty("java.io.tmpdir");
+        }
+    }
+    
+    /**
+     * 创建临时脚本文件
+     */
+    private java.io.File createTemporaryScript(String command, String extensionPath) throws Exception {
+        java.io.File scriptFile;
+        String scriptContent;
+        
+        if (ToolExecutor.isWindows()) {
+            scriptFile = new java.io.File(extensionPath, "bparsenal_favorite_" + System.currentTimeMillis() + ".bat");
+            scriptContent = generateBatchScript(command);
+        } else {
+            scriptFile = new java.io.File(extensionPath, "bparsenal_favorite_" + System.currentTimeMillis() + ".sh");
+            scriptContent = generateShellScript(command);
+        }
+        
+        String encoding = ToolExecutor.isWindows() ? "GBK" : "UTF-8";
+        try (java.io.OutputStreamWriter writer = new java.io.OutputStreamWriter(
+                new java.io.FileOutputStream(scriptFile), encoding)) {
+            writer.write(scriptContent);
+        } catch (java.io.UnsupportedEncodingException e) {
+            try (java.io.FileWriter writer = new java.io.FileWriter(scriptFile)) {
+                writer.write(scriptContent);
+            }
+        }
+        
+        if (!ToolExecutor.isWindows()) {
+            scriptFile.setExecutable(true);
+        }
+        
+        scriptFile.deleteOnExit();
+        return scriptFile;
+    }
+    
+    /**
+     * 生成Windows批处理脚本
+     */
+    private String generateBatchScript(String command) {
+        StringBuilder script = new StringBuilder();
+        script.append("@echo off\r\n");
+        script.append("title BpArsenal Favorite Tool Execution\r\n");
+        script.append("color 0A\r\n");
+        script.append("echo.\r\n");
+        script.append("echo ========================================\r\n");
+        script.append("echo BpArsenal 收藏工具执行\r\n");
+        script.append("echo Time: %date% %time%\r\n");
+        script.append("echo ========================================\r\n");
+        script.append("echo.\r\n");
+        script.append("echo Executing favorite command:\r\n");
+        
+        String displayCommand = command.replace("%", "%%").replace("^", "^^");
+        script.append("echo ").append(displayCommand).append("\r\n");
+        script.append("echo.\r\n");
+        script.append("echo ========================================\r\n");
+        script.append("echo.\r\n");
+        
+        script.append(command).append("\r\n");
+        script.append("set EXEC_CODE=%ERRORLEVEL%\r\n");
+        
+        script.append("\r\n");
+        script.append("echo.\r\n");
+        script.append("echo ========================================\r\n");
+        script.append("echo Command completed with exit code: %EXEC_CODE%\r\n");
+        script.append("echo ========================================\r\n");
+        script.append("echo.\r\n");
+        script.append("pause\r\n");
+        
+        return script.toString();
+    }
+    
+    /**
+     * 生成Linux Shell脚本
+     */
+    private String generateShellScript(String command) {
+        StringBuilder script = new StringBuilder();
+        script.append("#!/bin/bash\n");
+        script.append("# BpArsenal 收藏工具执行脚本\n\n");
+        
+        script.append("echo \"========================================\"\n");
+        script.append("echo \"BpArsenal 收藏工具执行\"\n");
+        script.append("echo \"时间: $(date)\"\n");
+        script.append("echo \"========================================\"\n");
+        script.append("echo\n");
+        script.append("echo \"正在执行收藏命令:\"\n");
+        script.append("echo \"").append(command.replace("\"", "\\\"")).append("\"\n");
+        script.append("echo\n");
+        script.append("echo \"========================================\"\n");
+        script.append("echo\n");
+        
+        script.append(command).append("\n");
+        script.append("EXIT_CODE=$?\n");
+        
+        script.append("\n");
+        script.append("echo\n");
+        script.append("echo \"========================================\"\n");
+        script.append("echo \"命令执行完成，退出码: $EXIT_CODE\"\n");
+        script.append("echo \"========================================\"\n");
+        script.append("read -p \"按回车键继续...\"\n");
+        
+        return script.toString();
+    }
+    
+    /**
+     * 执行脚本文件
+     */
+    private void executeScript(java.io.File scriptFile, String toolName) {
+        try {
+            ProcessBuilder processBuilder = null;
+            
+            if (ToolExecutor.isWindows()) {
+                processBuilder = new ProcessBuilder("cmd", "/c", "start", "\"BpArsenal Favorite Tool\"", 
+                    "cmd", "/k", "\"" + scriptFile.getAbsolutePath() + "\"");
+            } else {
+                String[] terminalCommands = {
+                    "x-terminal-emulator", "-e", "bash", scriptFile.getAbsolutePath(),
+                    "gnome-terminal", "--", "bash", scriptFile.getAbsolutePath(),
+                    "xterm", "-e", "bash", scriptFile.getAbsolutePath(),
+                    "konsole", "-e", "bash", scriptFile.getAbsolutePath()
+                };
+                
+                for (int i = 0; i < terminalCommands.length; i += 3) {
+                    try {
+                        processBuilder = new ProcessBuilder(terminalCommands[i], terminalCommands[i+1], 
+                            terminalCommands[i+2], scriptFile.getAbsolutePath());
+                        break;
+                    } catch (Exception e) {
+                        if (i + 3 >= terminalCommands.length) {
+                            processBuilder = new ProcessBuilder("bash", scriptFile.getAbsolutePath());
+                        }
+                    }
+                }
+                
+                if (processBuilder == null) {
+                    processBuilder = new ProcessBuilder("bash", scriptFile.getAbsolutePath());
+                }
+            }
+            
+            processBuilder.directory(scriptFile.getParentFile());
+            Process process = processBuilder.start();
+            
+            ApiManager.getInstance().getApi().logging().logToOutput(
+                "BpArsenal: 收藏工具脚本已启动 - " + toolName
+            );
+            
+            // 异步等待进程完成并清理
+            new Thread(() -> {
+                try {
+                    process.waitFor();
+                    Thread.sleep(5000);
+                    if (scriptFile.exists()) {
+                        scriptFile.delete();
+                    }
+                } catch (Exception e) {
+                    // 忽略清理异常
+                }
+            }).start();
+            
+        } catch (Exception e) {
+            throw new RuntimeException("脚本启动失败: " + e.getMessage(), e);
         }
     }
     
