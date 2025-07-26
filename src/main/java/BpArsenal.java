@@ -16,7 +16,7 @@ public class BpArsenal implements BurpExtension {
     public void initialize(MontoyaApi api) {
         try {
             // 设置扩展名称
-            api.extension().setName("BpArsenal - 武器库");
+            api.extension().setName("BpArsenal - hunter武器库");
 
             // 初始化API管理器
             ApiManager.getInstance().setApi(api);

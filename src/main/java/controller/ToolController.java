@@ -297,6 +297,126 @@ public class ToolController {
     }
 
     /**
+     * 获取所有HTTP工具分类列表
+     * @return 分类名称列表
+     */
+    public List<String> getAllHttpToolCategories() {
+        try {
+            Config config = ConfigManager.getInstance().getConfig();
+            List<String> categories = new ArrayList<>();
+            
+            // 添加"全部"选项
+            categories.add("全部");
+            
+            if (config.getHttpTool() != null) {
+                for (Config.HttpToolCategory category : config.getHttpTool()) {
+                    String categoryType = category.getType();
+                    if (categoryType != null && !categoryType.trim().isEmpty()) {
+                        // 使用原始的type值，不进行转换
+                        if (!categories.contains(categoryType)) {
+                            categories.add(categoryType);
+                        }
+                    }
+                }
+            }
+            
+            logInfo("成功加载 " + (categories.size() - 1) + " 个HTTP工具分类");
+            return categories;
+            
+        } catch (Exception e) {
+            logError("获取HTTP工具分类失败: " + e.getMessage());
+            // 返回默认分类
+            List<String> defaultCategories = new ArrayList<>();
+            defaultCategories.add("全部");
+            defaultCategories.add("SQL注入");
+            defaultCategories.add("XSS检测");
+            defaultCategories.add("目录扫描");
+            defaultCategories.add("漏洞扫描");
+            defaultCategories.add("爆破工具");
+            defaultCategories.add("编码分析");
+            defaultCategories.add("认证测试");
+            return defaultCategories;
+        }
+    }
+
+    /**
+     * 获取所有网站分类列表
+     * @return 分类名称列表
+     */
+    public List<String> getAllWebSiteCategories() {
+        try {
+            Config config = ConfigManager.getInstance().getConfig();
+            List<String> categories = new ArrayList<>();
+            
+            // 添加"全部"选项
+            categories.add("全部");
+            
+            if (config.getWebSite() != null) {
+                for (Config.WebSiteCategory category : config.getWebSite()) {
+                    String categoryType = category.getType();
+                    if (categoryType != null && !categoryType.trim().isEmpty()) {
+                        // 使用原始的type值
+                        if (!categories.contains(categoryType)) {
+                            categories.add(categoryType);
+                        }
+                    }
+                }
+            }
+            
+            logInfo("成功加载 " + (categories.size() - 1) + " 个网站分类");
+            return categories;
+            
+        } catch (Exception e) {
+            logError("获取网站分类失败: " + e.getMessage());
+            // 返回默认分类
+            List<String> defaultCategories = new ArrayList<>();
+            defaultCategories.add("全部");
+            defaultCategories.add("OSINT");
+            defaultCategories.add("Recon");
+            defaultCategories.add("漏洞库");
+            return defaultCategories;
+        }
+    }
+
+    /**
+     * 获取所有第三方工具分类列表
+     * @return 分类名称列表
+     */
+    public List<String> getAllThirdPartyToolCategories() {
+        try {
+            Config config = ConfigManager.getInstance().getConfig();
+            List<String> categories = new ArrayList<>();
+            
+            // 添加"全部"选项
+            categories.add("全部");
+            
+            if (config.getThirtyPart() != null) {
+                for (Config.ThirdPartyToolCategory category : config.getThirtyPart()) {
+                    String categoryType = category.getType();
+                    if (categoryType != null && !categoryType.trim().isEmpty()) {
+                        // 使用原始的type值
+                        if (!categories.contains(categoryType)) {
+                            categories.add(categoryType);
+                        }
+                    }
+                }
+            }
+            
+            logInfo("成功加载 " + (categories.size() - 1) + " 个第三方工具分类");
+            return categories;
+            
+        } catch (Exception e) {
+            logError("获取第三方工具分类失败: " + e.getMessage());
+            // 返回默认分类
+            List<String> defaultCategories = new ArrayList<>();
+            defaultCategories.add("全部");
+            defaultCategories.add("exploit");
+            defaultCategories.add("编辑器");
+            return defaultCategories;
+        }
+    }
+
+    /**
      * 获取所有第三方工具
      * @return 第三方工具列表
      */

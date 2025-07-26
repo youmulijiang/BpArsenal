@@ -29,6 +29,7 @@ public class WebsitePanel extends JPanel {
     private JButton favoriteButton;
     private JButton openButton;
     private JTextField searchField;
+    private JComboBox<String> searchColumnFilter;
     private JComboBox<String> categoryFilter;
     private JLabel statusLabel;
     
@@ -73,17 +74,30 @@ public class WebsitePanel extends JPanel {
         searchLabel.setFont(new Font("微软雅黑", Font.PLAIN, 12));
         searchField = new JTextField(15);
         searchField.setFont(new Font("微软雅黑", Font.PLAIN, 11));
-        searchField.setToolTipText("输入网站名称或URL进行搜索");
+        searchField.setToolTipText("输入内容进行搜索");
+        
+        // 搜索列筛选
+        JLabel searchColumnLabel = new JLabel("搜索范围:");
+        searchColumnLabel.setFont(new Font("微软雅黑", Font.PLAIN, 12));
+        searchColumnFilter = new JComboBox<>(new String[]{"全部", "网站名称", "网站地址", "分类"});
+        searchColumnFilter.setFont(new Font("微软雅黑", Font.PLAIN, 11));
+        searchColumnFilter.setToolTipText("选择要搜索的列");
         
         // 分类过滤
         JLabel categoryLabel = new JLabel("分类:");
         categoryLabel.setFont(new Font("微软雅黑", Font.PLAIN, 12));
-        categoryFilter = new JComboBox<>(new String[]{"全部", "OSINT", "信息收集", "漏洞库", "在线工具", "学习资源", "其他"});
+        categoryFilter = new JComboBox<>();
         categoryFilter.setFont(new Font("微软雅黑", Font.PLAIN, 11));
+        // 动态加载分类选项
+        loadCategoryOptions();
         
         leftPanel.add(searchLabel);
         leftPanel.add(Box.createHorizontalStrut(5));
         leftPanel.add(searchField);
+        leftPanel.add(Box.createHorizontalStrut(10));
+        leftPanel.add(searchColumnLabel);
+        leftPanel.add(Box.createHorizontalStrut(5));
+        leftPanel.add(searchColumnFilter);
         leftPanel.add(Box.createHorizontalStrut(15));
         leftPanel.add(categoryLabel);
         leftPanel.add(Box.createHorizontalStrut(5));
@@ -244,6 +258,7 @@ public class WebsitePanel extends JPanel {
         
         // 搜索事件
         searchField.addCaretListener(e -> filterTable());
+        searchColumnFilter.addActionListener(e -> filterTable());
         categoryFilter.addActionListener(e -> filterTable());
     }
     
@@ -252,9 +267,12 @@ public class WebsitePanel extends JPanel {
      */
     public void loadData() {
         try {
+            // 先加载原始数据到表格
             List<WebSite> websites = ToolController.getInstance().getAllWebSites();
             tableModel.setWebSites(websites);
-            updateStatus("已加载 " + websites.size() + " 个网站");
+            
+            // 然后应用当前的筛选条件
+            filterTable();
             
         } catch (Exception e) {
             updateStatus("加载失败: " + e.getMessage());
@@ -471,11 +489,72 @@ public class WebsitePanel extends JPanel {
      * 过滤表格
      */
     private void filterTable() {
-        // TODO: 实现搜索和过滤功能
-        String searchText = searchField.getText().toLowerCase();
+        String searchText = searchField.getText().toLowerCase().trim();
+        String selectedSearchColumn = (String) searchColumnFilter.getSelectedItem();
         String selectedCategory = (String) categoryFilter.getSelectedItem();
         
-        updateStatus("搜索: " + searchText + ", 分类: " + selectedCategory);
+        // 获取原始数据
+        List<WebSite> allWebSites = ToolController.getInstance().getAllWebSites();
+        List<WebSite> filteredSites = new ArrayList<>();
+        
+        for (WebSite website : allWebSites) {
+            boolean matchesSearch = false;
+            boolean matchesCategory = false;
+            
+            // 检查搜索条件
+            if (searchText.isEmpty()) {
+                matchesSearch = true;
+            } else {
+                String websiteCategory = ToolController.getInstance().getWebSiteCategory(website.getDesc());
+                switch (selectedSearchColumn) {
+                    case "全部":
+                        matchesSearch = website.getDesc().toLowerCase().contains(searchText) ||
+                                       website.getUrl().toLowerCase().contains(searchText) ||
+                                       websiteCategory.toLowerCase().contains(searchText);
+                        break;
+                    case "网站名称":
+                        matchesSearch = website.getDesc().toLowerCase().contains(searchText);
+                        break;
+                    case "网站地址":
+                        matchesSearch = website.getUrl().toLowerCase().contains(searchText);
+                        break;
+                    case "分类":
+                        matchesSearch = websiteCategory.toLowerCase().contains(searchText);
+                        break;
+                    default:
+                        matchesSearch = true;
+                        break;
+                }
+            }
+            
+            // 检查分类过滤条件
+            if ("全部".equals(selectedCategory)) {
+                matchesCategory = true;
+            } else {
+                String websiteCategory = ToolController.getInstance().getWebSiteCategory(website.getDesc());
+                matchesCategory = websiteCategory.equals(selectedCategory);
+            }
+            
+            // 同时满足搜索和分类条件的记录才会被显示
+            if (matchesSearch && matchesCategory) {
+                filteredSites.add(website);
+            }
+        }
+        
+        // 更新表格数据
+        tableModel.setWebSites(filteredSites);
+        
+        // 更新状态信息
+        String statusMsg = String.format("显示 %d/%d 个网站", 
+                                        filteredSites.size(), 
+                                        allWebSites.size());
+        if (!searchText.isEmpty()) {
+            statusMsg += " | 搜索: " + searchText + " (范围: " + selectedSearchColumn + ")";
+        }
+        if (!"全部".equals(selectedCategory)) {
+            statusMsg += " | 分类: " + selectedCategory;
+        }
+        updateStatus(statusMsg);
     }
     
     /**
@@ -503,6 +582,28 @@ public class WebsitePanel extends JPanel {
      */
     private void logError(String message) {
         System.err.println("WebsitePanel: " + message);
+    }
+
+    /**
+     * 动态加载分类选项
+     */
+    private void loadCategoryOptions() {
+        try {
+            List<String> categories = ToolController.getInstance().getAllWebSiteCategories();
+            categoryFilter.removeAllItems();
+            for (String category : categories) {
+                categoryFilter.addItem(category);
+            }
+            categoryFilter.setSelectedIndex(0); // 默认选中"全部"
+        } catch (Exception e) {
+            // 如果加载失败，使用默认选项
+            categoryFilter.removeAllItems();
+            categoryFilter.addItem("全部");
+            categoryFilter.addItem("OSINT");
+            categoryFilter.addItem("Recon");
+            categoryFilter.addItem("漏洞库");
+            logError("加载分类选项失败: " + e.getMessage());
+        }
     }
 }
 

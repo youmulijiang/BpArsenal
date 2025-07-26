@@ -27,6 +27,7 @@ public class ToolPanel extends JPanel {
     private JButton deleteButton;
     private JButton favoriteButton;
     private JTextField searchField;
+    private JComboBox<String> searchColumnFilter;
     private JComboBox<String> categoryFilter;
     private JLabel statusLabel;
     
@@ -71,17 +72,30 @@ public class ToolPanel extends JPanel {
         searchLabel.setFont(new Font("微软雅黑", Font.PLAIN, 12));
         searchField = new JTextField(15);
         searchField.setFont(new Font("微软雅黑", Font.PLAIN, 11));
-        searchField.setToolTipText("输入工具名称或命令进行搜索");
+        searchField.setToolTipText("输入内容进行搜索");
+        
+        // 搜索列筛选
+        JLabel searchColumnLabel = new JLabel("搜索范围:");
+        searchColumnLabel.setFont(new Font("微软雅黑", Font.PLAIN, 12));
+        searchColumnFilter = new JComboBox<>(new String[]{"全部", "工具名称", "命令", "分类"});
+        searchColumnFilter.setFont(new Font("微软雅黑", Font.PLAIN, 11));
+        searchColumnFilter.setToolTipText("选择要搜索的列");
         
         // 分类过滤
         JLabel categoryLabel = new JLabel("分类:");
         categoryLabel.setFont(new Font("微软雅黑", Font.PLAIN, 12));
-        categoryFilter = new JComboBox<>(new String[]{"全部", "SQL注入", "XSS", "扫描工具", "爆破工具", "漏洞利用", "其他"});
+        categoryFilter = new JComboBox<>();
         categoryFilter.setFont(new Font("微软雅黑", Font.PLAIN, 11));
+        // 动态加载分类选项
+        loadCategoryOptions();
         
         leftPanel.add(searchLabel);
         leftPanel.add(Box.createHorizontalStrut(5));
         leftPanel.add(searchField);
+        leftPanel.add(Box.createHorizontalStrut(10));
+        leftPanel.add(searchColumnLabel);
+        leftPanel.add(Box.createHorizontalStrut(5));
+        leftPanel.add(searchColumnFilter);
         leftPanel.add(Box.createHorizontalStrut(15));
         leftPanel.add(categoryLabel);
         leftPanel.add(Box.createHorizontalStrut(5));
@@ -211,12 +225,15 @@ public class ToolPanel extends JPanel {
      * 设置事件处理器
      */
     private void setupEventHandlers() {
-        // 表格双击编辑
+        // 表格双击编辑和右键菜单
         toolTable.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
                 if (e.getClickCount() == 2) {
                     editSelectedTool();
+                } else if (e.getClickCount() == 1 && e.getButton() == MouseEvent.BUTTON3) {
+                    // 右键菜单
+                    showContextMenu(e);
                 }
             }
         });
@@ -236,6 +253,7 @@ public class ToolPanel extends JPanel {
         
         // 搜索事件
         searchField.addCaretListener(e -> filterTable());
+        searchColumnFilter.addActionListener(e -> filterTable());
         categoryFilter.addActionListener(e -> filterTable());
     }
     
@@ -244,9 +262,12 @@ public class ToolPanel extends JPanel {
      */
     public void loadData() {
         try {
+            // 先加载原始数据到表格
             List<HttpToolCommand> toolCommands = ToolController.getInstance().getAllToolCommands();
             tableModel.setToolCommands(toolCommands);
-            updateStatus("已加载 " + toolCommands.size() + " 个工具命令");
+            
+            // 然后应用当前的筛选条件
+            filterTable();
             
         } catch (Exception e) {
             updateStatus("加载失败: " + e.getMessage());
@@ -363,11 +384,70 @@ public class ToolPanel extends JPanel {
      * 过滤表格
      */
     private void filterTable() {
-        // TODO: 实现搜索和过滤功能
-        String searchText = searchField.getText().toLowerCase();
+        String searchText = searchField.getText().toLowerCase().trim();
+        String selectedSearchColumn = (String) searchColumnFilter.getSelectedItem();
         String selectedCategory = (String) categoryFilter.getSelectedItem();
         
-        updateStatus("搜索: " + searchText + ", 分类: " + selectedCategory);
+        // 获取原始数据
+        List<HttpToolCommand> allToolCommands = ToolController.getInstance().getAllToolCommands();
+        List<HttpToolCommand> filteredCommands = new ArrayList<>();
+        
+        for (HttpToolCommand toolCommand : allToolCommands) {
+            boolean matchesSearch = false;
+            boolean matchesCategory = false;
+            
+            // 检查搜索条件
+            if (searchText.isEmpty()) {
+                matchesSearch = true;
+            } else {
+                switch (selectedSearchColumn) {
+                    case "全部":
+                        matchesSearch = toolCommand.getDisplayName().toLowerCase().contains(searchText) ||
+                                       toolCommand.getCommand().toLowerCase().contains(searchText) ||
+                                       toolCommand.getCategory().toLowerCase().contains(searchText);
+                        break;
+                    case "工具名称":
+                        matchesSearch = toolCommand.getDisplayName().toLowerCase().contains(searchText);
+                        break;
+                    case "命令":
+                        matchesSearch = toolCommand.getCommand().toLowerCase().contains(searchText);
+                        break;
+                    case "分类":
+                        matchesSearch = toolCommand.getCategory().toLowerCase().contains(searchText);
+                        break;
+                    default:
+                        matchesSearch = true;
+                        break;
+                }
+            }
+            
+            // 检查分类过滤条件
+            if ("全部".equals(selectedCategory)) {
+                matchesCategory = true;
+            } else {
+                matchesCategory = toolCommand.getCategory().equals(selectedCategory);
+            }
+            
+            // 同时满足搜索和分类条件的记录才会被显示
+            if (matchesSearch && matchesCategory) {
+                filteredCommands.add(toolCommand);
+            }
+        }
+        
+        // 更新表格数据
+        tableModel.setToolCommands(filteredCommands);
+        
+        // 更新状态信息
+        String statusMsg = String.format("显示 %d/%d 条记录", 
+                                        filteredCommands.size(), 
+                                        allToolCommands.size());
+        if (!searchText.isEmpty()) {
+            statusMsg += " | 搜索: " + searchText + " (范围: " + selectedSearchColumn + ")";
+        }
+        if (!"全部".equals(selectedCategory)) {
+            statusMsg += " | 分类: " + selectedCategory;
+        }
+        updateStatus(statusMsg);
     }
     
     /**
@@ -378,6 +458,87 @@ public class ToolPanel extends JPanel {
         editButton.setEnabled(hasSelection);
         deleteButton.setEnabled(hasSelection);
         favoriteButton.setEnabled(hasSelection);
+    }
+    
+    /**
+     * 显示右键菜单
+     * @param e 鼠标事件
+     */
+    private void showContextMenu(MouseEvent e) {
+        int row = toolTable.rowAtPoint(e.getPoint());
+        if (row >= 0) {
+            toolTable.setRowSelectionInterval(row, row);
+            
+            JPopupMenu contextMenu = new JPopupMenu();
+            
+            // 执行工具命令
+            JMenuItem executeItem = new JMenuItem("执行命令");
+            executeItem.addActionListener(event -> {
+                HttpToolCommand toolCommand = tableModel.getToolCommandAt(toolTable.getSelectedRow());
+                // TODO: 实现命令执行功能
+                updateStatus("执行命令: " + toolCommand.getDisplayName());
+            });
+            contextMenu.add(executeItem);
+            
+            contextMenu.addSeparator();
+            
+            // 编辑
+            JMenuItem editItem = new JMenuItem("编辑工具");
+            editItem.addActionListener(event -> editSelectedTool());
+            contextMenu.add(editItem);
+            
+            // 收藏/取消收藏
+            HttpToolCommand toolCommand = tableModel.getToolCommandAt(row);
+            String favoriteText = toolCommand.isFavor() ? "取消收藏" : "收藏工具";
+            JMenuItem favoriteItem = new JMenuItem(favoriteText);
+            favoriteItem.addActionListener(event -> toggleFavorite());
+            contextMenu.add(favoriteItem);
+            
+            contextMenu.addSeparator();
+            
+            // 复制命令
+            JMenuItem copyItem = new JMenuItem("复制命令");
+            copyItem.addActionListener(event -> {
+                HttpToolCommand cmd = tableModel.getToolCommandAt(toolTable.getSelectedRow());
+                java.awt.datatransfer.StringSelection stringSelection = 
+                    new java.awt.datatransfer.StringSelection(cmd.getCommand());
+                java.awt.Toolkit.getDefaultToolkit().getSystemClipboard()
+                    .setContents(stringSelection, null);
+                updateStatus("已复制命令到剪贴板: " + cmd.getDisplayName());
+            });
+            contextMenu.add(copyItem);
+            
+            // 删除
+            JMenuItem deleteItem = new JMenuItem("删除工具");
+            deleteItem.addActionListener(event -> deleteSelectedTool());
+            contextMenu.add(deleteItem);
+            
+            contextMenu.show(toolTable, e.getX(), e.getY());
+        }
+    }
+    
+    /**
+     * 动态加载分类选项
+     */
+    private void loadCategoryOptions() {
+        try {
+            List<String> categories = ToolController.getInstance().getAllHttpToolCategories();
+            categoryFilter.removeAllItems();
+            for (String category : categories) {
+                categoryFilter.addItem(category);
+            }
+            categoryFilter.setSelectedIndex(0); // 默认选中"全部"
+        } catch (Exception e) {
+            // 如果加载失败，使用默认选项
+            categoryFilter.removeAllItems();
+            categoryFilter.addItem("全部");
+            categoryFilter.addItem("SQL注入");
+            categoryFilter.addItem("XSS检测");
+            categoryFilter.addItem("目录扫描");
+            categoryFilter.addItem("漏洞扫描");
+            categoryFilter.addItem("爆破工具");
+            logError("加载分类选项失败: " + e.getMessage());
+        }
     }
     
 
@@ -398,7 +559,6 @@ public class ToolPanel extends JPanel {
         // 委托给控制器处理日志
         System.err.println("ToolPanel: " + message);
     }
-    
 
 }
 

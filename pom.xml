@@ -34,4 +34,9 @@
       <version>2.10.1</version>
     </dependency>
   </dependencies>
+  <dependency>
+    <groupId>com.hubspot.jinjava</groupId>
+    <artifactId>jinjava</artifactId>
+    <version>{ LATEST_VERSION }</version>
+  </dependency>
 </project>
