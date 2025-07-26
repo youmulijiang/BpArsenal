@@ -31,6 +31,9 @@ import java.util.Map;
 import java.util.HashMap;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 
 /**
  * Arsenal工具对话框
@@ -58,6 +61,7 @@ public class ArsenalDialog extends JDialog {
     
     private HttpRequest httpRequest;
     private HttpResponse httpResponse;
+    private List<HttpRequest> allSelectedRequests; // 新增：所有选中的HTTP请求
     private List<HttpToolCommand> allToolCommands;
     private List<HttpToolCommand> filteredToolCommands;
     private HttpToolCommand selectedToolCommand;
@@ -71,6 +75,34 @@ public class ArsenalDialog extends JDialog {
     public ArsenalDialog(HttpRequest httpRequest, HttpResponse httpResponse) {
         this.httpRequest = httpRequest;
         this.httpResponse = httpResponse;
+        this.allSelectedRequests = new ArrayList<>();
+        if (httpRequest != null) {
+            this.allSelectedRequests.add(httpRequest);
+        }
+        this.allToolCommands = loadAllToolCommands();
+        this.filteredToolCommands = new ArrayList<>(allToolCommands);
+        this.allCategories = extractAllCategories();
+        
+        initializeDialog();
+        initializeComponents();
+        layoutComponents();
+        setupEventHandlers();
+        loadToolData();
+    }
+    
+    /**
+     * 构造函数（支持多个HTTP请求）
+     * @param httpRequest 主HTTP请求对象
+     * @param httpResponse HTTP响应对象
+     * @param allSelectedRequests 所有选中的HTTP请求列表
+     */
+    public ArsenalDialog(HttpRequest httpRequest, HttpResponse httpResponse, List<HttpRequest> allSelectedRequests) {
+        this.httpRequest = httpRequest;
+        this.httpResponse = httpResponse;
+        this.allSelectedRequests = allSelectedRequests != null ? new ArrayList<>(allSelectedRequests) : new ArrayList<>();
+        if (this.allSelectedRequests.isEmpty() && httpRequest != null) {
+            this.allSelectedRequests.add(httpRequest);
+        }
         this.allToolCommands = loadAllToolCommands();
         this.filteredToolCommands = new ArrayList<>(allToolCommands);
         this.allCategories = extractAllCategories();
@@ -752,6 +784,9 @@ public class ArsenalDialog extends JDialog {
             allVariables.putAll(requestVariables);
             allVariables.putAll(responseVariables);
             
+            // 处理httpList相关变量
+            addHttpListVariables(allVariables, allSelectedRequests);
+            
             // 进行变量替换
             String renderedCommand = replaceVariables(command, allVariables);
             
@@ -1284,6 +1319,165 @@ public class ArsenalDialog extends JDialog {
             if (ApiManager.getInstance().isInitialized()) {
                 ApiManager.getInstance().getApi().logging().logToError(errorMsg);
             }
+        }
+    }
+    
+    /**
+     * 添加httpList相关变量
+     * @param variables 变量映射
+     * @param allRequests 所有选中的HTTP请求
+     */
+    private void addHttpListVariables(Map<String, String> variables, List<HttpRequest> allRequests) {
+        try {
+            if (allRequests == null || allRequests.isEmpty()) {
+                return;
+            }
+            
+            // 添加请求数量
+            variables.put("httpList.count", String.valueOf(allRequests.size()));
+            
+            // 处理URLs
+            List<String> urls = allRequests.stream()
+                .map(request -> {
+                    try {
+                        return request.url();
+                    } catch (Exception e) {
+                        ApiManager.getInstance().getApi().logging().logToError(
+                            "获取请求URL失败: " + e.getMessage());
+                        return null;
+                    }
+                })
+                .filter(url -> url != null && !url.isEmpty())
+                .distinct() // 去重
+                .collect(Collectors.toList());
+            
+            // 创建URLs临时文件
+            if (!urls.isEmpty()) {
+                String urlsFilePath = createTemporaryUrlsFile(urls);
+                variables.put("httpList.requests.urls", urlsFilePath);
+                
+                // 添加其他httpList变量
+                variables.put("httpList.requests.urls.count", String.valueOf(urls.size()));
+                variables.put("httpList.requests.urls.list", String.join("\n", urls));
+                variables.put("httpList.requests.urls.comma", String.join(",", urls));
+                variables.put("httpList.requests.urls.space", String.join(" ", urls));
+            }
+            
+            // 处理主机名
+            List<String> hosts = allRequests.stream()
+                .map(request -> {
+                    try {
+                        return request.httpService().host();
+                    } catch (Exception e) {
+                        return null;
+                    }
+                })
+                .filter(host -> host != null && !host.isEmpty())
+                .distinct()
+                .collect(Collectors.toList());
+            
+            if (!hosts.isEmpty()) {
+                String hostsFilePath = createTemporaryHostsFile(hosts);
+                variables.put("httpList.requests.hosts", hostsFilePath);
+                variables.put("httpList.requests.hosts.count", String.valueOf(hosts.size()));
+                variables.put("httpList.requests.hosts.list", String.join("\n", hosts));
+                variables.put("httpList.requests.hosts.comma", String.join(",", hosts));
+            }
+            
+            // 处理路径
+            List<String> paths = allRequests.stream()
+                .map(request -> {
+                    try {
+                        return request.path();
+                    } catch (Exception e) {
+                        return null;
+                    }
+                })
+                .filter(path -> path != null && !path.isEmpty())
+                .distinct()
+                .collect(Collectors.toList());
+            
+            if (!paths.isEmpty()) {
+                String pathsFilePath = createTemporaryPathsFile(paths);
+                variables.put("httpList.requests.paths", pathsFilePath);
+                variables.put("httpList.requests.paths.count", String.valueOf(paths.size()));
+                variables.put("httpList.requests.paths.list", String.join("\n", paths));
+            }
+            
+            // 统计信息
+            variables.put("httpList.summary", String.format(
+                "总请求数: %d, 唯一URL: %d, 唯一主机: %d", 
+                allRequests.size(), urls.size(), hosts.size()));
+                
+        } catch (Exception e) {
+            ApiManager.getInstance().getApi().logging().logToError(
+                "添加httpList变量失败: " + e.getMessage());
+            variables.put("httpList.error", e.getMessage());
+        }
+    }
+    
+    /**
+     * 创建包含URLs的临时文件
+     * @param urls URL列表
+     * @return 临时文件路径
+     */
+    private String createTemporaryUrlsFile(List<String> urls) throws IOException {
+        return createTemporaryListFile(urls, "bparsenal_urls_", ".txt");
+    }
+    
+    /**
+     * 创建包含主机名的临时文件
+     * @param hosts 主机名列表
+     * @return 临时文件路径
+     */
+    private String createTemporaryHostsFile(List<String> hosts) throws IOException {
+        return createTemporaryListFile(hosts, "bparsenal_hosts_", ".txt");
+    }
+    
+    /**
+     * 创建包含路径的临时文件
+     * @param paths 路径列表
+     * @return 临时文件路径
+     */
+    private String createTemporaryPathsFile(List<String> paths) throws IOException {
+        return createTemporaryListFile(paths, "bparsenal_paths_", ".txt");
+    }
+    
+    /**
+     * 创建包含列表数据的临时文件
+     * @param items 数据项列表
+     * @param prefix 文件名前缀
+     * @param suffix 文件名后缀
+     * @return 临时文件路径
+     */
+    private String createTemporaryListFile(List<String> items, String prefix, String suffix) throws IOException {
+        try {
+            // 获取临时目录
+            String tempDir = System.getProperty("java.io.tmpdir");
+            
+            // 创建临时文件
+            File tempFile = new File(tempDir, prefix + System.currentTimeMillis() + suffix);
+            
+            // 写入数据
+            try (FileWriter writer = new FileWriter(tempFile)) {
+                for (String item : items) {
+                    writer.write(item);
+                    writer.write(System.lineSeparator());
+                }
+            }
+            
+            // 设置文件在程序退出时删除
+            tempFile.deleteOnExit();
+            
+            // 记录创建的临时文件
+            ApiManager.getInstance().getApi().logging().logToOutput(
+                String.format("BpArsenal: 创建临时文件 %s，包含 %d 项数据", 
+                    tempFile.getAbsolutePath(), items.size()));
+            
+            return tempFile.getAbsolutePath();
+            
+        } catch (Exception e) {
+            throw new IOException("创建临时文件失败: " + e.getMessage(), e);
         }
     }
 } 

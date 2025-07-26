@@ -65,7 +65,8 @@
           "python D:\\tools\\dirsearch\\dirsearch.py -u \"%http.request.protocol%://%http.request.host%:%http.request.port%\" -e %file.extension%,php,asp,aspx,jsp,html",
           "python D:\\tools\\dirsearch\\dirsearch.py -u \"%http.request.protocol%://%http.request.host%:%http.request.port%%path.directory%\" --recursive --random-agent",
           "python D:\\tools\\dirsearch\\dirsearch.py -u \"%http.request.protocol%://%http.request.host%:%http.request.port%\" -w /usr/share/wordlists/dirb/big.txt --cookie=\"%http.request.headers.cookie%\"",
-          "python D:\\tools\\dirsearch\\dirsearch.py -u \"%http.request.protocol%://%http.request.host%:%http.request.port%\" --extensions-list --exclude-status=400,401,403,404,500"
+          "python D:\\tools\\dirsearch\\dirsearch.py -u \"%http.request.protocol%://%http.request.host%:%http.request.port%\" --extensions-list --exclude-status=400,401,403,404,500",
+          "python D:\\tools\\dirsearch\\dirsearch.py -l %httpList.requests.urls% -e php,asp,aspx,jsp,html --batch"
         ],
         "favor":true
       },
@@ -85,7 +86,8 @@
           "ffuf -w /usr/share/wordlists/dirb/common.txt -u \"%http.request.protocol%://%http.request.host%:%http.request.port%/FUZZ\" -H \"User-Agent: %http.request.headers.user-agent%\"",
           "ffuf -w /usr/share/wordlists/dirb/big.txt -u \"%http.request.protocol%://%http.request.host%:%http.request.port%/FUZZ\" -e .%file.extension%,.php,.asp,.aspx,.jsp",
           "ffuf -w /usr/share/wordlists/parameters.txt -u \"%http.request.url%\" -X %http.request.method% -d \"FUZZ=test\" -H \"Content-Type: %http.request.headers.content-type%\"",
-          "ffuf -w /usr/share/wordlists/dirb/common.txt -u \"%http.request.protocol%://%http.request.host%:%http.request.port%%path.directory%/FUZZ\" -b \"%http.request.headers.cookie%\""
+          "ffuf -w /usr/share/wordlists/dirb/common.txt -u \"%http.request.protocol%://%http.request.host%:%http.request.port%%path.directory%/FUZZ\" -b \"%http.request.headers.cookie%\"",
+          "ffuf -w /usr/share/wordlists/dirb/common.txt -u FUZZ/FUZZ -input-file %httpList.requests.urls% -mc 200,301,302,403"
         ],
         "favor":true
       }
@@ -111,7 +113,9 @@
           "nuclei -u \"%http.request.protocol%://%http.request.host%:%http.request.port%\" -t cves/ -severity high,critical",
           "nuclei -u \"%http.request.url%\" -t vulnerabilities/ -H \"Referer: %http.request.headers.referer%\"",
           "nuclei -u \"%http.request.protocol%://%http.request.host%:%http.request.port%\" -t technologies/ -t exposures/ -rate-limit 10",
-          "nuclei -u \"%http.request.url%\" -t fuzzing/ -var target=%http.request.host% -var port=%http.request.port%"
+          "nuclei -u \"%http.request.url%\" -t fuzzing/ -var target=%http.request.host% -var port=%http.request.port%",
+          "nuclei -l %httpList.requests.urls% -t cves/ -severity high,critical -o nuclei_results.txt",
+          "nuclei -l %httpList.requests.urls% -t vulnerabilities/ -rate-limit 20 -c 50"
         ],
         "favor":true
       },
@@ -171,6 +175,47 @@
           "curl -X %http.request.method% \"%http.request.url%\" -d \"%http.request.body%\" -H \"Content-Type: %http.request.headers.content-type%\" -i",
           "curl -X %http.request.method% \"%http.request.protocol%://%http.request.host%:%http.request.port%%http.request.path%\" --data-urlencode \"param=%http.query.param.names%\" -s",
           "wget --spider --server-response \"%http.request.url%\" --user-agent=\"%http.request.headers.user-agent%\" 2>&1"
+        ],
+        "favor":false
+      }
+    ]
+   },
+   {
+    "type":"批量扫描",
+    "content":[
+      {
+        "toolName":"批量目录扫描",
+        "command":[
+          "dirsearch -l %httpList.requests.urls% -e php,asp,aspx,jsp,html --batch --output batch_dirsearch_results.txt",
+          "gobuster dir -U %httpList.requests.urls% -w /usr/share/wordlists/dirb/common.txt -o batch_gobuster_results.txt",
+          "ffuf -w /usr/share/wordlists/dirb/common.txt -u FUZZ -input-file %httpList.requests.urls% -o batch_ffuf_results.json"
+        ],
+        "favor":true
+      },
+      {
+        "toolName":"批量漏洞扫描",
+        "command":[
+          "nuclei -l %httpList.requests.urls% -t cves/ -severity high,critical -o batch_nuclei_cves.txt",
+          "nuclei -l %httpList.requests.urls% -t vulnerabilities/ -rate-limit 20 -c 50 -o batch_nuclei_vulns.txt",
+          "nuclei -l %httpList.requests.urls% -t technologies/ -t exposures/ -o batch_nuclei_tech.txt"
+        ],
+        "favor":true
+      },
+      {
+        "toolName":"批量信息收集",
+        "command":[
+          "whatweb -i %httpList.requests.urls% --log-verbose batch_whatweb.log",
+          "httpx -l %httpList.requests.urls% -title -tech-detect -status-code -o batch_httpx_results.txt",
+          "cat %httpList.requests.hosts% | nmap -iL - -sV -oN batch_nmap_results.txt"
+        ],
+        "favor":false
+      },
+      {
+        "toolName":"批量内容发现",
+        "command":[
+          "python D:\\tools\\dirsearch\\dirsearch.py -l %httpList.requests.urls% --extensions php,asp,aspx,jsp,html,js,css,txt --batch",
+          "gobuster dir -U %httpList.requests.urls% -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -x php,asp,aspx,jsp",
+          "ffuf -w /usr/share/wordlists/dirb/big.txt -u FUZZ -input-file %httpList.requests.urls% -mc 200,301,302,403,500"
         ],
         "favor":false
       }

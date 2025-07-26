@@ -298,4 +298,177 @@ public class PlaceholderDocumentation {
         
         return doc.toString();
     }
+
+    /**
+     * 获取HTTP List变量文档
+     * @return HTTP List变量文档
+     */
+    private static String getHttpListVariablesDoc() {
+        StringBuilder doc = new StringBuilder();
+        
+        doc.append("📋 HTTP List变量（多选数据包支持）\n");
+        doc.append("当选中多个HTTP数据包时，可使用以下变量：\n\n");
+        
+        doc.append("🔢 统计信息：\n");
+        doc.append("  %httpList.count%                     - 选中的HTTP请求总数\n");
+        doc.append("  %httpList.summary%                   - 统计摘要信息\n\n");
+        
+        doc.append("🌐 URL相关：\n");
+        doc.append("  %httpList.requests.urls%             - 包含所有URL的临时文件路径\n");
+        doc.append("  %httpList.requests.urls.count%       - 唯一URL数量\n");
+        doc.append("  %httpList.requests.urls.list%        - 所有URL（换行分隔）\n");
+        doc.append("  %httpList.requests.urls.comma%       - 所有URL（逗号分隔）\n");
+        doc.append("  %httpList.requests.urls.space%       - 所有URL（空格分隔）\n\n");
+        
+        doc.append("🖥️ 主机相关：\n");
+        doc.append("  %httpList.requests.hosts%            - 包含所有主机名的临时文件路径\n");
+        doc.append("  %httpList.requests.hosts.count%      - 唯一主机数量\n");
+        doc.append("  %httpList.requests.hosts.list%       - 所有主机名（换行分隔）\n");
+        doc.append("  %httpList.requests.hosts.comma%      - 所有主机名（逗号分隔）\n\n");
+        
+        doc.append("📂 路径相关：\n");
+        doc.append("  %httpList.requests.paths%            - 包含所有路径的临时文件路径\n");
+        doc.append("  %httpList.requests.paths.count%      - 唯一路径数量\n");
+        doc.append("  %httpList.requests.paths.list%       - 所有路径（换行分隔）\n\n");
+        
+        doc.append("🔌 端口和协议：\n");
+        doc.append("  %httpList.requests.ports.list%       - 所有端口（逗号分隔）\n");
+        doc.append("  %httpList.requests.ports.count%      - 唯一端口数量\n");
+        doc.append("  %httpList.requests.protocols.list%   - 所有协议（逗号分隔）\n\n");
+        
+        doc.append("⚠️ 注意事项：\n");
+        doc.append("  • 临时文件会在程序退出时自动删除\n");
+        doc.append("  • URL和主机名会自动去重\n");
+        doc.append("  • 当只选中一个请求时，http.request.url等传统变量仍然可用\n");
+        doc.append("  • 多选时，传统变量使用第一个选中的请求数据\n\n");
+        
+        return doc.toString();
+    }
+
+    /**
+     * 获取使用示例文档
+     * @return 使用示例文档
+     */
+    private static String getUsageExamplesDoc() {
+        StringBuilder doc = new StringBuilder();
+        
+        doc.append("📝 使用示例\n\n");
+        
+        doc.append("1. 单个URL扫描（传统方式）：\n");
+        doc.append("   dirsearch -u \"%http.request.url%\"\n\n");
+        
+        doc.append("2. 多个URL批量扫描（使用httpList）：\n");
+        doc.append("   dirsearch -l %httpList.requests.urls%\n\n");
+        
+        doc.append("3. Nuclei批量扫描：\n");
+        doc.append("   nuclei -l %httpList.requests.urls% -t vulnerabilities/\n\n");
+        
+        doc.append("4. Ffuf批量模糊测试：\n");
+        doc.append("   ffuf -u FUZZ -w %httpList.requests.urls%\n\n");
+        
+        doc.append("5. 自定义批量处理脚本：\n");
+        doc.append("   python batch_scan.py --urls %httpList.requests.urls% --output results.txt\n\n");
+        
+        doc.append("6. 主机名批量解析：\n");
+        doc.append("   nslookup -batch %httpList.requests.hosts%\n\n");
+        
+        doc.append("7. 混合使用传统变量和httpList：\n");
+        doc.append("   sqlmap -u \"%http.request.url%\" --batch --threads 5 && \\\n");
+        doc.append("   nuclei -l %httpList.requests.urls% -t cves/\n\n");
+        
+        doc.append("8. 条件命令示例：\n");
+        doc.append("   if [ %httpList.count% -gt 1 ]; then\n");
+        doc.append("     echo \"批量扫描 %httpList.count% 个目标\"\n");
+        doc.append("     masscan -l %httpList.requests.hosts% -p 80,443,8080\n");
+        doc.append("   else\n");
+        doc.append("     echo \"单目标扫描\"\n");
+        doc.append("     nmap -sV \"%http.request.host%\"\n");
+        doc.append("   fi\n\n");
+        
+        return doc.toString();
+    }
+
+    /**
+     * 获取基础HTTP变量文档
+     * @return 基础HTTP变量文档
+     */
+    private static String getBasicHttpVariablesDoc() {
+        StringBuilder doc = new StringBuilder();
+        
+        doc.append("🌐 基础HTTP变量\n");
+        doc.append("标准的HTTP请求和响应信息变量：\n\n");
+        
+        // 请求基础信息
+        doc.append("📋 请求基础信息：\n");
+        for (PlaceholderVariable var : getRequestBasicVariables()) {
+            doc.append(String.format("  %-35s - %s\n", var.getName(), var.getDescription()));
+        }
+        doc.append("\n");
+        
+        // 请求头部信息
+        doc.append("📋 请求头部信息：\n");
+        for (PlaceholderVariable var : getRequestHeaderVariables()) {
+            doc.append(String.format("  %-35s - %s\n", var.getName(), var.getDescription()));
+        }
+        doc.append("\n");
+        
+        return doc.toString();
+    }
+    
+    /**
+     * 获取高级变量文档
+     * @return 高级变量文档
+     */
+    private static String getAdvancedVariablesDoc() {
+        StringBuilder doc = new StringBuilder();
+        
+        doc.append("⚡ 高级变量\n");
+        doc.append("扩展的HTTP分析和处理变量：\n\n");
+        
+        // 请求参数
+        doc.append("📋 请求参数：\n");
+        for (PlaceholderVariable var : getRequestParameterVariables()) {
+            doc.append(String.format("  %-35s - %s\n", var.getName(), var.getDescription()));
+        }
+        doc.append("\n");
+        
+        // 请求体和响应体
+        doc.append("📋 请求体变量：\n");
+        for (PlaceholderVariable var : getRequestBodyVariables()) {
+            doc.append(String.format("  %-35s - %s\n", var.getName(), var.getDescription()));
+        }
+        doc.append("\n");
+        
+        doc.append("📋 响应状态：\n");
+        for (PlaceholderVariable var : getResponseStatusVariables()) {
+            doc.append(String.format("  %-35s - %s\n", var.getName(), var.getDescription()));
+        }
+        doc.append("\n");
+        
+        return doc.toString();
+    }
+    
+    /**
+     * 获取所有占位符的帮助文档
+     * @return 格式化的帮助文档字符串
+     */
+    public static String getAllPlaceholderDocumentation() {
+        StringBuilder doc = new StringBuilder();
+        
+        doc.append("=== BpArsenal 占位符变量文档 ===\n\n");
+        
+        // 基础HTTP变量
+        doc.append(getBasicHttpVariablesDoc());
+        
+        // HTTP List变量（新增）
+        doc.append(getHttpListVariablesDoc());
+        
+        // 高级变量
+        doc.append(getAdvancedVariablesDoc());
+        
+        // 使用示例
+        doc.append(getUsageExamplesDoc());
+        
+        return doc.toString();
+    }
 } 

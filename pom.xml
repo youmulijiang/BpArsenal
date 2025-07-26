@@ -33,10 +33,11 @@
       <artifactId>gson</artifactId>
       <version>2.10.1</version>
     </dependency>
+    <!-- https://mvnrepository.com/artifact/org.freemarker/freemarker -->
+    <dependency>
+      <groupId>org.freemarker</groupId>
+      <artifactId>freemarker</artifactId>
+      <version>2.3.34</version>
+    </dependency>
   </dependencies>
-  <dependency>
-    <groupId>com.hubspot.jinjava</groupId>
-    <artifactId>jinjava</artifactId>
-    <version>{ LATEST_VERSION }</version>
-  </dependency>
 </project>

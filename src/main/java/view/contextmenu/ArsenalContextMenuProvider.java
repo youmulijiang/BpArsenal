@@ -28,6 +28,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.stream.Collectors;
+import java.nio.charset.StandardCharsets;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 /**
  * Arsenal上下文菜单提供者
@@ -115,7 +121,7 @@ public class ArsenalContextMenuProvider implements ContextMenuItemsProvider {
                 
                 // 添加该分类下的所有命令
                 for (HttpToolCommand command : categoryCommands) {
-                    JMenuItem commandItem = createToolMenuItem(command, httpRequest, httpResponse);
+                    JMenuItem commandItem = createToolMenuItem(command, httpRequest, httpResponse, event);
                     categoryMenu.add(commandItem);
                 }
                 
@@ -136,15 +142,26 @@ public class ArsenalContextMenuProvider implements ContextMenuItemsProvider {
      */
     private void handleArsenalAction(ContextMenuEvent event) {
         try {
+            // 设置当前上下文菜单事件
+            currentContextMenuEvent = event;
+            
             // 获取选中的HTTP消息
             HttpRequest httpRequest = getHttpRequestFromEvent(event);
             HttpResponse httpResponse = getHttpResponseFromEvent(event);
+            
+            // 获取所有选中的请求
+            List<HttpRequest> allSelectedRequests = getAllSelectedRequests(event);
+            
+            // 记录选中的请求数量
+            ApiManager.getInstance().getApi().logging().logToOutput(
+                String.format("BpArsenal: 选中了 %d 个HTTP请求", allSelectedRequests.size())
+            );
 
             if (httpRequest != null) {
                 // 创建并显示Arsenal工具对话框
                 SwingUtilities.invokeLater(() -> {
                     try {
-                        ArsenalDialog dialog = new ArsenalDialog(httpRequest, httpResponse);
+                        ArsenalDialog dialog = new ArsenalDialog(httpRequest, httpResponse, allSelectedRequests);
 
                         // 获取Burp Suite主窗口并将对话框居中显示
                         Frame burpFrame = ApiManager.getInstance().getApi().userInterface().swingUtils().suiteFrame();
@@ -268,7 +285,7 @@ public class ArsenalContextMenuProvider implements ContextMenuItemsProvider {
     /**
      * 创建工具菜单项
      */
-    private JMenuItem createToolMenuItem(HttpToolCommand command, HttpRequest httpRequest, HttpResponse httpResponse) {
+    private JMenuItem createToolMenuItem(HttpToolCommand command, HttpRequest httpRequest, HttpResponse httpResponse, ContextMenuEvent event) {
         String displayText = String.format("%s - %s", 
             command.getDisplayName(), 
             truncateCommand(command.getCommand(), 60));
@@ -284,6 +301,8 @@ public class ArsenalContextMenuProvider implements ContextMenuItemsProvider {
         menuItem.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
+                // 设置当前上下文菜单事件
+                currentContextMenuEvent = event;
                 executeToolCommand(command, httpRequest, httpResponse);
             }
         });
@@ -357,13 +376,24 @@ public class ArsenalContextMenuProvider implements ContextMenuItemsProvider {
                 return "";
             }
             
-            if (httpRequest == null) {
+            // 获取多个选中的请求（用于httpList变量）
+            ContextMenuEvent currentEvent = getCurrentContextMenuEvent();
+            List<HttpRequest> allSelectedRequests = getAllSelectedRequests(currentEvent);
+            
+            if (allSelectedRequests.isEmpty() && httpRequest != null) {
+                allSelectedRequests.add(httpRequest);
+            }
+            
+            // 使用第一个请求作为主要请求（向后兼容）
+            HttpRequest primaryRequest = allSelectedRequests.isEmpty() ? httpRequest : allSelectedRequests.get(0);
+            
+            if (primaryRequest == null) {
                 return command;
             }
             
-            // 使用AdvancedHttpParser解析请求
+            // 使用AdvancedHttpParser解析主要请求
             AdvancedHttpParser advancedParser = new AdvancedHttpParser();
-            Map<String, String> requestVariables = advancedParser.parseRequest(httpRequest);
+            Map<String, String> requestVariables = advancedParser.parseRequest(primaryRequest);
             
             // 解析响应（如果有）
             Map<String, String> responseVariables = new HashMap<>();
@@ -376,6 +406,9 @@ public class ArsenalContextMenuProvider implements ContextMenuItemsProvider {
             allVariables.putAll(requestVariables);
             allVariables.putAll(responseVariables);
             
+            // 处理httpList相关变量
+            addHttpListVariables(allVariables, allSelectedRequests);
+            
             // 进行变量替换
             return replaceVariables(command, allVariables);
             
@@ -383,6 +416,234 @@ public class ArsenalContextMenuProvider implements ContextMenuItemsProvider {
             ApiManager.getInstance().getApi().logging().logToError("命令渲染失败: " + e.getMessage());
             return toolCommand.getCommand();
         }
+    }
+    
+    /**
+     * 添加httpList相关变量
+     * @param variables 变量映射
+     * @param allRequests 所有选中的HTTP请求
+     */
+    private void addHttpListVariables(Map<String, String> variables, List<HttpRequest> allRequests) {
+        try {
+            // 添加请求数量
+            variables.put("httpList.count", String.valueOf(allRequests.size()));
+            
+            // 处理URLs
+            List<String> urls = allRequests.stream()
+                .map(request -> {
+                    try {
+                        return request.url();
+                    } catch (Exception e) {
+                        ApiManager.getInstance().getApi().logging().logToError(
+                            "获取请求URL失败: " + e.getMessage());
+                        return null;
+                    }
+                })
+                .filter(url -> url != null && !url.isEmpty())
+                .distinct() // 去重
+                .collect(Collectors.toList());
+            
+            // 创建URLs临时文件
+            if (!urls.isEmpty()) {
+                String urlsFilePath = createTemporaryUrlsFile(urls);
+                variables.put("httpList.requests.urls", urlsFilePath);
+                
+                // 添加其他httpList变量
+                variables.put("httpList.requests.urls.count", String.valueOf(urls.size()));
+                variables.put("httpList.requests.urls.list", String.join("\n", urls));
+                variables.put("httpList.requests.urls.comma", String.join(",", urls));
+                variables.put("httpList.requests.urls.space", String.join(" ", urls));
+            }
+            
+            // 处理主机名
+            List<String> hosts = allRequests.stream()
+                .map(request -> {
+                    try {
+                        return request.httpService().host();
+                    } catch (Exception e) {
+                        return null;
+                    }
+                })
+                .filter(host -> host != null && !host.isEmpty())
+                .distinct()
+                .collect(Collectors.toList());
+            
+            if (!hosts.isEmpty()) {
+                String hostsFilePath = createTemporaryHostsFile(hosts);
+                variables.put("httpList.requests.hosts", hostsFilePath);
+                variables.put("httpList.requests.hosts.count", String.valueOf(hosts.size()));
+                variables.put("httpList.requests.hosts.list", String.join("\n", hosts));
+                variables.put("httpList.requests.hosts.comma", String.join(",", hosts));
+            }
+            
+            // 处理端口
+            List<String> ports = allRequests.stream()
+                .map(request -> {
+                    try {
+                        return String.valueOf(request.httpService().port());
+                    } catch (Exception e) {
+                        return null;
+                    }
+                })
+                .filter(port -> port != null)
+                .distinct()
+                .collect(Collectors.toList());
+            
+            if (!ports.isEmpty()) {
+                variables.put("httpList.requests.ports.list", String.join(",", ports));
+                variables.put("httpList.requests.ports.count", String.valueOf(ports.size()));
+            }
+            
+            // 处理路径
+            List<String> paths = allRequests.stream()
+                .map(request -> {
+                    try {
+                        return request.path();
+                    } catch (Exception e) {
+                        return null;
+                    }
+                })
+                .filter(path -> path != null && !path.isEmpty())
+                .distinct()
+                .collect(Collectors.toList());
+            
+            if (!paths.isEmpty()) {
+                String pathsFilePath = createTemporaryPathsFile(paths);
+                variables.put("httpList.requests.paths", pathsFilePath);
+                variables.put("httpList.requests.paths.count", String.valueOf(paths.size()));
+                variables.put("httpList.requests.paths.list", String.join("\n", paths));
+            }
+            
+            // 添加协议信息
+            List<String> protocols = allRequests.stream()
+                .map(request -> {
+                    try {
+                        return request.httpService().secure() ? "https" : "http";
+                    } catch (Exception e) {
+                        return null;
+                    }
+                })
+                .filter(protocol -> protocol != null)
+                .distinct()
+                .collect(Collectors.toList());
+            
+            if (!protocols.isEmpty()) {
+                variables.put("httpList.requests.protocols.list", String.join(",", protocols));
+            }
+            
+            // 统计信息
+            variables.put("httpList.summary", String.format(
+                "总请求数: %d, 唯一URL: %d, 唯一主机: %d", 
+                allRequests.size(), urls.size(), hosts.size()));
+                
+        } catch (Exception e) {
+            ApiManager.getInstance().getApi().logging().logToError(
+                "添加httpList变量失败: " + e.getMessage());
+            variables.put("httpList.error", e.getMessage());
+        }
+    }
+    
+    /**
+     * 创建包含URLs的临时文件
+     * @param urls URL列表
+     * @return 临时文件路径
+     */
+    private String createTemporaryUrlsFile(List<String> urls) throws IOException {
+        return createTemporaryListFile(urls, "bparsenal_urls_", ".txt");
+    }
+    
+    /**
+     * 创建包含主机名的临时文件
+     * @param hosts 主机名列表
+     * @return 临时文件路径
+     */
+    private String createTemporaryHostsFile(List<String> hosts) throws IOException {
+        return createTemporaryListFile(hosts, "bparsenal_hosts_", ".txt");
+    }
+    
+    /**
+     * 创建包含路径的临时文件
+     * @param paths 路径列表
+     * @return 临时文件路径
+     */
+    private String createTemporaryPathsFile(List<String> paths) throws IOException {
+        return createTemporaryListFile(paths, "bparsenal_paths_", ".txt");
+    }
+    
+    /**
+     * 创建包含列表数据的临时文件
+     * @param items 数据项列表
+     * @param prefix 文件名前缀
+     * @param suffix 文件名后缀
+     * @return 临时文件路径
+     */
+    private String createTemporaryListFile(List<String> items, String prefix, String suffix) throws IOException {
+        try {
+            // 获取临时目录
+            String tempDir = getExtensionPath();
+            if (tempDir == null) {
+                tempDir = System.getProperty("java.io.tmpdir");
+            }
+            
+            // 创建临时文件
+            File tempFile = new File(tempDir, prefix + System.currentTimeMillis() + suffix);
+            
+            // 写入数据
+            try (FileWriter writer = new FileWriter(tempFile)) {
+                for (String item : items) {
+                    writer.write(item);
+                    writer.write(System.lineSeparator());
+                }
+            }
+            
+            // 设置文件在程序退出时删除
+            tempFile.deleteOnExit();
+            
+            // 记录创建的临时文件
+            ApiManager.getInstance().getApi().logging().logToOutput(
+                String.format("BpArsenal: 创建临时文件 %s，包含 %d 项数据", 
+                    tempFile.getAbsolutePath(), items.size()));
+            
+            return tempFile.getAbsolutePath();
+            
+        } catch (Exception e) {
+            throw new IOException("创建临时文件失败: " + e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * 获取所有选中的HTTP请求
+     * @param event 上下文菜单事件
+     * @return HTTP请求列表
+     */
+    private List<HttpRequest> getAllSelectedRequests(ContextMenuEvent event) {
+        List<HttpRequest> requests = new ArrayList<>();
+        
+        try {
+            if (event != null && event.selectedRequestResponses() != null) {
+                for (burp.api.montoya.http.message.HttpRequestResponse requestResponse : event.selectedRequestResponses()) {
+                    if (requestResponse != null && requestResponse.request() != null) {
+                        requests.add(requestResponse.request());
+                    }
+                }
+            }
+        } catch (Exception e) {
+            ApiManager.getInstance().getApi().logging().logToError(
+                "获取选中请求列表失败: " + e.getMessage());
+        }
+        
+        return requests;
+    }
+    
+    // 添加一个成员变量来存储当前的上下文菜单事件
+    private ContextMenuEvent currentContextMenuEvent;
+    
+    /**
+     * 获取当前的上下文菜单事件
+     * @return 当前事件
+     */
+    private ContextMenuEvent getCurrentContextMenuEvent() {
+        return currentContextMenuEvent;
     }
     
     /**
