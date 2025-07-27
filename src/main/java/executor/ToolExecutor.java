@@ -342,8 +342,11 @@ public class ToolExecutor {
             }
         }
         
-        // 使用系统默认环境变量，不进行额外设置
+        
+        Map<String, String> env = processBuilder.environment();
+        env.put("PATH",System.getenv("PATH"));
         Process process = processBuilder.start();
+
         
         // 异步等待进程完成
         CompletableFuture.runAsync(() -> {
