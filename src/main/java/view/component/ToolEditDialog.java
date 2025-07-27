@@ -1,6 +1,7 @@
 package view.component;
 
 import model.HttpTool;
+import util.I18nManager;
 
 import javax.swing.*;
 import java.awt.*;
@@ -11,7 +12,7 @@ import java.awt.event.ActionListener;
  * HTTP工具编辑对话框 (View层组件)
  * 用于添加和编辑HTTP工具配置
  */
-public class ToolEditDialog extends JDialog {
+public class ToolEditDialog extends JDialog implements I18nManager.LanguageChangeListener {
     
     private HttpTool tool;
     private boolean confirmed = false;
@@ -22,10 +23,17 @@ public class ToolEditDialog extends JDialog {
     private JComboBox<String> categoryComboBox;
     private JButton okButton;
     private JButton cancelButton;
+    private JTabbedPane tabbedPane;
+    private JTextArea commonPlaceholders;
+    private JTextArea fullDoc;
     
     public ToolEditDialog(Window parent, HttpTool tool) {
-        super(parent, tool == null ? "Add HTTP Tool" : "Edit HTTP Tool", ModalityType.APPLICATION_MODAL);
+        super(parent);
         this.tool = tool;
+        
+        // 注册语言变更监听器
+        I18nManager.getInstance().addLanguageChangeListener(this);
+        
         initializeUI();
         setupEventHandlers();
         loadData();
@@ -37,6 +45,11 @@ public class ToolEditDialog extends JDialog {
      * 初始化UI组件
      */
     private void initializeUI() {
+        I18nManager i18n = I18nManager.getInstance();
+        
+        // 设置对话框标题和属性
+        setTitle(tool == null ? i18n.getText("tool.edit.dialog.title.add") : i18n.getText("tool.edit.dialog.title.edit"));
+        setModalityType(ModalityType.APPLICATION_MODAL);
         setLayout(new BorderLayout(10, 10));
         setSize(700, 550);
         setResizable(true);
@@ -66,10 +79,11 @@ public class ToolEditDialog extends JDialog {
         GridBagConstraints gbc = new GridBagConstraints();
         
         // 工具名称
+        I18nManager formI18n = I18nManager.getInstance();
         gbc.gridx = 0; gbc.gridy = 0;
         gbc.anchor = GridBagConstraints.WEST;
         gbc.insets = new Insets(5, 5, 5, 10);
-        formPanel.add(new JLabel("Tool Name *:"), gbc);
+        formPanel.add(new JLabel(formI18n.getText("tool.edit.dialog.label.tool.name")), gbc);
         
         gbc.gridx = 1; gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.weightx = 1.0;
@@ -84,12 +98,17 @@ public class ToolEditDialog extends JDialog {
         gbc.fill = GridBagConstraints.NONE;
         gbc.weightx = 0; gbc.weighty = 0;
         gbc.insets = new Insets(10, 5, 5, 10);
-        formPanel.add(new JLabel("Category:"), gbc);
+        formPanel.add(new JLabel(formI18n.getText("tool.edit.dialog.label.category")), gbc);
         
         gbc.gridx = 1; gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.weightx = 1.0;
         categoryComboBox = new JComboBox<>(new String[]{
-            "sql-inject", "xss", "scanner", "brute-force", "exploit", "other"
+            formI18n.getText("tool.edit.category.sql.inject"),
+            formI18n.getText("tool.edit.category.xss"),
+            formI18n.getText("tool.edit.category.scanner"),
+            formI18n.getText("tool.edit.category.brute.force"),
+            formI18n.getText("tool.edit.category.exploit"),
+            formI18n.getText("tool.edit.category.other")
         });
         categoryComboBox.setFont(new Font("微软雅黑", Font.PLAIN, 12));
         formPanel.add(categoryComboBox, gbc);
@@ -100,7 +119,7 @@ public class ToolEditDialog extends JDialog {
         gbc.fill = GridBagConstraints.NONE;
         gbc.weightx = 0;
         gbc.insets = new Insets(10, 5, 5, 10);
-        formPanel.add(new JLabel("Command *:"), gbc);
+        formPanel.add(new JLabel(formI18n.getText("tool.edit.dialog.label.command")), gbc);
         
         gbc.gridx = 1; gbc.fill = GridBagConstraints.BOTH;
         gbc.weightx = 1.0; gbc.weighty = 1.0;
@@ -112,7 +131,7 @@ public class ToolEditDialog extends JDialog {
         
         JScrollPane scrollPane = new JScrollPane(commandArea);
         scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
-        scrollPane.setBorder(BorderFactory.createTitledBorder("Command Content"));
+        scrollPane.setBorder(BorderFactory.createTitledBorder(formI18n.getText("tool.edit.dialog.border.command.content")));
         formPanel.add(scrollPane, gbc);
         
         // 收藏
@@ -121,7 +140,7 @@ public class ToolEditDialog extends JDialog {
         gbc.fill = GridBagConstraints.NONE;
         gbc.weightx = 0; gbc.weighty = 0;
         gbc.insets = new Insets(10, 5, 5, 5);
-        favorCheckBox = new JCheckBox("Add to Favorites");
+        favorCheckBox = new JCheckBox(formI18n.getText("tool.edit.dialog.checkbox.add.favorites"));
         favorCheckBox.setFont(new Font("微软雅黑", Font.PLAIN, 12));
         formPanel.add(favorCheckBox, gbc);
         
@@ -139,47 +158,37 @@ public class ToolEditDialog extends JDialog {
      * @return 帮助面板
      */
     private JPanel createHelpPanel() {
+        I18nManager helpI18n = I18nManager.getInstance();
         JPanel helpPanel = new JPanel(new BorderLayout());
-        helpPanel.setBorder(BorderFactory.createTitledBorder("Placeholder Documentation"));
+        helpPanel.setBorder(BorderFactory.createTitledBorder(helpI18n.getText("tool.edit.dialog.border.placeholder.doc")));
         
-        JTabbedPane tabbedPane = new JTabbedPane();
+        tabbedPane = new JTabbedPane();
         
         // 常用占位符
-        JTextArea commonPlaceholders = new JTextArea(4, 70);
+        commonPlaceholders = new JTextArea(4, 70);
         commonPlaceholders.setEditable(false);
-        commonPlaceholders.setFont(new Font("Consolas", Font.PLAIN, 9));
+        // 设置支持中文的字体，优先使用等宽字体
+        commonPlaceholders.setFont(getUnicodeFont(9));
         commonPlaceholders.setBackground(new Color(248, 248, 248));
-        commonPlaceholders.setText(
-            "# 请求基础\n" +
-            "%http.request.url%              - 完整请求URL\n" +
-            "%http.request.host%             - 目标主机\n" +
-            "%http.request.port%             - 端口号\n" +
-            "%http.request.path%             - 请求路径\n" +
-            "%http.request.method%           - 请求方法(GET/POST等)\n" +
-            "\n" +
-            "# 请求头部\n" +
-            "%http.request.headers.user.agent%    - User-Agent头\n" +
-            "%http.request.headers.cookies%       - Cookie信息\n" +
-            "%http.request.headers.authorization% - Authorization头\n" +
-            "%http.request.headers.referer%       - Referer头\n" +
-            "\n" +
-            "# 请求体\n" +
-            "%http.request.body%             - 请求体内容\n" +
-            "%http.request.body.len%         - 请求体长度"
-        );
+        // 确保正确显示UTF-8编码的中文
+        setupTextAreaForUTF8(commonPlaceholders);
+        commonPlaceholders.setText(generateCommonPlaceholderText());
         
         JScrollPane commonScroll = new JScrollPane(commonPlaceholders);
-        tabbedPane.addTab("Common", commonScroll);
+        tabbedPane.addTab(helpI18n.getText("tool.edit.dialog.tab.common"), commonScroll);
         
         // 完整文档
-        JTextArea fullDoc = new JTextArea(4, 70);
+        fullDoc = new JTextArea(4, 70);
         fullDoc.setEditable(false);
-        fullDoc.setFont(new Font("Consolas", Font.PLAIN, 8));
+        // 设置支持中文的字体，优先使用等宽字体
+        fullDoc.setFont(getUnicodeFont(8));
         fullDoc.setBackground(new Color(248, 248, 248));
+        // 确保正确显示UTF-8编码的中文
+        setupTextAreaForUTF8(fullDoc);
         fullDoc.setText(generateCompactDocumentation());
         
         JScrollPane fullScroll = new JScrollPane(fullDoc);
-        tabbedPane.addTab("Full", fullScroll);
+        tabbedPane.addTab(helpI18n.getText("tool.edit.dialog.tab.full"), fullScroll);
         
         helpPanel.add(tabbedPane, BorderLayout.CENTER);
         
@@ -187,43 +196,120 @@ public class ToolEditDialog extends JDialog {
     }
     
     /**
+     * 获取支持Unicode的字体
+     * @param size 字体大小
+     * @return 字体对象
+     */
+    private Font getUnicodeFont(int size) {
+        // 优先尝试等宽字体，支持中文
+        String[] fontNames = {
+            "JetBrains Mono",     // 现代等宽字体
+            "Consolas",           // Windows等宽字体
+            "Monaco",             // macOS等宽字体
+            "DejaVu Sans Mono",   // Linux等宽字体
+            "Courier New",        // 通用等宽字体
+            "Microsoft YaHei",    // 中文支持字体
+            "SimSun",             // 宋体
+            "Dialog"              // Java默认字体
+        };
+        
+        GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
+        String[] availableFonts = ge.getAvailableFontFamilyNames();
+        
+        for (String fontName : fontNames) {
+            for (String availableFont : availableFonts) {
+                if (availableFont.equals(fontName)) {
+                    return new Font(fontName, Font.PLAIN, size);
+                }
+            }
+        }
+        
+        // 如果都没找到，使用系统默认等宽字体
+        return new Font(Font.MONOSPACED, Font.PLAIN, size);
+    }
+    
+    /**
+     * 设置JTextArea以正确显示UTF-8编码的文本
+     * @param textArea 文本区域组件
+     */
+    private void setupTextAreaForUTF8(JTextArea textArea) {
+        // 确保使用UTF-8字符集
+        textArea.putClientProperty("charset", "UTF-8");
+        
+        // 设置字符编码相关属性
+        textArea.setComponentOrientation(java.awt.ComponentOrientation.LEFT_TO_RIGHT);
+        
+        // 如果有必要，可以设置字符输入方法
+        try {
+            textArea.getInputContext().selectInputMethod(java.util.Locale.getDefault());
+        } catch (Exception e) {
+            // 忽略输入法设置失败的情况
+        }
+    }
+    
+    /**
+     * 生成常用占位符文本
+     * @return 常用占位符文本
+     */
+    private String generateCommonPlaceholderText() {
+        I18nManager i18n = I18nManager.getInstance();
+        return "# " + i18n.getText("tool.edit.placeholder.doc.request.basic") + "\n" +
+               "%http.request.url%              - " + i18n.getText("tool.edit.placeholder.url") + "\n" +
+               "%http.request.host%             - " + i18n.getText("tool.edit.placeholder.host") + "\n" +
+               "%http.request.port%             - " + i18n.getText("tool.edit.placeholder.port") + "\n" +
+               "%http.request.path%             - " + i18n.getText("tool.edit.placeholder.path") + "\n" +
+               "%http.request.method%           - " + i18n.getText("tool.edit.placeholder.method") + "\n" +
+               "\n" +
+               "# " + i18n.getText("tool.edit.placeholder.doc.request.headers") + "\n" +
+               "%http.request.headers.user.agent%    - " + i18n.getText("tool.edit.placeholder.user.agent") + "\n" +
+               "%http.request.headers.cookies%       - " + i18n.getText("tool.edit.placeholder.cookies") + "\n" +
+               "%http.request.headers.authorization% - " + i18n.getText("tool.edit.placeholder.authorization") + "\n" +
+               "%http.request.headers.referer%       - " + i18n.getText("tool.edit.placeholder.referer") + "\n" +
+               "\n" +
+               "# " + i18n.getText("tool.edit.placeholder.doc.request.body") + "\n" +
+               "%http.request.body%             - " + i18n.getText("tool.edit.placeholder.body") + "\n" +
+               "%http.request.body.len%         - " + i18n.getText("tool.edit.placeholder.body.len");
+    }
+    
+    /**
      * 生成紧凑的占位符文档
      * @return 文档字符串
      */
     private String generateCompactDocumentation() {
-        return "# HTTP占位符完整列表\n\n" +
-               "## 请求基础\n" +
-               "%http.request.url%              - 完整请求URL\n" +
-               "%http.request.host%             - 目标主机\n" +
-               "%http.request.port%             - 端口号\n" +
-               "%http.request.path%             - 请求路径\n" +
-               "%http.request.query%            - 查询字符串\n" +
-               "%http.request.method%           - 请求方法\n" +
-               "%http.request.protocol%         - 协议版本\n\n" +
+        I18nManager i18n = I18nManager.getInstance();
+        return "# " + i18n.getText("tool.edit.placeholder.doc.title") + "\n\n" +
+               "## " + i18n.getText("tool.edit.placeholder.doc.request.basic") + "\n" +
+               "%http.request.url%              - " + i18n.getText("tool.edit.placeholder.url") + "\n" +
+               "%http.request.host%             - " + i18n.getText("tool.edit.placeholder.host") + "\n" +
+               "%http.request.port%             - " + i18n.getText("tool.edit.placeholder.port") + "\n" +
+               "%http.request.path%             - " + i18n.getText("tool.edit.placeholder.path") + "\n" +
+               "%http.request.query%            - " + i18n.getText("tool.edit.placeholder.query") + "\n" +
+               "%http.request.method%           - " + i18n.getText("tool.edit.placeholder.method") + "\n" +
+               "%http.request.protocol%         - " + i18n.getText("tool.edit.placeholder.protocol") + "\n\n" +
                
-               "## 请求头部\n" +
-               "%http.request.headers.user.agent%    - User-Agent头\n" +
-               "%http.request.headers.cookies%       - Cookie信息\n" +
-               "%http.request.headers.authorization% - Authorization头\n" +
-               "%http.request.headers.referer%       - Referer头\n" +
-               "%http.request.headers.content.type%  - Content-Type头\n\n" +
+               "## " + i18n.getText("tool.edit.placeholder.doc.request.headers") + "\n" +
+               "%http.request.headers.user.agent%    - " + i18n.getText("tool.edit.placeholder.user.agent") + "\n" +
+               "%http.request.headers.cookies%       - " + i18n.getText("tool.edit.placeholder.cookies") + "\n" +
+               "%http.request.headers.authorization% - " + i18n.getText("tool.edit.placeholder.authorization") + "\n" +
+               "%http.request.headers.referer%       - " + i18n.getText("tool.edit.placeholder.referer") + "\n" +
+               "%http.request.headers.content.type%  - " + i18n.getText("tool.edit.placeholder.content.type") + "\n\n" +
                
-               "## 请求参数\n" +
-               "%http.request.params.get%       - GET参数(JSON)\n" +
-               "%http.request.params.post%      - POST参数(JSON)\n" +
-               "%http.request.params.all%       - 所有参数(JSON)\n\n" +
+               "## " + i18n.getText("tool.edit.placeholder.doc.request.params") + "\n" +
+               "%http.request.params.get%       - " + i18n.getText("tool.edit.placeholder.params.get") + "\n" +
+               "%http.request.params.post%      - " + i18n.getText("tool.edit.placeholder.params.post") + "\n" +
+               "%http.request.params.all%       - " + i18n.getText("tool.edit.placeholder.params.all") + "\n\n" +
                
-               "## 请求体\n" +
-               "%http.request.body%             - 请求体内容\n" +
-               "%http.request.body.len%         - 请求体长度\n\n" +
+               "## " + i18n.getText("tool.edit.placeholder.doc.request.body") + "\n" +
+               "%http.request.body%             - " + i18n.getText("tool.edit.placeholder.body") + "\n" +
+               "%http.request.body.len%         - " + i18n.getText("tool.edit.placeholder.body.len") + "\n\n" +
                
-               "## 响应基础\n" +
-               "%http.response.status%          - 响应状态码\n" +
-               "%http.response.headers%         - 响应头(JSON)\n" +
-               "%http.response.body%            - 响应体内容\n" +
-               "%http.response.body.len%        - 响应体长度\n\n" +
+               "## " + i18n.getText("tool.edit.placeholder.doc.response.basic") + "\n" +
+               "%http.response.status%          - " + i18n.getText("tool.edit.placeholder.response.status") + "\n" +
+               "%http.response.headers%         - " + i18n.getText("tool.edit.placeholder.response.headers") + "\n" +
+               "%http.response.body%            - " + i18n.getText("tool.edit.placeholder.response.body") + "\n" +
+               "%http.response.body.len%        - " + i18n.getText("tool.edit.placeholder.response.body.len") + "\n\n" +
                
-               "示例用法:\n" +
+               i18n.getText("tool.edit.placeholder.doc.example") + ":\n" +
                "sqlmap -u \"%http.request.url%\" --cookie=\"%http.request.headers.cookies%\"";
     }
     
@@ -232,14 +318,15 @@ public class ToolEditDialog extends JDialog {
      * @return 按钮面板
      */
     private JPanel createButtonPanel() {
+        I18nManager buttonI18n = I18nManager.getInstance();
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
         buttonPanel.setBorder(BorderFactory.createEmptyBorder(0, 20, 10, 20));
         
-        JButton cancelButton = new JButton("Cancel");
+        cancelButton = new JButton(buttonI18n.getText("tool.edit.dialog.button.cancel"));
         cancelButton.setFont(new Font("Microsoft YaHei", Font.PLAIN, 12));
         cancelButton.setPreferredSize(new Dimension(80, 30));
         
-        okButton = new JButton("OK");
+        okButton = new JButton(buttonI18n.getText("tool.edit.dialog.button.ok"));
         okButton.setFont(new Font("微软雅黑", Font.BOLD, 12));
         okButton.setPreferredSize(new Dimension(80, 30));
         okButton.setBackground(new Color(46, 125, 50));
@@ -267,8 +354,7 @@ public class ToolEditDialog extends JDialog {
             }
         });
         
-        // 获取取消按钮并设置事件
-        JButton cancelButton = (JButton) ((JPanel) getContentPane().getComponent(1)).getComponent(0);
+        // 设置取消按钮事件
         cancelButton.addActionListener(e -> dispose());
         
         // 回车键确定
@@ -284,8 +370,14 @@ public class ToolEditDialog extends JDialog {
             commandArea.setText(tool.getCommand());
             favorCheckBox.setSelected(tool.isFavor());
             
-            // 根据工具名称推断分类
-            String category = inferCategory(tool.getToolName().toLowerCase());
+            // 如果工具已有分类，使用现有分类；否则根据工具名称推断分类
+            String category;
+            if (tool.getToolName() != null && !tool.getToolName().isEmpty()) {
+                // 假设存在一个获取工具分类的方法，如果没有则推断
+                category = inferCategory(tool.getToolName().toLowerCase());
+            } else {
+                category = inferCategory("");
+            }
             categoryComboBox.setSelectedItem(category);
         } else {
             // 设置默认值
@@ -293,11 +385,8 @@ public class ToolEditDialog extends JDialog {
             categoryComboBox.setSelectedIndex(0);
             
             // 设置默认模板
-            commandArea.setText("# 在此输入命令，支持以下占位符:\n" +
-                              "# %http.request.url% - 请求URL\n" +
-                              "# %http.request.headers.cookies% - Cookie\n" +
-                              "# 完整占位符列表请查看下方文档\n\n" +
-                              "");
+            I18nManager loadI18n = I18nManager.getInstance();
+            commandArea.setText(loadI18n.getText("tool.edit.dialog.template.comment"));
         }
     }
     
@@ -307,18 +396,64 @@ public class ToolEditDialog extends JDialog {
      * @return 分类
      */
     private String inferCategory(String toolName) {
+        I18nManager categoryI18n = I18nManager.getInstance();
         if (toolName.contains("sql") || toolName.contains("inject")) {
-            return "sql-inject";
+            return categoryI18n.getText("tool.edit.category.sql.inject");
         } else if (toolName.contains("xss")) {
-            return "xss";
+            return categoryI18n.getText("tool.edit.category.xss");
         } else if (toolName.contains("scan") || toolName.contains("dir")) {
-            return "scanner";
+            return categoryI18n.getText("tool.edit.category.scanner");
         } else if (toolName.contains("brute") || toolName.contains("hydra")) {
-            return "brute-force";
+            return categoryI18n.getText("tool.edit.category.brute.force");
         } else if (toolName.contains("exploit") || toolName.contains("msf")) {
-            return "exploit";
+            return categoryI18n.getText("tool.edit.category.exploit");
         }
-        return "other";
+        return categoryI18n.getText("tool.edit.category.other");
+    }
+    
+    /**
+     * 将国际化的分类转换为内部分类代码
+     * @param localizedCategory 国际化的分类名称
+     * @return 内部分类代码
+     */
+    private String getCategoryCode(String localizedCategory) {
+        I18nManager i18n = I18nManager.getInstance();
+        if (localizedCategory.equals(i18n.getText("tool.edit.category.sql.inject"))) {
+            return "sql-inject";
+        } else if (localizedCategory.equals(i18n.getText("tool.edit.category.xss"))) {
+            return "xss";
+        } else if (localizedCategory.equals(i18n.getText("tool.edit.category.scanner"))) {
+            return "scanner";
+        } else if (localizedCategory.equals(i18n.getText("tool.edit.category.brute.force"))) {
+            return "brute-force";
+        } else if (localizedCategory.equals(i18n.getText("tool.edit.category.exploit"))) {
+            return "exploit";
+        } else {
+            return "other";
+        }
+    }
+    
+    /**
+     * 将内部分类代码转换为国际化的分类名称
+     * @param categoryCode 内部分类代码
+     * @return 国际化的分类名称
+     */
+    private String getLocalizedCategory(String categoryCode) {
+        I18nManager i18n = I18nManager.getInstance();
+        switch (categoryCode) {
+            case "sql-inject":
+                return i18n.getText("tool.edit.category.sql.inject");
+            case "xss":
+                return i18n.getText("tool.edit.category.xss");
+            case "scanner":
+                return i18n.getText("tool.edit.category.scanner");
+            case "brute-force":
+                return i18n.getText("tool.edit.category.brute.force");
+            case "exploit":
+                return i18n.getText("tool.edit.category.exploit");
+            default:
+                return i18n.getText("tool.edit.category.other");
+        }
     }
     
     /**
@@ -326,17 +461,18 @@ public class ToolEditDialog extends JDialog {
      * @return 验证结果
      */
     private boolean validateInput() {
+        I18nManager validateI18n = I18nManager.getInstance();
         String name = nameField.getText().trim();
         String command = commandArea.getText().trim();
         
         if (name.isEmpty()) {
-            showError("Please enter tool name");
+            showError(validateI18n.getText("tool.edit.dialog.error.name.empty"));
             nameField.requestFocus();
             return false;
         }
         
         if (command.isEmpty()) {
-            showError("Please enter command");
+            showError(validateI18n.getText("tool.edit.dialog.error.command.empty"));
             commandArea.requestFocus();
             return false;
         }
@@ -362,7 +498,8 @@ public class ToolEditDialog extends JDialog {
      * @param message 错误消息
      */
     private void showError(String message) {
-        JOptionPane.showMessageDialog(this, message, "Input Error", JOptionPane.ERROR_MESSAGE);
+        I18nManager errorI18n = I18nManager.getInstance();
+        JOptionPane.showMessageDialog(this, message, errorI18n.getText("tool.edit.dialog.error.title"), JOptionPane.ERROR_MESSAGE);
     }
     
     /**
@@ -386,6 +523,70 @@ public class ToolEditDialog extends JDialog {
      * @return 分类字符串
      */
     public String getSelectedCategory() {
-        return (String) categoryComboBox.getSelectedItem();
+        String localizedCategory = (String) categoryComboBox.getSelectedItem();
+        return getCategoryCode(localizedCategory);
+    }
+
+    @Override
+    public void onLanguageChanged(I18nManager.SupportedLanguage newLanguage) {
+        SwingUtilities.invokeLater(() -> {
+            updateUITexts();
+            revalidate();
+            repaint();
+        });
+    }
+    
+    /**
+     * 更新UI文本
+     */
+    private void updateUITexts() {
+        I18nManager i18n = I18nManager.getInstance();
+        
+        // 更新对话框标题
+        setTitle(tool == null ? i18n.getText("tool.edit.dialog.title.add") : i18n.getText("tool.edit.dialog.title.edit"));
+        
+        // 更新按钮文本
+        if (okButton != null) {
+            okButton.setText(i18n.getText("tool.edit.dialog.button.ok"));
+        }
+        if (cancelButton != null) {
+            cancelButton.setText(i18n.getText("tool.edit.dialog.button.cancel"));
+        }
+        
+        // 更新复选框文本
+        if (favorCheckBox != null) {
+            favorCheckBox.setText(i18n.getText("tool.edit.dialog.checkbox.add.favorites"));
+        }
+        
+        // 更新选项卡标题
+        if (tabbedPane != null) {
+            tabbedPane.setTitleAt(0, i18n.getText("tool.edit.dialog.tab.common"));
+            tabbedPane.setTitleAt(1, i18n.getText("tool.edit.dialog.tab.full"));
+        }
+        
+        // 更新下拉框选项
+        if (categoryComboBox != null) {
+            Object selectedItem = categoryComboBox.getSelectedItem();
+            categoryComboBox.removeAllItems();
+            categoryComboBox.addItem(i18n.getText("tool.edit.category.sql.inject"));
+            categoryComboBox.addItem(i18n.getText("tool.edit.category.xss"));
+            categoryComboBox.addItem(i18n.getText("tool.edit.category.scanner"));
+            categoryComboBox.addItem(i18n.getText("tool.edit.category.brute.force"));
+            categoryComboBox.addItem(i18n.getText("tool.edit.category.exploit"));
+            categoryComboBox.addItem(i18n.getText("tool.edit.category.other"));
+            
+            // 尝试恢复原来的选择
+            if (selectedItem != null) {
+                categoryComboBox.setSelectedItem(selectedItem);
+            }
+        }
+        
+        // 重新生成文档内容
+        if (commonPlaceholders != null) {
+            commonPlaceholders.setText(generateCommonPlaceholderText());
+        }
+        if (fullDoc != null) {
+            fullDoc.setText(generateCompactDocumentation());
+        }
     }
 } 
