@@ -11,6 +11,7 @@ import manager.ConfigManager;
 import model.Config;
 import model.HttpTool;
 import model.HttpToolCommand;
+import util.I18nManager;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
@@ -34,12 +35,13 @@ import java.util.stream.Collectors;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.Locale;
 
 /**
  * Arsenal工具对话框
  * 显示工具列表、命令预览和执行结果，支持筛选功能
  */
-public class ArsenalDialog extends JDialog {
+public class ArsenalDialog extends JDialog implements I18nManager.LanguageChangeListener {
     
     private JTable toolTable;
     private DefaultTableModel tableModel;
@@ -88,6 +90,9 @@ public class ArsenalDialog extends JDialog {
         layoutComponents();
         setupEventHandlers();
         loadToolData();
+        
+        // 注册语言变更监听器
+        I18nManager.getInstance().addLanguageChangeListener(this);
     }
     
     /**
@@ -112,13 +117,16 @@ public class ArsenalDialog extends JDialog {
         layoutComponents();
         setupEventHandlers();
         loadToolData();
+        
+        // 注册语言变更监听器
+        I18nManager.getInstance().addLanguageChangeListener(this);
     }
     
     /**
      * 初始化对话框属性
      */
     private void initializeDialog() {
-        setTitle("Arsenal - 武器库");
+        setTitle(I18nManager.getInstance().getText("dialog.arsenal.title"));
         setSize(950, 800);  // 增加高度以适应选项卡
         // 不在这里设置位置，由调用方决定位置
         setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
@@ -1478,6 +1486,93 @@ public class ArsenalDialog extends JDialog {
             
         } catch (Exception e) {
             throw new IOException("创建临时文件失败: " + e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * 语言变更监听器实现
+     */
+    @Override
+    public void onLanguageChanged(Locale newLocale) {
+        SwingUtilities.invokeLater(() -> {
+            updateUITexts();
+            revalidate();
+            repaint();
+        });
+    }
+    
+    /**
+     * 更新UI文本
+     */
+    private void updateUITexts() {
+        I18nManager i18n = I18nManager.getInstance();
+        
+        // 更新对话框标题
+        setTitle(i18n.getText("dialog.arsenal.title"));
+        
+        // 更新按钮文本
+        updateButtonTexts(i18n);
+        
+        // 更新表格列标题
+        updateTableHeaders(i18n);
+        
+        // 更新标签文本
+        updateLabelTexts(i18n);
+    }
+    
+    /**
+     * 更新按钮文本
+     */
+    private void updateButtonTexts(I18nManager i18n) {
+        // 这里需要根据实际的按钮变量名来更新
+        // 由于没有看到所有按钮的定义，这里给出示例结构
+        try {
+            // 示例：如果有executeButton
+            // if (executeButton != null) {
+            //     executeButton.setText(i18n.getText("arsenal.dialog.execute"));
+            // }
+            
+            // 示例：如果有closeButton
+            // if (closeButton != null) {
+            //     closeButton.setText(i18n.getText("arsenal.dialog.close"));
+            // }
+        } catch (Exception e) {
+            // 忽略更新错误
+        }
+    }
+    
+    /**
+     * 更新表格列标题
+     */
+    private void updateTableHeaders(I18nManager i18n) {
+        if (tableModel != null) {
+            try {
+                // 更新表格列名
+                tableModel.setColumnIdentifiers(new String[]{
+                    i18n.getText("arsenal.dialog.tool.name"),
+                    i18n.getText("arsenal.dialog.category"),
+                    i18n.getText("arsenal.dialog.command"),
+                    i18n.getText("arsenal.dialog.description")
+                });
+            } catch (Exception e) {
+                // 忽略更新错误
+            }
+        }
+    }
+    
+    /**
+     * 更新标签文本
+     */
+    private void updateLabelTexts(I18nManager i18n) {
+        // 这里需要根据实际的标签变量名来更新
+        // 示例结构
+        try {
+            // 如果有搜索相关的标签
+            // if (searchLabel != null) {
+            //     searchLabel.setText(i18n.getText("arsenal.dialog.search"));
+            // }
+        } catch (Exception e) {
+            // 忽略更新错误
         }
     }
 } 

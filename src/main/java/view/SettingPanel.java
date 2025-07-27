@@ -4,6 +4,7 @@ import manager.ApiManager;
 import manager.ConfigManager;
 import util.JsonUtil;
 import util.OsUtils;
+import util.I18nManager;
 import model.Config;
 
 import javax.swing.*;
@@ -18,12 +19,13 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Properties;
+import java.util.Locale;
 
 /**
  * 设置面板 (View层)
  * 用于插件配置和管理
  */
-public class SettingPanel extends JPanel {
+public class SettingPanel extends JPanel implements I18nManager.LanguageChangeListener {
     
     // 配置文件相关组件
     private JButton importConfigButton;
@@ -44,6 +46,46 @@ public class SettingPanel extends JPanel {
     private JLabel prefixStatusLabel;
     private JLabel systemInfoLabel;
     
+    // 语言设置相关组件
+    private JComboBox<LocaleItem> languageComboBox;
+    private JButton applyLanguageButton;
+    private JLabel languageStatusLabel;
+    
+    /**
+     * 语言环境包装类
+     */
+    private static class LocaleItem {
+        private final Locale locale;
+        private final String displayName;
+        
+        public LocaleItem(Locale locale, String displayName) {
+            this.locale = locale;
+            this.displayName = displayName;
+        }
+        
+        public Locale getLocale() {
+            return locale;
+        }
+        
+        @Override
+        public String toString() {
+            return displayName;
+        }
+        
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) return true;
+            if (obj == null || getClass() != obj.getClass()) return false;
+            LocaleItem that = (LocaleItem) obj;
+            return locale.equals(that.locale);
+        }
+        
+        @Override
+        public int hashCode() {
+            return locale.hashCode();
+        }
+    }
+    
     // 插件信息组件
     private JLabel versionLabel;
     private JLabel authorLabel;
@@ -57,6 +99,9 @@ public class SettingPanel extends JPanel {
         loadToolSettings();
         initializeUI();
         loadCurrentSettings();
+        
+        // 注册语言变更监听器
+        I18nManager.getInstance().addLanguageChangeListener(this);
     }
     
     /**
@@ -95,6 +140,10 @@ public class SettingPanel extends JPanel {
         mainPanel.add(createSystemPrefixPanel());
         mainPanel.add(Box.createVerticalStrut(15));
         
+        // 语言设置面板
+        mainPanel.add(createLanguagePanel());
+        mainPanel.add(Box.createVerticalStrut(15));
+        
         // 插件信息面板
         mainPanel.add(createPluginInfoPanel());
         mainPanel.add(Box.createVerticalGlue());
@@ -110,7 +159,7 @@ public class SettingPanel extends JPanel {
         JPanel configPanel = new JPanel(new GridBagLayout());
         configPanel.setBorder(BorderFactory.createTitledBorder(
             BorderFactory.createEtchedBorder(),
-            "配置文件管理",
+            I18nManager.getInstance().getText("settings.config.title"),
             TitledBorder.LEFT,
             TitledBorder.TOP,
             new Font("微软雅黑", Font.BOLD, 12)
@@ -122,24 +171,25 @@ public class SettingPanel extends JPanel {
         
         // 导入配置按钮
         gbc.gridx = 0; gbc.gridy = 0;
-        importConfigButton = createStyledButton("导入配置", "从外部文件导入配置", new Color(46, 125, 50));
+        I18nManager i18n = I18nManager.getInstance();
+        importConfigButton = createStyledButton(i18n.getText("settings.config.import"), i18n.getText("settings.config.import"), new Color(46, 125, 50));
         configPanel.add(importConfigButton, gbc);
         
         // 导出配置按钮
         gbc.gridx = 1; gbc.gridy = 0;
-        exportConfigButton = createStyledButton("导出配置", "将当前配置导出到文件", new Color(25, 118, 210));
+        exportConfigButton = createStyledButton(i18n.getText("settings.config.export"), i18n.getText("settings.config.export"), new Color(25, 118, 210));
         configPanel.add(exportConfigButton, gbc);
         
         // 重置配置按钮
         gbc.gridx = 2; gbc.gridy = 0;
-        resetConfigButton = createStyledButton("重置配置", "恢复默认配置", new Color(211, 47, 47));
+        resetConfigButton = createStyledButton(i18n.getText("settings.config.reset"), i18n.getText("settings.config.reset"), new Color(211, 47, 47));
         configPanel.add(resetConfigButton, gbc);
         
         // 配置状态标签
         gbc.gridx = 0; gbc.gridy = 1;
         gbc.gridwidth = 3;
         gbc.fill = GridBagConstraints.HORIZONTAL;
-        configStatusLabel = new JLabel("配置状态: 已加载");
+        configStatusLabel = new JLabel(i18n.getText("settings.config.status") + ": " + i18n.getText("settings.config.status.loaded"));
         configStatusLabel.setFont(new Font("微软雅黑", Font.PLAIN, 11));
         configStatusLabel.setForeground(new Color(100, 100, 100));
         configPanel.add(configStatusLabel, gbc);
@@ -147,9 +197,7 @@ public class SettingPanel extends JPanel {
         // 配置说明
         gbc.gridy = 2;
         JTextArea configDescArea = new JTextArea(3, 50);
-        configDescArea.setText("配置文件包含所有HTTP工具、第三方工具和网站导航的设置信息。\n" +
-                              "导入: 选择JSON格式的配置文件进行导入，将覆盖当前配置。\n" +
-                              "导出: 将当前所有配置保存为JSON文件，便于备份和分享。");
+        configDescArea.setText(i18n.getText("desc.config.management"));
         configDescArea.setEditable(false);
         configDescArea.setBackground(getBackground());
         configDescArea.setFont(new Font("微软雅黑", Font.PLAIN, 11));
@@ -320,6 +368,97 @@ public class SettingPanel extends JPanel {
     }
     
     /**
+     * 创建语言设置面板
+     * @return 语言设置面板
+     */
+    private JPanel createLanguagePanel() {
+        JPanel languagePanel = new JPanel(new GridBagLayout());
+        languagePanel.setBorder(BorderFactory.createTitledBorder(
+            BorderFactory.createEtchedBorder(),
+            I18nManager.getInstance().getText("settings.language.title"),
+            TitledBorder.LEFT,
+            TitledBorder.TOP,
+            new Font("微软雅黑", Font.BOLD, 12)
+        ));
+        
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(10, 10, 10, 10);
+        gbc.anchor = GridBagConstraints.WEST;
+        
+        // 语言选择标签
+        gbc.gridx = 0; gbc.gridy = 0;
+        JLabel languageLabel = new JLabel(I18nManager.getInstance().getText("settings.language.label"));
+        languageLabel.setFont(new Font("微软雅黑", Font.PLAIN, 12));
+        languagePanel.add(languageLabel, gbc);
+        
+        // 语言选择下拉框
+        gbc.gridx = 1; gbc.gridy = 0;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.weightx = 1.0;
+        languageComboBox = new JComboBox<>();
+        languageComboBox.setFont(new Font("微软雅黑", Font.PLAIN, 11));
+        
+        // 添加支持的语言
+        I18nManager i18n = I18nManager.getInstance();
+        for (Locale locale : i18n.getSupportedLocales()) {
+            String displayName = getLanguageDisplayName(locale);
+            languageComboBox.addItem(new LocaleItem(locale, displayName));
+        }
+        
+        languagePanel.add(languageComboBox, gbc);
+        
+        // 应用按钮
+        gbc.gridx = 2; gbc.gridy = 0;
+        gbc.fill = GridBagConstraints.NONE;
+        gbc.weightx = 0;
+        applyLanguageButton = createStyledButton(
+            I18nManager.getInstance().getText("settings.language.apply"), 
+            I18nManager.getInstance().getText("settings.language.apply"), 
+            new Color(46, 125, 50)
+        );
+        applyLanguageButton.setPreferredSize(new Dimension(120, 25));
+        languagePanel.add(applyLanguageButton, gbc);
+        
+        // 语言状态标签
+        gbc.gridx = 0; gbc.gridy = 1;
+        gbc.gridwidth = 3;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        languageStatusLabel = new JLabel(I18nManager.getInstance().getText("settings.language.restart.required"));
+        languageStatusLabel.setFont(new Font("微软雅黑", Font.PLAIN, 11));
+        languageStatusLabel.setForeground(new Color(100, 100, 100));
+        languagePanel.add(languageStatusLabel, gbc);
+        
+        // 语言说明
+        gbc.gridy = 2;
+        JTextArea languageDescArea = new JTextArea(2, 50);
+        languageDescArea.setText(I18nManager.getInstance().getText("desc.language.setting"));
+        languageDescArea.setEditable(false);
+        languageDescArea.setBackground(getBackground());
+        languageDescArea.setFont(new Font("微软雅黑", Font.PLAIN, 11));
+        languageDescArea.setForeground(new Color(100, 100, 100));
+        languageDescArea.setLineWrap(true);
+        languageDescArea.setWrapStyleWord(true);
+        languagePanel.add(languageDescArea, gbc);
+        
+        return languagePanel;
+    }
+    
+    /**
+     * 获取语言显示名称
+     * @param locale 语言环境
+     * @return 显示名称
+     */
+    private String getLanguageDisplayName(Locale locale) {
+        if (locale.equals(I18nManager.CHINESE)) {
+            return "中文 (简体)";
+        } else if (locale.equals(I18nManager.ENGLISH)) {
+            return "English (US)";
+        } else {
+            return locale.getDisplayName();
+        }
+    }
+    
+    /**
      * 创建插件信息面板
      * @return 插件信息面板
      */
@@ -461,6 +600,13 @@ public class SettingPanel extends JPanel {
                     case "重置":
                         resetCommandPrefix();
                         break;
+                }
+                
+                // 处理国际化按钮文本
+                String i18nText = I18nManager.getInstance().getText("settings.language.apply");
+                if (buttonText.equals(i18nText)) {
+                    applyLanguageSettings();
+                    return;
                 }
             }
         };
@@ -762,6 +908,50 @@ public class SettingPanel extends JPanel {
     }
     
     /**
+     * 应用语言设置
+     */
+    private void applyLanguageSettings() {
+        LocaleItem selectedItem = (LocaleItem) languageComboBox.getSelectedItem();
+        if (selectedItem == null) {
+            return;
+        }
+        
+        Locale selectedLocale = selectedItem.getLocale();
+        Locale currentLocale = I18nManager.getInstance().getCurrentLocale();
+        
+        if (selectedLocale.equals(currentLocale)) {
+            updateLanguageStatus("语言设置未改变", Color.BLUE);
+            return;
+        }
+        
+        try {
+            // 应用新的语言设置
+            I18nManager.getInstance().setLocale(selectedLocale);
+            
+            updateLanguageStatus("语言设置已应用", Color.GREEN);
+            logInfo("语言设置已更改为: " + selectedLocale.toString());
+            
+            JOptionPane.showMessageDialog(
+                this,
+                I18nManager.getInstance().getText("success.settings.applied"),
+                I18nManager.getInstance().getText("dialog.title.success"),
+                JOptionPane.INFORMATION_MESSAGE
+            );
+            
+        } catch (Exception ex) {
+            updateLanguageStatus("语言设置失败: " + ex.getMessage(), Color.RED);
+            logError("应用语言设置失败: " + ex.getMessage());
+            
+            JOptionPane.showMessageDialog(
+                this,
+                "语言设置失败！\n错误: " + ex.getMessage(),
+                "设置失败",
+                JOptionPane.ERROR_MESSAGE
+            );
+        }
+    }
+    
+    /**
      * 加载当前设置
      */
     private void loadCurrentSettings() {
@@ -791,6 +981,17 @@ public class SettingPanel extends JPanel {
             commandPrefixField.setText(defaultPrefixString);
             updatePrefixStatus("使用系统默认: " + defaultPrefixString, Color.BLUE);
         }
+        
+        // 加载语言设置
+        Locale currentLocale = I18nManager.getInstance().getCurrentLocale();
+        for (int i = 0; i < languageComboBox.getItemCount(); i++) {
+            LocaleItem item = languageComboBox.getItemAt(i);
+            if (item.getLocale().equals(currentLocale)) {
+                languageComboBox.setSelectedIndex(i);
+                break;
+            }
+        }
+        updateLanguageStatus("当前语言: " + getLanguageDisplayName(currentLocale), Color.GREEN);
         
         // 更新配置状态
         updateConfigStatus("配置状态: 已加载", Color.GREEN);
@@ -880,6 +1081,16 @@ public class SettingPanel extends JPanel {
     }
     
     /**
+     * 更新语言状态显示
+     * @param message 状态消息
+     * @param color 状态颜色
+     */
+    private void updateLanguageStatus(String message, Color color) {
+        languageStatusLabel.setText("语言状态: " + message);
+        languageStatusLabel.setForeground(color);
+    }
+    
+    /**
      * 记录信息日志
      * @param message 日志消息
      */
@@ -941,5 +1152,90 @@ public class SettingPanel extends JPanel {
      */
     public void refreshPanel() {
         loadCurrentSettings();
+    }
+    
+    /**
+     * 语言变更监听器实现
+     * @param newLocale 新的语言环境
+     */
+    @Override
+    public void onLanguageChanged(Locale newLocale) {
+        SwingUtilities.invokeLater(() -> {
+            updateUITexts();
+            revalidate();
+            repaint();
+            updateLanguageStatus(I18nManager.getInstance().getText("success.settings.applied"), Color.GREEN);
+        });
+    }
+    
+    /**
+     * 更新UI文本
+     */
+    private void updateUITexts() {
+        I18nManager i18n = I18nManager.getInstance();
+        
+        // 更新按钮文本
+        if (importConfigButton != null) {
+            importConfigButton.setText(i18n.getText("settings.config.import"));
+        }
+        if (exportConfigButton != null) {
+            exportConfigButton.setText(i18n.getText("settings.config.export"));
+        }
+        if (resetConfigButton != null) {
+            resetConfigButton.setText(i18n.getText("settings.config.reset"));
+        }
+        if (applyDirectoryButton != null) {
+            applyDirectoryButton.setText(i18n.getText("button.apply"));
+        }
+        if (browseDirectoryButton != null) {
+            browseDirectoryButton.setText(i18n.getText("button.browse"));
+        }
+        if (resetPrefixButton != null) {
+            resetPrefixButton.setText(i18n.getText("button.reset"));
+        }
+        if (applyPrefixButton != null) {
+            applyPrefixButton.setText(i18n.getText("button.apply"));
+        }
+        if (applyLanguageButton != null) {
+            applyLanguageButton.setText(i18n.getText("settings.language.apply"));
+        }
+        
+        // 更新状态标签
+        if (configStatusLabel != null) {
+            configStatusLabel.setText(i18n.getText("settings.config.status") + ": " + i18n.getText("settings.config.status.loaded"));
+        }
+        
+        // 更新语言下拉框选项
+        updateLanguageComboBox();
+    }
+    
+    /**
+     * 更新语言下拉框选项
+     */
+    private void updateLanguageComboBox() {
+        if (languageComboBox != null) {
+            Locale currentSelected = null;
+            if (languageComboBox.getSelectedItem() != null) {
+                currentSelected = ((LocaleItem) languageComboBox.getSelectedItem()).getLocale();
+            }
+            
+            languageComboBox.removeAllItems();
+            I18nManager i18n = I18nManager.getInstance();
+            for (Locale locale : i18n.getSupportedLocales()) {
+                String displayName = getLanguageDisplayName(locale);
+                languageComboBox.addItem(new LocaleItem(locale, displayName));
+            }
+            
+            // 恢复选择
+            if (currentSelected != null) {
+                for (int i = 0; i < languageComboBox.getItemCount(); i++) {
+                    LocaleItem item = languageComboBox.getItemAt(i);
+                    if (item.getLocale().equals(currentSelected)) {
+                        languageComboBox.setSelectedIndex(i);
+                        break;
+                    }
+                }
+            }
+        }
     }
 } 
