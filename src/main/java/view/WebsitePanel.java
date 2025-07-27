@@ -84,14 +84,11 @@ public class WebsitePanel extends JPanel implements I18nManager.LanguageChangeLi
         // 搜索列筛选
         JLabel searchColumnLabel = new JLabel(i18n.getText("label.search.scope"));
         searchColumnLabel.setFont(new Font("微软雅黑", Font.PLAIN, 12));
-        searchColumnFilter = new JComboBox<>(new String[]{
-            i18n.getText("filter.all"), 
-            i18n.getText("websites.name"), 
-            i18n.getText("websites.url"), 
-            i18n.getText("label.category")
-        });
+        searchColumnFilter = new JComboBox<>();
         searchColumnFilter.setFont(new Font("微软雅黑", Font.PLAIN, 11));
         searchColumnFilter.setToolTipText(i18n.getText("tooltip.search.column"));
+        // 初始化搜索范围选项
+        initializeSearchColumnFilter();
         
         // 分类过滤
         JLabel categoryLabel = new JLabel(i18n.getText("label.category"));
@@ -516,19 +513,21 @@ public class WebsitePanel extends JPanel implements I18nManager.LanguageChangeLi
                 matchesSearch = true;
             } else {
                 String websiteCategory = ToolController.getInstance().getWebSiteCategory(website.getDesc());
-                switch (selectedSearchColumn) {
-                    case "全部":
+                // 使用索引而不是字符串比较，避免国际化问题
+                int searchColumnIndex = searchColumnFilter.getSelectedIndex();
+                switch (searchColumnIndex) {
+                    case 0: // 全部
                         matchesSearch = website.getDesc().toLowerCase().contains(searchText) ||
                                        website.getUrl().toLowerCase().contains(searchText) ||
                                        websiteCategory.toLowerCase().contains(searchText);
                         break;
-                    case "网站名称":
+                    case 1: // 网站名称
                         matchesSearch = website.getDesc().toLowerCase().contains(searchText);
                         break;
-                    case "网站地址":
+                    case 2: // 网站地址
                         matchesSearch = website.getUrl().toLowerCase().contains(searchText);
                         break;
-                    case "分类":
+                    case 3: // 分类
                         matchesSearch = websiteCategory.toLowerCase().contains(searchText);
                         break;
                     default:
@@ -538,7 +537,8 @@ public class WebsitePanel extends JPanel implements I18nManager.LanguageChangeLi
             }
             
             // 检查分类过滤条件
-            if ("全部".equals(selectedCategory)) {
+            I18nManager i18n = I18nManager.getInstance();
+            if (selectedCategory.equals(i18n.getText("filter.all"))) {
                 matchesCategory = true;
             } else {
                 String websiteCategory = ToolController.getInstance().getWebSiteCategory(website.getDesc());
@@ -559,9 +559,12 @@ public class WebsitePanel extends JPanel implements I18nManager.LanguageChangeLi
                                         filteredSites.size(), 
                                         allWebSites.size());
         if (!searchText.isEmpty()) {
-            statusMsg += " | 搜索: " + searchText + " (范围: " + selectedSearchColumn + ")";
+            String searchScope = searchColumnFilter.getSelectedItem() != null ? 
+                (String) searchColumnFilter.getSelectedItem() : selectedSearchColumn;
+            statusMsg += " | 搜索: " + searchText + " (范围: " + searchScope + ")";
         }
-        if (!"全部".equals(selectedCategory)) {
+        I18nManager i18nForStatus = I18nManager.getInstance();
+        if (!selectedCategory.equals(i18nForStatus.getText("filter.all"))) {
             statusMsg += " | 分类: " + selectedCategory;
         }
         updateStatus(statusMsg);
@@ -651,6 +654,24 @@ public class WebsitePanel extends JPanel implements I18nManager.LanguageChangeLi
         
         // 重新加载分类选项（可能包含国际化的默认分类）
         loadCategoryOptions();
+    }
+    
+    /**
+     * 初始化搜索范围下拉框选项
+     */
+    private void initializeSearchColumnFilter() {
+        if (searchColumnFilter != null) {
+            I18nManager i18n = I18nManager.getInstance();
+            
+            // 添加国际化项目
+            searchColumnFilter.addItem(i18n.getText("filter.all"));
+            searchColumnFilter.addItem(i18n.getText("websites.name"));
+            searchColumnFilter.addItem(i18n.getText("websites.url"));
+            searchColumnFilter.addItem(i18n.getText("label.category"));
+            
+            // 默认选中第一项
+            searchColumnFilter.setSelectedIndex(0);
+        }
     }
     
     /**

@@ -84,14 +84,11 @@ public class ThirdPartyPanel extends JPanel implements I18nManager.LanguageChang
         // 搜索列筛选
         JLabel searchColumnLabel = new JLabel(i18n.getText("label.search.scope"));
         searchColumnLabel.setFont(new Font("微软雅黑", Font.PLAIN, 12));
-        searchColumnFilter = new JComboBox<>(new String[]{
-            i18n.getText("filter.all"), 
-            i18n.getText("thirdparty.tool.name"), 
-            i18n.getText("thirdparty.start.command"), 
-            i18n.getText("label.category")
-        });
+        searchColumnFilter = new JComboBox<>();
         searchColumnFilter.setFont(new Font("微软雅黑", Font.PLAIN, 11));
         searchColumnFilter.setToolTipText(i18n.getText("tooltip.search.column"));
+        // 初始化搜索范围选项
+        initializeSearchColumnFilter();
         
         // 分类过滤
         JLabel categoryLabel = new JLabel(i18n.getText("label.category"));
@@ -478,19 +475,21 @@ public class ThirdPartyPanel extends JPanel implements I18nManager.LanguageChang
                 matchesSearch = true;
             } else {
                 String toolCategory = ToolController.getInstance().getThirdPartyToolCategory(tool.getToolName());
-                switch (selectedSearchColumn) {
-                    case "全部":
+                // 使用索引而不是字符串比较，避免国际化问题
+                int searchColumnIndex = searchColumnFilter.getSelectedIndex();
+                switch (searchColumnIndex) {
+                    case 0: // 全部
                         matchesSearch = tool.getToolName().toLowerCase().contains(searchText) ||
                                        tool.getStartCommand().toLowerCase().contains(searchText) ||
                                        toolCategory.toLowerCase().contains(searchText);
                         break;
-                    case "工具名称":
+                    case 1: // 工具名称
                         matchesSearch = tool.getToolName().toLowerCase().contains(searchText);
                         break;
-                    case "启动命令":
+                    case 2: // 启动命令
                         matchesSearch = tool.getStartCommand().toLowerCase().contains(searchText);
                         break;
-                    case "分类":
+                    case 3: // 分类
                         matchesSearch = toolCategory.toLowerCase().contains(searchText);
                         break;
                     default:
@@ -500,7 +499,8 @@ public class ThirdPartyPanel extends JPanel implements I18nManager.LanguageChang
             }
             
             // 检查分类过滤条件
-            if ("全部".equals(selectedCategory)) {
+            I18nManager i18n = I18nManager.getInstance();
+            if (selectedCategory.equals(i18n.getText("filter.all"))) {
                 matchesCategory = true;
             } else {
                 String toolCategory = ToolController.getInstance().getThirdPartyToolCategory(tool.getToolName());
@@ -521,9 +521,12 @@ public class ThirdPartyPanel extends JPanel implements I18nManager.LanguageChang
                                         filteredTools.size(), 
                                         allTools.size());
         if (!searchText.isEmpty()) {
-            statusMsg += " | 搜索: " + searchText + " (范围: " + selectedSearchColumn + ")";
+            String searchScope = searchColumnFilter.getSelectedItem() != null ? 
+                (String) searchColumnFilter.getSelectedItem() : selectedSearchColumn;
+            statusMsg += " | 搜索: " + searchText + " (范围: " + searchScope + ")";
         }
-        if (!"全部".equals(selectedCategory)) {
+        I18nManager i18nForStatus = I18nManager.getInstance();
+        if (!selectedCategory.equals(i18nForStatus.getText("filter.all"))) {
             statusMsg += " | 分类: " + selectedCategory;
         }
         updateStatus(statusMsg);
@@ -677,6 +680,24 @@ public class ThirdPartyPanel extends JPanel implements I18nManager.LanguageChang
         
         // 重新加载分类选项（可能包含国际化的默认分类）
         loadCategoryOptions();
+    }
+    
+    /**
+     * 初始化搜索范围下拉框选项
+     */
+    private void initializeSearchColumnFilter() {
+        if (searchColumnFilter != null) {
+            I18nManager i18n = I18nManager.getInstance();
+            
+            // 添加国际化项目
+            searchColumnFilter.addItem(i18n.getText("filter.all"));
+            searchColumnFilter.addItem(i18n.getText("thirdparty.tool.name"));
+            searchColumnFilter.addItem(i18n.getText("thirdparty.start.command"));
+            searchColumnFilter.addItem(i18n.getText("label.category"));
+            
+            // 默认选中第一项
+            searchColumnFilter.setSelectedIndex(0);
+        }
     }
     
     /**

@@ -1,0 +1,143 @@
+---
+alwaysApply: true
+description: "Swing控件国际化规范 - 所有硬编码文字必须通过I18nManager进行国际化"
+---
+
+# Swing控件国际化规范
+
+## 强制要求
+
+在编写Swing组件代码时，**所有硬编码的中文或英文文字都必须通过[I18nManager.java](mdc:src/main/java/util/I18nManager.java)进行国际化处理**。
+
+## 国际化资源文件
+
+国际化文本资源存储在[/resources](mdc:src/main/resources)目录下：
+- [messages_zh_CN.properties](mdc:src/main/resources/messages_zh_CN.properties) - 中文资源
+- [messages_en_US.properties](mdc:src/main/resources/messages_en_US.properties) - 英文资源
+
+## 使用规范
+
+### 1. 获取I18nManager实例
+```java
+I18nManager i18n = I18nManager.getInstance();
+```
+
+### 2. 设置组件文本
+```java
+// ❌ 错误：硬编码文字
+JButton button = new JButton("确认");
+JLabel label = new JLabel("状态：就绪");
+
+// ✅ 正确：使用国际化
+JButton button = new JButton(i18n.getText("button.confirm"));
+JLabel label = new JLabel(i18n.getText("status.ready"));
+```
+
+### 3. 带参数的国际化文本
+```java
+// 使用带参数的国际化
+String message = i18n.getText("tools.execution.result", toolName, status);
+```
+
+### 4. 实现语言变更监听器
+所有包含文本的Panel都必须实现`I18nManager.LanguageChangeListener`接口：
+
+```java
+public class MyPanel extends JPanel implements I18nManager.LanguageChangeListener {
+    
+    // 在构造函数中注册监听器
+    public MyPanel() {
+        initializeComponents();
+        I18nManager.getInstance().addLanguageChangeListener(this);
+    }
+    
+    @Override
+    public void onLanguageChanged(I18nManager.SupportedLanguage newLanguage) {
+        SwingUtilities.invokeLater(() -> {
+            updateUITexts();
+            revalidate();
+            repaint();
+        });
+    }
+    
+    /**
+     * 更新UI文本 - 必须实现此方法
+     */
+    private void updateUITexts() {
+        I18nManager i18n = I18nManager.getInstance();
+        
+        // 更新所有按钮文本
+        if (confirmButton != null) {
+            confirmButton.setText(i18n.getText("button.confirm"));
+        }
+        
+        // 更新所有标签文本
+        if (statusLabel != null) {
+            statusLabel.setText(i18n.getText("status.ready"));
+        }
+        
+        // 更新工具提示
+        if (helpButton != null) {
+            helpButton.setToolTipText(i18n.getText("tooltip.help"));
+        }
+    }
+}
+```
+
+## 常用国际化键值
+
+### 通用按钮
+- `button.confirm` - 确认/Confirm
+- `button.cancel` - 取消/Cancel  
+- `button.ok` - 确定/OK
+- `button.apply` - 应用/Apply
+- `button.reset` - 重置/Reset
+- `button.browse` - 浏览/Browse
+- `button.save` - 保存/Save
+- `button.delete` - 删除/Delete
+- `button.edit` - 编辑/Edit
+- `button.add` - 添加/Add
+
+### 状态信息
+- `status.ready` - 就绪状态
+- `status.loading` - 加载中
+- `status.success` - 成功
+- `status.failed` - 失败
+
+## 组件类型覆盖
+
+必须国际化的组件包括但不限于：
+- **JButton** - 按钮文本和工具提示
+- **JLabel** - 标签文本  
+- **JTextField** - 占位符文本
+- **JCheckBox/JRadioButton** - 选项文本
+- **JMenu/JMenuItem** - 菜单项文本
+- **TitledBorder** - 边框标题
+- **JDialog/JFrame** - 标题
+- **JTable** - 列标题
+- **JComboBox** - 选项文本
+- **JTextArea** - 占位符和默认文本
+
+## 示例参考
+
+参考现有的国际化实现：
+- [MainPanel.java](mdc:src/main/java/view/MainPanel.java)
+- [SettingPanel.java](mdc:src/main/java/view/SettingPanel.java)  
+- [ToolPanel.java](mdc:src/main/java/view/ToolPanel.java)
+- [WebsitePanel.java](mdc:src/main/java/view/WebsitePanel.java)
+
+## 新增国际化键值
+
+如果需要新的国际化文本：
+1. 在[messages_zh_CN.properties](mdc:src/main/resources/messages_zh_CN.properties)中添加中文
+2. 在[messages_en_US.properties](mdc:src/main/resources/messages_en_US.properties)中添加对应英文
+3. 使用`i18n.getText("new.key")`获取文本
+
+## 注意事项
+
+1. **禁止硬编码任何可见文字**
+2. **必须实现语言变更监听器**  
+3. **在构造函数中注册监听器**
+4. **在updateUITexts()方法中更新所有文本**
+5. **使用SwingUtilities.invokeLater()确保线程安全**
+6. **添加null检查防止NPE**
