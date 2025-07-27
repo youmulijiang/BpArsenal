@@ -1,6 +1,7 @@
 package view.component;
 
 import model.WebSite;
+import util.I18nManager;
 import javax.swing.*;
 import javax.swing.border.TitledBorder;
 import java.awt.*;
@@ -12,7 +13,7 @@ import java.net.URL;
  * 网站编辑对话框
  * 用于添加和编辑网站
  */
-public class WebSiteEditDialog extends JDialog {
+public class WebSiteEditDialog extends JDialog implements I18nManager.LanguageChangeListener {
     
     private JTextField urlField;
     private JTextField descField;
@@ -27,9 +28,12 @@ public class WebSiteEditDialog extends JDialog {
     private boolean isEditing = false;
     
     public WebSiteEditDialog(Window parent, WebSite website) {
-        super(parent, website == null ? "添加网站" : "编辑网站", ModalityType.APPLICATION_MODAL);
+        super(parent);
         this.website = website;
         this.isEditing = (website != null);
+        
+        // 注册语言变更监听器
+        I18nManager.getInstance().addLanguageChangeListener(this);
         
         initializeUI();
         setupEventHandlers();
@@ -44,6 +48,11 @@ public class WebSiteEditDialog extends JDialog {
      * 初始化UI组件
      */
     private void initializeUI() {
+        I18nManager i18n = I18nManager.getInstance();
+        
+        // 设置对话框标题和属性
+        setTitle(website == null ? i18n.getText("website.edit.dialog.title.add") : i18n.getText("website.edit.dialog.title.edit"));
+        setModalityType(ModalityType.APPLICATION_MODAL);
         setLayout(new BorderLayout(10, 10));
         
         // 创建主面板
@@ -86,10 +95,11 @@ public class WebSiteEditDialog extends JDialog {
      * @return 基本信息面板
      */
     private JPanel createBasicInfoPanel() {
+        I18nManager basicI18n = I18nManager.getInstance();
         JPanel basicPanel = new JPanel(new GridBagLayout());
         basicPanel.setBorder(BorderFactory.createTitledBorder(
             BorderFactory.createEtchedBorder(),
-            "网站信息",
+            basicI18n.getText("website.edit.dialog.border.website.info"),
             TitledBorder.LEFT,
             TitledBorder.TOP,
             new Font("微软雅黑", Font.BOLD, 12)
@@ -101,7 +111,7 @@ public class WebSiteEditDialog extends JDialog {
         
         // 网站描述
         gbc.gridx = 0; gbc.gridy = 0;
-        JLabel descLabel = new JLabel("网站名称:");
+        JLabel descLabel = new JLabel(basicI18n.getText("website.edit.dialog.label.name"));
         descLabel.setFont(new Font("微软雅黑", Font.PLAIN, 12));
         basicPanel.add(descLabel, gbc);
         
@@ -110,14 +120,14 @@ public class WebSiteEditDialog extends JDialog {
         gbc.weightx = 1.0;
         descField = new JTextField(25);
         descField.setFont(new Font("微软雅黑", Font.PLAIN, 11));
-        descField.setToolTipText("输入网站名称，如: Google搜索, Shodan");
+        descField.setToolTipText(basicI18n.getText("website.edit.dialog.tooltip.name"));
         basicPanel.add(descField, gbc);
         
         // 网站URL
         gbc.gridx = 0; gbc.gridy = 1;
         gbc.fill = GridBagConstraints.NONE;
         gbc.weightx = 0;
-        JLabel urlLabel = new JLabel("网站地址:");
+        JLabel urlLabel = new JLabel(basicI18n.getText("website.edit.dialog.label.url"));
         urlLabel.setFont(new Font("微软雅黑", Font.PLAIN, 12));
         basicPanel.add(urlLabel, gbc);
         
@@ -126,34 +136,39 @@ public class WebSiteEditDialog extends JDialog {
         gbc.weightx = 1.0;
         urlField = new JTextField(25);
         urlField.setFont(new Font("Consolas", Font.PLAIN, 11));
-        urlField.setToolTipText("输入完整的网站地址，如: https://www.google.com");
+        urlField.setToolTipText(basicI18n.getText("website.edit.dialog.tooltip.url"));
         basicPanel.add(urlField, gbc);
         
         // 测试按钮
         gbc.gridx = 2; gbc.gridy = 1;
         gbc.fill = GridBagConstraints.NONE;
         gbc.weightx = 0;
-        testButton = new JButton("测试");
+        testButton = new JButton(basicI18n.getText("website.edit.dialog.button.test"));
         testButton.setFont(new Font("微软雅黑", Font.PLAIN, 11));
         testButton.setPreferredSize(new Dimension(60, 25));
         testButton.setBackground(new Color(102, 187, 106));
         testButton.setForeground(Color.WHITE);
         testButton.setFocusPainted(false);
-        testButton.setToolTipText("测试网站是否可访问");
+        testButton.setToolTipText(basicI18n.getText("website.edit.dialog.tooltip.test"));
         basicPanel.add(testButton, gbc);
         
         // 分类
         gbc.gridx = 0; gbc.gridy = 2;
         gbc.fill = GridBagConstraints.NONE;
         gbc.weightx = 0;
-        JLabel categoryLabel = new JLabel("网站分类:");
+        JLabel categoryLabel = new JLabel(basicI18n.getText("website.edit.dialog.label.category"));
         categoryLabel.setFont(new Font("微软雅黑", Font.PLAIN, 12));
         basicPanel.add(categoryLabel, gbc);
         
         gbc.gridx = 1; gbc.gridy = 2;
         gbc.fill = GridBagConstraints.HORIZONTAL;
         categoryCombo = new JComboBox<>(new String[]{
-            "OSINT", "信息收集", "漏洞库", "在线工具", "学习资源", "其他"
+            basicI18n.getText("website.category.osint"),
+            basicI18n.getText("website.category.recon"),
+            basicI18n.getText("website.category.vulnerability.db"),
+            basicI18n.getText("website.category.online.tools"),
+            basicI18n.getText("website.category.learning"),
+            basicI18n.getText("website.category.other")
         });
         categoryCombo.setFont(new Font("微软雅黑", Font.PLAIN, 11));
         categoryCombo.setEditable(true);
@@ -167,10 +182,11 @@ public class WebSiteEditDialog extends JDialog {
      * @return 设置面板
      */
     private JPanel createSettingsPanel() {
+        I18nManager settingsI18n = I18nManager.getInstance();
         JPanel settingsPanel = new JPanel(new GridBagLayout());
         settingsPanel.setBorder(BorderFactory.createTitledBorder(
             BorderFactory.createEtchedBorder(),
-            "设置选项",
+            settingsI18n.getText("website.edit.dialog.border.settings"),
             TitledBorder.LEFT,
             TitledBorder.TOP,
             new Font("微软雅黑", Font.BOLD, 12)
@@ -182,9 +198,9 @@ public class WebSiteEditDialog extends JDialog {
         
         // 收藏设置
         gbc.gridx = 0; gbc.gridy = 0;
-        favorCheckBox = new JCheckBox("收藏此网站");
+        favorCheckBox = new JCheckBox(settingsI18n.getText("website.edit.dialog.checkbox.favor"));
         favorCheckBox.setFont(new Font("微软雅黑", Font.PLAIN, 12));
-        favorCheckBox.setToolTipText("将此网站标记为收藏");
+        favorCheckBox.setToolTipText(settingsI18n.getText("website.edit.dialog.tooltip.favor"));
         settingsPanel.add(favorCheckBox, gbc);
         
         return settingsPanel;
@@ -198,14 +214,15 @@ public class WebSiteEditDialog extends JDialog {
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
         buttonPanel.setBorder(BorderFactory.createEtchedBorder());
         
-        confirmButton = new JButton(isEditing ? "更新" : "添加");
+        I18nManager buttonI18n = I18nManager.getInstance();
+        confirmButton = new JButton(isEditing ? buttonI18n.getText("website.edit.dialog.button.update") : buttonI18n.getText("website.edit.dialog.button.add"));
         confirmButton.setFont(new Font("微软雅黑", Font.PLAIN, 12));
         confirmButton.setPreferredSize(new Dimension(80, 30));
         confirmButton.setBackground(new Color(46, 125, 50));
         confirmButton.setForeground(Color.WHITE);
         confirmButton.setFocusPainted(false);
         
-        cancelButton = new JButton("取消");
+        cancelButton = new JButton(buttonI18n.getText("website.edit.dialog.button.cancel"));
         cancelButton.setFont(new Font("微软雅黑", Font.PLAIN, 12));
         cancelButton.setPreferredSize(new Dimension(80, 30));
         cancelButton.setBackground(new Color(158, 158, 158));
@@ -288,24 +305,25 @@ public class WebSiteEditDialog extends JDialog {
      * @return 是否有效
      */
     private boolean validateInput() {
+        I18nManager validateI18n = I18nManager.getInstance();
         String desc = descField.getText().trim();
         String url = urlField.getText().trim();
         
         if (desc.isEmpty()) {
-            showError("网站名称不能为空");
+            showError(validateI18n.getText("website.edit.dialog.error.name.empty"));
             descField.requestFocus();
             return false;
         }
         
         if (url.isEmpty()) {
-            showError("网站地址不能为空");
+            showError(validateI18n.getText("website.edit.dialog.error.url.empty"));
             urlField.requestFocus();
             return false;
         }
         
         // 验证URL格式
         if (!isValidUrl(url)) {
-            showError("网站地址格式不正确\n请输入完整的URL，如: https://www.example.com");
+            showError(validateI18n.getText("website.edit.dialog.error.url.invalid"));
             urlField.requestFocus();
             return false;
         }
@@ -331,15 +349,16 @@ public class WebSiteEditDialog extends JDialog {
      * 测试网站
      */
     private void testWebsite() {
+        I18nManager testI18n = I18nManager.getInstance();
         String url = urlField.getText().trim();
         
         if (url.isEmpty()) {
-            showError("请先输入网站地址");
+            showError(testI18n.getText("website.edit.dialog.error.url.test.empty"));
             return;
         }
         
         if (!isValidUrl(url)) {
-            showError("网站地址格式不正确");
+            showError(testI18n.getText("website.edit.dialog.error.url.test.invalid"));
             return;
         }
         
@@ -348,12 +367,12 @@ public class WebSiteEditDialog extends JDialog {
             Desktop desktop = Desktop.getDesktop();
             if (desktop.isSupported(Desktop.Action.BROWSE)) {
                 desktop.browse(new URL(url).toURI());
-                showInfo("正在打开网站: " + url);
+                showInfo(testI18n.getText("website.edit.dialog.info.opening", url));
             } else {
-                showError("系统不支持打开浏览器");
+                showError(testI18n.getText("website.edit.dialog.error.browser.not.supported"));
             }
         } catch (Exception e) {
-            showError("打开网站失败: " + e.getMessage());
+            showError(testI18n.getText("website.edit.dialog.error.open.failed", e.getMessage()));
         }
     }
     
@@ -375,10 +394,11 @@ public class WebSiteEditDialog extends JDialog {
      * @param message 错误消息
      */
     private void showError(String message) {
+        I18nManager errorI18n = I18nManager.getInstance();
         JOptionPane.showMessageDialog(
             this,
             message,
-            "输入错误",
+            errorI18n.getText("website.edit.dialog.error.title"),
             JOptionPane.ERROR_MESSAGE
         );
     }
@@ -388,10 +408,11 @@ public class WebSiteEditDialog extends JDialog {
      * @param message 信息消息
      */
     private void showInfo(String message) {
+        I18nManager infoI18n = I18nManager.getInstance();
         JOptionPane.showMessageDialog(
             this,
             message,
-            "提示",
+            infoI18n.getText("website.edit.dialog.info.title"),
             JOptionPane.INFORMATION_MESSAGE
         );
     }
@@ -412,15 +433,51 @@ public class WebSiteEditDialog extends JDialog {
      */
     public String getSelectedCategory() {
         String displayName = (String) categoryCombo.getSelectedItem();
-        
-        // 将显示名称转换为配置文件中的类型
-        switch (displayName) {
-            case "OSINT": return "OSINT";
-            case "信息收集": return "Recon";
-            case "漏洞库": return "漏洞库";
-            case "在线工具": return "tools";
-            case "学习资源": return "learning";
-            default: return displayName.toLowerCase();
+        return getCategoryCode(displayName);
+    }
+    
+    /**
+     * 将国际化的分类转换为内部分类代码
+     * @param localizedCategory 国际化的分类名称
+     * @return 内部分类代码
+     */
+    private String getCategoryCode(String localizedCategory) {
+        I18nManager i18n = I18nManager.getInstance();
+        if (localizedCategory.equals(i18n.getText("website.category.osint"))) {
+            return "OSINT";
+        } else if (localizedCategory.equals(i18n.getText("website.category.recon"))) {
+            return "Recon";
+        } else if (localizedCategory.equals(i18n.getText("website.category.vulnerability.db"))) {
+            return "漏洞库";
+        } else if (localizedCategory.equals(i18n.getText("website.category.online.tools"))) {
+            return "tools";
+        } else if (localizedCategory.equals(i18n.getText("website.category.learning"))) {
+            return "learning";
+        } else {
+            return "other";
+        }
+    }
+    
+    /**
+     * 将内部分类代码转换为国际化的分类名称
+     * @param categoryCode 内部分类代码
+     * @return 国际化的分类名称
+     */
+    private String getLocalizedCategory(String categoryCode) {
+        I18nManager i18n = I18nManager.getInstance();
+        switch (categoryCode) {
+            case "OSINT":
+                return i18n.getText("website.category.osint");
+            case "Recon":
+                return i18n.getText("website.category.recon");
+            case "漏洞库":
+                return i18n.getText("website.category.vulnerability.db");
+            case "tools":
+                return i18n.getText("website.category.online.tools");
+            case "learning":
+                return i18n.getText("website.category.learning");
+            default:
+                return i18n.getText("website.category.other");
         }
     }
     
@@ -438,5 +495,86 @@ public class WebSiteEditDialog extends JDialog {
      */
     public boolean isConfirmed() {
         return confirmed;
+    }
+
+    @Override
+    public void onLanguageChanged(I18nManager.SupportedLanguage newLanguage) {
+        SwingUtilities.invokeLater(() -> {
+            updateUITexts();
+            revalidate();
+            repaint();
+        });
+    }
+    
+    /**
+     * 更新UI文本
+     */
+    private void updateUITexts() {
+        I18nManager i18n = I18nManager.getInstance();
+        
+        // 更新对话框标题
+        setTitle(website == null ? i18n.getText("website.edit.dialog.title.add") : i18n.getText("website.edit.dialog.title.edit"));
+        
+        // 更新按钮文本
+        if (confirmButton != null) {
+            confirmButton.setText(isEditing ? i18n.getText("website.edit.dialog.button.update") : i18n.getText("website.edit.dialog.button.add"));
+        }
+        if (cancelButton != null) {
+            cancelButton.setText(i18n.getText("website.edit.dialog.button.cancel"));
+        }
+        if (testButton != null) {
+            testButton.setText(i18n.getText("website.edit.dialog.button.test"));
+        }
+        
+        // 更新复选框文本
+        if (favorCheckBox != null) {
+            favorCheckBox.setText(i18n.getText("website.edit.dialog.checkbox.favor"));
+        }
+        
+        // 更新工具提示
+        updateTooltips(i18n);
+        
+        // 更新分类下拉框
+        updateCategoryCombo();
+    }
+    
+    /**
+     * 更新工具提示
+     */
+    private void updateTooltips(I18nManager i18n) {
+        if (descField != null) {
+            descField.setToolTipText(i18n.getText("website.edit.dialog.tooltip.name"));
+        }
+        if (urlField != null) {
+            urlField.setToolTipText(i18n.getText("website.edit.dialog.tooltip.url"));
+        }
+        if (testButton != null) {
+            testButton.setToolTipText(i18n.getText("website.edit.dialog.tooltip.test"));
+        }
+        if (favorCheckBox != null) {
+            favorCheckBox.setToolTipText(i18n.getText("website.edit.dialog.tooltip.favor"));
+        }
+    }
+    
+    /**
+     * 更新分类下拉框
+     */
+    private void updateCategoryCombo() {
+        if (categoryCombo != null) {
+            I18nManager i18n = I18nManager.getInstance();
+            Object selectedItem = categoryCombo.getSelectedItem();
+            categoryCombo.removeAllItems();
+            categoryCombo.addItem(i18n.getText("website.category.osint"));
+            categoryCombo.addItem(i18n.getText("website.category.recon"));
+            categoryCombo.addItem(i18n.getText("website.category.vulnerability.db"));
+            categoryCombo.addItem(i18n.getText("website.category.online.tools"));
+            categoryCombo.addItem(i18n.getText("website.category.learning"));
+            categoryCombo.addItem(i18n.getText("website.category.other"));
+            
+            // 尝试恢复选择
+            if (selectedItem != null) {
+                categoryCombo.setSelectedItem(selectedItem);
+            }
+        }
     }
 } 

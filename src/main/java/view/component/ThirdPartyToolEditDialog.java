@@ -1,6 +1,7 @@
 package view.component;
 
 import model.ThirdPartyTool;
+import util.I18nManager;
 import javax.swing.*;
 import javax.swing.border.TitledBorder;
 import java.awt.*;
@@ -11,7 +12,7 @@ import java.awt.event.ActionListener;
  * 第三方工具编辑对话框
  * 用于添加和编辑第三方工具
  */
-public class ThirdPartyToolEditDialog extends JDialog {
+public class ThirdPartyToolEditDialog extends JDialog implements I18nManager.LanguageChangeListener {
     
     private JTextField toolNameField;
     private JTextField startCommandField;
@@ -26,9 +27,12 @@ public class ThirdPartyToolEditDialog extends JDialog {
     private boolean isEditing = false;
     
     public ThirdPartyToolEditDialog(Window parent, ThirdPartyTool tool) {
-        super(parent, tool == null ? "添加第三方工具" : "编辑第三方工具", ModalityType.APPLICATION_MODAL);
+        super(parent);
         this.tool = tool;
         this.isEditing = (tool != null);
+        
+        // 注册语言变更监听器
+        I18nManager.getInstance().addLanguageChangeListener(this);
         
         initializeUI();
         setupEventHandlers();
@@ -43,6 +47,11 @@ public class ThirdPartyToolEditDialog extends JDialog {
      * 初始化UI组件
      */
     private void initializeUI() {
+        I18nManager i18n = I18nManager.getInstance();
+        
+        // 设置对话框标题和属性
+        setTitle(tool == null ? i18n.getText("thirdparty.edit.dialog.title.add") : i18n.getText("thirdparty.edit.dialog.title.edit"));
+        setModalityType(ModalityType.APPLICATION_MODAL);
         setLayout(new BorderLayout(10, 10));
         
         // 创建主面板
@@ -85,10 +94,11 @@ public class ThirdPartyToolEditDialog extends JDialog {
      * @return 基本信息面板
      */
     private JPanel createBasicInfoPanel() {
+        I18nManager basicI18n = I18nManager.getInstance();
         JPanel basicPanel = new JPanel(new GridBagLayout());
         basicPanel.setBorder(BorderFactory.createTitledBorder(
             BorderFactory.createEtchedBorder(),
-            "基本信息",
+            basicI18n.getText("thirdparty.edit.dialog.border.basic.info"),
             TitledBorder.LEFT,
             TitledBorder.TOP,
             new Font("微软雅黑", Font.BOLD, 12)
@@ -100,7 +110,7 @@ public class ThirdPartyToolEditDialog extends JDialog {
         
         // 工具名称
         gbc.gridx = 0; gbc.gridy = 0;
-        JLabel nameLabel = new JLabel("工具名称:");
+        JLabel nameLabel = new JLabel(basicI18n.getText("thirdparty.edit.dialog.label.tool.name"));
         nameLabel.setFont(new Font("微软雅黑", Font.PLAIN, 12));
         basicPanel.add(nameLabel, gbc);
         
@@ -109,14 +119,14 @@ public class ThirdPartyToolEditDialog extends JDialog {
         gbc.weightx = 1.0;
         toolNameField = new JTextField(25);
         toolNameField.setFont(new Font("微软雅黑", Font.PLAIN, 11));
-        toolNameField.setToolTipText("输入工具名称，如: Burp Suite, VS Code");
+        toolNameField.setToolTipText(basicI18n.getText("thirdparty.edit.dialog.tooltip.name"));
         basicPanel.add(toolNameField, gbc);
         
         // 启动命令
         gbc.gridx = 0; gbc.gridy = 1;
         gbc.fill = GridBagConstraints.NONE;
         gbc.weightx = 0;
-        JLabel commandLabel = new JLabel("启动命令:");
+        JLabel commandLabel = new JLabel(basicI18n.getText("thirdparty.edit.dialog.label.start.command"));
         commandLabel.setFont(new Font("微软雅黑", Font.PLAIN, 12));
         basicPanel.add(commandLabel, gbc);
         
@@ -125,21 +135,25 @@ public class ThirdPartyToolEditDialog extends JDialog {
         gbc.weightx = 1.0;
         startCommandField = new JTextField(25);
         startCommandField.setFont(new Font("Consolas", Font.PLAIN, 11));
-        startCommandField.setToolTipText("输入启动命令，如: java -jar burpsuite.jar");
+        startCommandField.setToolTipText(basicI18n.getText("thirdparty.edit.dialog.tooltip.command"));
         basicPanel.add(startCommandField, gbc);
         
         // 分类
         gbc.gridx = 0; gbc.gridy = 2;
         gbc.fill = GridBagConstraints.NONE;
         gbc.weightx = 0;
-        JLabel categoryLabel = new JLabel("工具分类:");
+        JLabel categoryLabel = new JLabel(basicI18n.getText("thirdparty.edit.dialog.label.category"));
         categoryLabel.setFont(new Font("微软雅黑", Font.PLAIN, 12));
         basicPanel.add(categoryLabel, gbc);
         
         gbc.gridx = 1; gbc.gridy = 2;
         gbc.fill = GridBagConstraints.HORIZONTAL;
         categoryCombo = new JComboBox<>(new String[]{
-            "渗透工具", "编辑器", "网络工具", "分析工具", "其他"
+            basicI18n.getText("thirdparty.category.penetration"),
+            basicI18n.getText("thirdparty.category.editor"),
+            basicI18n.getText("thirdparty.category.network"),
+            basicI18n.getText("thirdparty.category.analysis"),
+            basicI18n.getText("thirdparty.category.other")
         });
         categoryCombo.setFont(new Font("微软雅黑", Font.PLAIN, 11));
         categoryCombo.setEditable(true);
@@ -153,10 +167,11 @@ public class ThirdPartyToolEditDialog extends JDialog {
      * @return 设置面板
      */
     private JPanel createSettingsPanel() {
+        I18nManager settingsI18n = I18nManager.getInstance();
         JPanel settingsPanel = new JPanel(new GridBagLayout());
         settingsPanel.setBorder(BorderFactory.createTitledBorder(
             BorderFactory.createEtchedBorder(),
-            "设置选项",
+            settingsI18n.getText("thirdparty.edit.dialog.border.settings"),
             TitledBorder.LEFT,
             TitledBorder.TOP,
             new Font("微软雅黑", Font.BOLD, 12)
@@ -168,16 +183,16 @@ public class ThirdPartyToolEditDialog extends JDialog {
         
         // 收藏设置
         gbc.gridx = 0; gbc.gridy = 0;
-        favorCheckBox = new JCheckBox("收藏此工具");
+        favorCheckBox = new JCheckBox(settingsI18n.getText("thirdparty.edit.dialog.checkbox.favor"));
         favorCheckBox.setFont(new Font("微软雅黑", Font.PLAIN, 12));
-        favorCheckBox.setToolTipText("将此工具标记为收藏");
+        favorCheckBox.setToolTipText(settingsI18n.getText("thirdparty.edit.dialog.tooltip.favor"));
         settingsPanel.add(favorCheckBox, gbc);
         
         // 自动启动设置
         gbc.gridx = 1; gbc.gridy = 0;
-        autoStartCheckBox = new JCheckBox("启动时自动运行");
+        autoStartCheckBox = new JCheckBox(settingsI18n.getText("thirdparty.edit.dialog.checkbox.auto.start"));
         autoStartCheckBox.setFont(new Font("微软雅黑", Font.PLAIN, 12));
-        autoStartCheckBox.setToolTipText("在Burp Suite启动时自动运行此工具");
+        autoStartCheckBox.setToolTipText(settingsI18n.getText("thirdparty.edit.dialog.tooltip.auto.start"));
         settingsPanel.add(autoStartCheckBox, gbc);
         
         return settingsPanel;
@@ -188,17 +203,18 @@ public class ThirdPartyToolEditDialog extends JDialog {
      * @return 按钮面板
      */
     private JPanel createButtonPanel() {
+        I18nManager buttonI18n = I18nManager.getInstance();
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
         buttonPanel.setBorder(BorderFactory.createEtchedBorder());
         
-        confirmButton = new JButton(isEditing ? "更新" : "添加");
+        confirmButton = new JButton(isEditing ? buttonI18n.getText("thirdparty.edit.dialog.button.update") : buttonI18n.getText("thirdparty.edit.dialog.button.add"));
         confirmButton.setFont(new Font("微软雅黑", Font.PLAIN, 12));
         confirmButton.setPreferredSize(new Dimension(80, 30));
         confirmButton.setBackground(new Color(46, 125, 50));
         confirmButton.setForeground(Color.WHITE);
         confirmButton.setFocusPainted(false);
         
-        cancelButton = new JButton("取消");
+        cancelButton = new JButton(buttonI18n.getText("thirdparty.edit.dialog.button.cancel"));
         cancelButton.setFont(new Font("微软雅黑", Font.PLAIN, 12));
         cancelButton.setPreferredSize(new Dimension(80, 30));
         cancelButton.setBackground(new Color(158, 158, 158));
@@ -276,17 +292,18 @@ public class ThirdPartyToolEditDialog extends JDialog {
      * @return 是否有效
      */
     private boolean validateInput() {
+        I18nManager validateI18n = I18nManager.getInstance();
         String toolName = toolNameField.getText().trim();
         String startCommand = startCommandField.getText().trim();
         
         if (toolName.isEmpty()) {
-            showError("工具名称不能为空");
+            showError(validateI18n.getText("thirdparty.edit.dialog.error.name.empty"));
             toolNameField.requestFocus();
             return false;
         }
         
         if (startCommand.isEmpty()) {
-            showError("启动命令不能为空");
+            showError(validateI18n.getText("thirdparty.edit.dialog.error.command.empty"));
             startCommandField.requestFocus();
             return false;
         }
@@ -313,10 +330,11 @@ public class ThirdPartyToolEditDialog extends JDialog {
      * @param message 错误消息
      */
     private void showError(String message) {
+        I18nManager errorI18n = I18nManager.getInstance();
         JOptionPane.showMessageDialog(
             this,
             message,
-            "输入错误",
+            errorI18n.getText("thirdparty.edit.dialog.error.title"),
             JOptionPane.ERROR_MESSAGE
         );
     }
@@ -337,14 +355,47 @@ public class ThirdPartyToolEditDialog extends JDialog {
      */
     public String getSelectedCategory() {
         String displayName = (String) categoryCombo.getSelectedItem();
-        
-        // 将显示名称转换为配置文件中的类型
-        switch (displayName) {
-            case "渗透工具": return "exploit";
-            case "编辑器": return "编辑器";
-            case "网络工具": return "network";
-            case "分析工具": return "analysis";
-            default: return displayName.toLowerCase();
+        return getCategoryCode(displayName);
+    }
+    
+    /**
+     * 将国际化的分类转换为内部分类代码
+     * @param localizedCategory 国际化的分类名称
+     * @return 内部分类代码
+     */
+    private String getCategoryCode(String localizedCategory) {
+        I18nManager i18n = I18nManager.getInstance();
+        if (localizedCategory.equals(i18n.getText("thirdparty.category.penetration"))) {
+            return "exploit";
+        } else if (localizedCategory.equals(i18n.getText("thirdparty.category.editor"))) {
+            return "编辑器";
+        } else if (localizedCategory.equals(i18n.getText("thirdparty.category.network"))) {
+            return "network";
+        } else if (localizedCategory.equals(i18n.getText("thirdparty.category.analysis"))) {
+            return "analysis";
+        } else {
+            return "other";
+        }
+    }
+    
+    /**
+     * 将内部分类代码转换为国际化的分类名称
+     * @param categoryCode 内部分类代码
+     * @return 国际化的分类名称
+     */
+    private String getLocalizedCategory(String categoryCode) {
+        I18nManager i18n = I18nManager.getInstance();
+        switch (categoryCode) {
+            case "exploit":
+                return i18n.getText("thirdparty.category.penetration");
+            case "编辑器":
+                return i18n.getText("thirdparty.category.editor");
+            case "network":
+                return i18n.getText("thirdparty.category.network");
+            case "analysis":
+                return i18n.getText("thirdparty.category.analysis");
+            default:
+                return i18n.getText("thirdparty.category.other");
         }
     }
     
@@ -362,5 +413,64 @@ public class ThirdPartyToolEditDialog extends JDialog {
      */
     public boolean isConfirmed() {
         return confirmed;
+    }
+
+    @Override
+    public void onLanguageChanged(I18nManager.SupportedLanguage newLanguage) {
+        SwingUtilities.invokeLater(() -> {
+            updateUITexts();
+            revalidate();
+            repaint();
+        });
+    }
+    
+    /**
+     * 更新UI文本
+     */
+    private void updateUITexts() {
+        I18nManager i18n = I18nManager.getInstance();
+        
+        // 更新对话框标题
+        setTitle(tool == null ? i18n.getText("thirdparty.edit.dialog.title.add") : i18n.getText("thirdparty.edit.dialog.title.edit"));
+        
+        // 更新按钮文本
+        if (confirmButton != null) {
+            confirmButton.setText(isEditing ? i18n.getText("thirdparty.edit.dialog.button.update") : i18n.getText("thirdparty.edit.dialog.button.add"));
+        }
+        if (cancelButton != null) {
+            cancelButton.setText(i18n.getText("thirdparty.edit.dialog.button.cancel"));
+        }
+        
+        // 更新复选框文本
+        if (favorCheckBox != null) {
+            favorCheckBox.setText(i18n.getText("thirdparty.edit.dialog.checkbox.favor"));
+        }
+        if (autoStartCheckBox != null) {
+            autoStartCheckBox.setText(i18n.getText("thirdparty.edit.dialog.checkbox.auto.start"));
+        }
+        
+        // 更新分类下拉框
+        updateCategoryCombo();
+    }
+    
+    /**
+     * 更新分类下拉框
+     */
+    private void updateCategoryCombo() {
+        if (categoryCombo != null) {
+            I18nManager i18n = I18nManager.getInstance();
+            Object selectedItem = categoryCombo.getSelectedItem();
+            categoryCombo.removeAllItems();
+            categoryCombo.addItem(i18n.getText("thirdparty.category.penetration"));
+            categoryCombo.addItem(i18n.getText("thirdparty.category.editor"));
+            categoryCombo.addItem(i18n.getText("thirdparty.category.network"));
+            categoryCombo.addItem(i18n.getText("thirdparty.category.analysis"));
+            categoryCombo.addItem(i18n.getText("thirdparty.category.other"));
+            
+            // 尝试恢复选择
+            if (selectedItem != null) {
+                categoryCombo.setSelectedItem(selectedItem);
+            }
+        }
     }
 } 
