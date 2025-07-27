@@ -1493,7 +1493,7 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
      * 语言变更监听器实现
      */
     @Override
-    public void onLanguageChanged(Locale newLocale) {
+    public void onLanguageChanged(I18nManager.SupportedLanguage newLanguage) {
         SwingUtilities.invokeLater(() -> {
             updateUITexts();
             revalidate();

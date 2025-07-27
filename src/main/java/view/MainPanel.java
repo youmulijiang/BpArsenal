@@ -5,7 +5,6 @@ import manager.ApiManager;
 import util.I18nManager;
 import javax.swing.*;
 import java.awt.*;
-import java.util.Locale;
 
 /**
  * 主面板UI组件 (View层)
@@ -33,7 +32,7 @@ public class MainPanel extends JPanel implements I18nManager.LanguageChangeListe
      * 语言变更监听器实现
      */
     @Override
-    public void onLanguageChanged(Locale newLocale) {
+    public void onLanguageChanged(I18nManager.SupportedLanguage newLanguage) {
         SwingUtilities.invokeLater(() -> {
             updateUITexts();
             revalidate();

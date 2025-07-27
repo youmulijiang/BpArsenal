@@ -47,44 +47,11 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
     private JLabel systemInfoLabel;
     
     // 语言设置相关组件
-    private JComboBox<LocaleItem> languageComboBox;
-    private JButton applyLanguageButton;
+    private JComboBox<I18nManager.SupportedLanguage> languageComboBox;
     private JLabel languageStatusLabel;
+    private java.awt.event.ActionListener languageActionListener;
     
-    /**
-     * 语言环境包装类
-     */
-    private static class LocaleItem {
-        private final Locale locale;
-        private final String displayName;
-        
-        public LocaleItem(Locale locale, String displayName) {
-            this.locale = locale;
-            this.displayName = displayName;
-        }
-        
-        public Locale getLocale() {
-            return locale;
-        }
-        
-        @Override
-        public String toString() {
-            return displayName;
-        }
-        
-        @Override
-        public boolean equals(Object obj) {
-            if (this == obj) return true;
-            if (obj == null || getClass() != obj.getClass()) return false;
-            LocaleItem that = (LocaleItem) obj;
-            return locale.equals(that.locale);
-        }
-        
-        @Override
-        public int hashCode() {
-            return locale.hashCode();
-        }
-    }
+
     
     // 插件信息组件
     private JLabel versionLabel;
@@ -400,28 +367,36 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
         
         // 添加支持的语言
         I18nManager i18n = I18nManager.getInstance();
-        for (Locale locale : i18n.getSupportedLocales()) {
-            String displayName = getLanguageDisplayName(locale);
-            languageComboBox.addItem(new LocaleItem(locale, displayName));
+        for (I18nManager.SupportedLanguage language : i18n.getSupportedLanguages()) {
+            languageComboBox.addItem(language);
         }
+        
+        // 创建语言切换监听器
+        languageActionListener = e -> {
+            I18nManager.SupportedLanguage selected = (I18nManager.SupportedLanguage) languageComboBox.getSelectedItem();
+            if (selected != null) {
+                I18nManager.SupportedLanguage current = I18nManager.getInstance().getCurrentLanguage();
+                if (selected != current) {
+                    try {
+                        I18nManager.getInstance().setCurrentLanguage(selected);
+                        updateLanguageStatus(I18nManager.getInstance().getText("success.settings.applied"), Color.GREEN);
+                        logInfo("语言设置已更改为: " + selected.getDisplayName());
+                    } catch (Exception ex) {
+                        updateLanguageStatus("语言设置失败: " + ex.getMessage(), Color.RED);
+                        logError("应用语言设置失败: " + ex.getMessage());
+                    }
+                }
+            }
+        };
+        
+        // 添加语言切换监听器
+        languageComboBox.addActionListener(languageActionListener);
         
         languagePanel.add(languageComboBox, gbc);
         
-        // 应用按钮
-        gbc.gridx = 2; gbc.gridy = 0;
-        gbc.fill = GridBagConstraints.NONE;
-        gbc.weightx = 0;
-        applyLanguageButton = createStyledButton(
-            I18nManager.getInstance().getText("settings.language.apply"), 
-            I18nManager.getInstance().getText("settings.language.apply"), 
-            new Color(46, 125, 50)
-        );
-        applyLanguageButton.setPreferredSize(new Dimension(120, 25));
-        languagePanel.add(applyLanguageButton, gbc);
-        
         // 语言状态标签
         gbc.gridx = 0; gbc.gridy = 1;
-        gbc.gridwidth = 3;
+        gbc.gridwidth = 2;
         gbc.fill = GridBagConstraints.HORIZONTAL;
         languageStatusLabel = new JLabel(I18nManager.getInstance().getText("settings.language.restart.required"));
         languageStatusLabel.setFont(new Font("微软雅黑", Font.PLAIN, 11));
@@ -449,9 +424,9 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
      * @return 显示名称
      */
     private String getLanguageDisplayName(Locale locale) {
-        if (locale.equals(I18nManager.CHINESE)) {
+        if (locale.equals(I18nManager.SupportedLanguage.CHINESE.getLocale())) {
             return "中文 (简体)";
-        } else if (locale.equals(I18nManager.ENGLISH)) {
+        } else if (locale.equals(I18nManager.SupportedLanguage.ENGLISH.getLocale())) {
             return "English (US)";
         } else {
             return locale.getDisplayName();
@@ -600,13 +575,6 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
                     case "重置":
                         resetCommandPrefix();
                         break;
-                }
-                
-                // 处理国际化按钮文本
-                String i18nText = I18nManager.getInstance().getText("settings.language.apply");
-                if (buttonText.equals(i18nText)) {
-                    applyLanguageSettings();
-                    return;
                 }
             }
         };
@@ -907,49 +875,7 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
         updatePrefixStatus("已重置为系统默认: " + defaultPrefixString, Color.BLUE);
     }
     
-    /**
-     * 应用语言设置
-     */
-    private void applyLanguageSettings() {
-        LocaleItem selectedItem = (LocaleItem) languageComboBox.getSelectedItem();
-        if (selectedItem == null) {
-            return;
-        }
-        
-        Locale selectedLocale = selectedItem.getLocale();
-        Locale currentLocale = I18nManager.getInstance().getCurrentLocale();
-        
-        if (selectedLocale.equals(currentLocale)) {
-            updateLanguageStatus("语言设置未改变", Color.BLUE);
-            return;
-        }
-        
-        try {
-            // 应用新的语言设置
-            I18nManager.getInstance().setLocale(selectedLocale);
-            
-            updateLanguageStatus("语言设置已应用", Color.GREEN);
-            logInfo("语言设置已更改为: " + selectedLocale.toString());
-            
-            JOptionPane.showMessageDialog(
-                this,
-                I18nManager.getInstance().getText("success.settings.applied"),
-                I18nManager.getInstance().getText("dialog.title.success"),
-                JOptionPane.INFORMATION_MESSAGE
-            );
-            
-        } catch (Exception ex) {
-            updateLanguageStatus("语言设置失败: " + ex.getMessage(), Color.RED);
-            logError("应用语言设置失败: " + ex.getMessage());
-            
-            JOptionPane.showMessageDialog(
-                this,
-                "语言设置失败！\n错误: " + ex.getMessage(),
-                "设置失败",
-                JOptionPane.ERROR_MESSAGE
-            );
-        }
-    }
+
     
     /**
      * 加载当前设置
@@ -983,15 +909,23 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
         }
         
         // 加载语言设置
-        Locale currentLocale = I18nManager.getInstance().getCurrentLocale();
-        for (int i = 0; i < languageComboBox.getItemCount(); i++) {
-            LocaleItem item = languageComboBox.getItemAt(i);
-            if (item.getLocale().equals(currentLocale)) {
-                languageComboBox.setSelectedIndex(i);
-                break;
+        I18nManager.SupportedLanguage currentLanguage = I18nManager.getInstance().getCurrentLanguage();
+        
+        // 临时移除ActionListener，避免在初始化时触发
+        if (languageActionListener != null) {
+            languageComboBox.removeActionListener(languageActionListener);
+        }
+        
+        try {
+            languageComboBox.setSelectedItem(currentLanguage);
+        } finally {
+            // 重新添加ActionListener
+            if (languageActionListener != null) {
+                languageComboBox.addActionListener(languageActionListener);
             }
         }
-        updateLanguageStatus("当前语言: " + getLanguageDisplayName(currentLocale), Color.GREEN);
+        
+        updateLanguageStatus("当前语言: " + currentLanguage.getDisplayName(), Color.GREEN);
         
         // 更新配置状态
         updateConfigStatus("配置状态: 已加载", Color.GREEN);
@@ -1156,10 +1090,10 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
     
     /**
      * 语言变更监听器实现
-     * @param newLocale 新的语言环境
+     * @param newLanguage 新的语言
      */
     @Override
-    public void onLanguageChanged(Locale newLocale) {
+    public void onLanguageChanged(I18nManager.SupportedLanguage newLanguage) {
         SwingUtilities.invokeLater(() -> {
             updateUITexts();
             revalidate();
@@ -1196,9 +1130,6 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
         if (applyPrefixButton != null) {
             applyPrefixButton.setText(i18n.getText("button.apply"));
         }
-        if (applyLanguageButton != null) {
-            applyLanguageButton.setText(i18n.getText("settings.language.apply"));
-        }
         
         // 更新状态标签
         if (configStatusLabel != null) {
@@ -1213,28 +1144,30 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
      * 更新语言下拉框选项
      */
     private void updateLanguageComboBox() {
-        if (languageComboBox != null) {
-            Locale currentSelected = null;
-            if (languageComboBox.getSelectedItem() != null) {
-                currentSelected = ((LocaleItem) languageComboBox.getSelectedItem()).getLocale();
-            }
+        if (languageComboBox != null && languageActionListener != null) {
+            // 临时移除ActionListener，避免循环触发
+            languageComboBox.removeActionListener(languageActionListener);
             
-            languageComboBox.removeAllItems();
-            I18nManager i18n = I18nManager.getInstance();
-            for (Locale locale : i18n.getSupportedLocales()) {
-                String displayName = getLanguageDisplayName(locale);
-                languageComboBox.addItem(new LocaleItem(locale, displayName));
-            }
-            
-            // 恢复选择
-            if (currentSelected != null) {
-                for (int i = 0; i < languageComboBox.getItemCount(); i++) {
-                    LocaleItem item = languageComboBox.getItemAt(i);
-                    if (item.getLocale().equals(currentSelected)) {
-                        languageComboBox.setSelectedIndex(i);
-                        break;
-                    }
+            try {
+                I18nManager.SupportedLanguage currentSelected = null;
+                if (languageComboBox.getSelectedItem() != null) {
+                    currentSelected = (I18nManager.SupportedLanguage) languageComboBox.getSelectedItem();
                 }
+                
+                languageComboBox.removeAllItems();
+                I18nManager i18n = I18nManager.getInstance();
+                for (I18nManager.SupportedLanguage language : i18n.getSupportedLanguages()) {
+                    languageComboBox.addItem(language);
+                }
+                
+                // 恢复选择 - 使用当前I18nManager的语言而不是UI状态
+                I18nManager.SupportedLanguage actualCurrent = i18n.getCurrentLanguage();
+                if (actualCurrent != null) {
+                    languageComboBox.setSelectedItem(actualCurrent);
+                }
+            } finally {
+                // 重新添加ActionListener
+                languageComboBox.addActionListener(languageActionListener);
             }
         }
     }
