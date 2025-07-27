@@ -166,13 +166,13 @@ public class ToolEditDialog extends JDialog implements I18nManager.LanguageChang
         helpPanel.setBorder(BorderFactory.createTitledBorder(helpI18n.getText("tool.edit.dialog.border.placeholder.doc")));
         
         // 添加双击提示标签
-        JLabel hintLabel = new JLabel(helpI18n.getText("placeholder.help.dialog.description"));
-        hintLabel.setFont(new Font("微软雅黑", Font.PLAIN, 10));
-        hintLabel.setForeground(new Color(102, 102, 102));
-        hintLabel.setHorizontalAlignment(SwingConstants.CENTER);
-//        hintLabel.setBorder(BorderFactory.createEmptyBorder(5, 5, 0, 5));
-        hintLabel.setName("hintLabel"); // 设置名称以便在updateUITexts中找到
-        helpPanel.add(hintLabel, BorderLayout.NORTH);
+//        JLabel hintLabel = new JLabel(helpI18n.getText("placeholder.help.dialog.description"));
+//        hintLabel.setFont(new Font("微软雅黑", Font.PLAIN, 10));
+//        hintLabel.setForeground(new Color(102, 102, 102));
+//        hintLabel.setHorizontalAlignment(SwingConstants.CENTER);
+////        hintLabel.setBorder(BorderFactory.createEmptyBorder(5, 5, 0, 5));
+//        hintLabel.setName("hintLabel"); // 设置名称以便在updateUITexts中找到
+//        helpPanel.add(hintLabel, BorderLayout.NORTH);
         
         tabbedPane = new JTabbedPane();
         

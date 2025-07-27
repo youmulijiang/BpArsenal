@@ -202,8 +202,8 @@ public class ToolPanel extends JPanel implements I18nManager.LanguageChangeListe
         toolTable.setFont(new Font("微软雅黑", Font.PLAIN, 11));
         toolTable.setRowHeight(25);
         toolTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        toolTable.setGridColor(new Color(230, 230, 230));
-        toolTable.setShowGrid(true);
+//        toolTable.setGridColor(new Color(230, 230, 230));
+//        toolTable.setShowGrid(true);
         
         // 设置表头
         JTableHeader header = toolTable.getTableHeader();
@@ -780,23 +780,25 @@ class FavoriteRenderer extends DefaultTableCellRenderer {
     public Component getTableCellRendererComponent(JTable table, Object value, 
             boolean isSelected, boolean hasFocus, int row, int column) {
         
-        JLabel label = new JLabel();
-        label.setHorizontalAlignment(JLabel.CENTER);
-        label.setOpaque(true);
-        
-        if (isSelected) {
-            label.setBackground(table.getSelectionBackground());
-            label.setForeground(table.getSelectionForeground());
-        } else {
-            label.setBackground(table.getBackground());
-            label.setForeground(table.getForeground());
-        }
-        
-        if (value instanceof Boolean) {
-            label.setText(((Boolean) value) ? "★" : "☆");
-        }
-        
-        return label;
+                JLabel label = new JLabel();
+
+                label.setHorizontalAlignment(JLabel.CENTER);
+         //        label.setOpaque(true);
+         
+                if (isSelected) {
+                    label.setBackground(table.getSelectionBackground());
+                    label.setForeground(table.getSelectionForeground());
+                } else {
+                    label.setBackground(table.getBackground());
+                    label.setForeground(table.getForeground());
+                }
+         
+                if (value instanceof Boolean) {
+                    label.setText(((Boolean) value) ? "★" : "☆");
+                    label.setForeground(((Boolean) value) ? new Color(255, 152, 0) : new Color(158, 158, 158));
+                }
+         
+                return label;
     }
 }
 

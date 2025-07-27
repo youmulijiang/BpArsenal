@@ -206,8 +206,8 @@ public class WebsitePanel extends JPanel implements I18nManager.LanguageChangeLi
         websiteTable.setFont(new Font("微软雅黑", Font.PLAIN, 11));
         websiteTable.setRowHeight(25);
         websiteTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        websiteTable.setGridColor(new Color(230, 230, 230));
-        websiteTable.setShowGrid(true);
+//        websiteTable.setGridColor(new Color(230, 230, 230));
+//        websiteTable.setShowGrid(true);
         
         // 设置表头
         JTableHeader header = websiteTable.getTableHeader();
