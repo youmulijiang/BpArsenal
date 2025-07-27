@@ -648,6 +648,14 @@ public class WebsitePanel extends JPanel implements I18nManager.LanguageChangeLi
             tableModel.updateColumnNames();
             tableModel.fireTableStructureChanged();
         }
+
+        if (websiteTable != null) {
+            TableColumnModel columnModel = websiteTable.getColumnModel();
+            // 重新设置收藏列渲染器
+            columnModel.getColumn(2).setCellRenderer(new FavoriteRenderer());
+            // 重新设置命令列渲染器
+            columnModel.getColumn(1).setCellRenderer(new PlainTextRenderer());
+        }
         
         // 更新搜索范围下拉框选项
         updateSearchColumnFilter();

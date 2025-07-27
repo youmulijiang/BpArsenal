@@ -675,6 +675,14 @@ public class ThirdPartyPanel extends JPanel implements I18nManager.LanguageChang
             tableModel.fireTableStructureChanged();
         }
         
+                    // 重新设置渲染器（因为fireTableStructureChanged会重置所有列）
+        if (toolTable != null) {
+            TableColumnModel columnModel = toolTable.getColumnModel();
+            // 重新设置收藏列渲染器
+            columnModel.getColumn(2).setCellRenderer(new FavoriteRenderer());
+            // 重新设置命令列渲染器
+            columnModel.getColumn(1).setCellRenderer(new PlainTextRenderer());
+        }
         // 更新搜索范围下拉框选项
         updateSearchColumnFilter();
         
