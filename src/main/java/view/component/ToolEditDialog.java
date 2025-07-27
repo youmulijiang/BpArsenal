@@ -2,11 +2,14 @@ package view.component;
 
 import model.HttpTool;
 import util.I18nManager;
+import util.PlaceholderDocumentation;
 
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 
 /**
  * HTTP工具编辑对话框 (View层组件)
@@ -162,17 +165,36 @@ public class ToolEditDialog extends JDialog implements I18nManager.LanguageChang
         JPanel helpPanel = new JPanel(new BorderLayout());
         helpPanel.setBorder(BorderFactory.createTitledBorder(helpI18n.getText("tool.edit.dialog.border.placeholder.doc")));
         
+        // 添加双击提示标签
+        JLabel hintLabel = new JLabel(helpI18n.getText("placeholder.help.dialog.description"));
+        hintLabel.setFont(new Font("微软雅黑", Font.PLAIN, 10));
+        hintLabel.setForeground(new Color(102, 102, 102));
+        hintLabel.setHorizontalAlignment(SwingConstants.CENTER);
+//        hintLabel.setBorder(BorderFactory.createEmptyBorder(5, 5, 0, 5));
+        hintLabel.setName("hintLabel"); // 设置名称以便在updateUITexts中找到
+        helpPanel.add(hintLabel, BorderLayout.NORTH);
+        
         tabbedPane = new JTabbedPane();
         
         // 常用占位符
         commonPlaceholders = new JTextArea(4, 70);
         commonPlaceholders.setEditable(false);
-        // 设置支持中文的字体，优先使用等宽字体
 //        commonPlaceholders.setFont(getUnicodeFont(9));
         commonPlaceholders.setBackground(new Color(248, 248, 248));
         // 确保正确显示UTF-8编码的中文
         setupTextAreaForUTF8(commonPlaceholders);
         commonPlaceholders.setText(generateCommonPlaceholderText());
+        
+        // 添加双击事件监听器和工具提示
+        commonPlaceholders.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (e.getClickCount() == 2) {
+                    showPlaceholderHelpDialog();
+                }
+            }
+        });
+        commonPlaceholders.setToolTipText("双击查看完整的占位符变量文档");
         
         JScrollPane commonScroll = new JScrollPane(commonPlaceholders);
         tabbedPane.addTab(helpI18n.getText("tool.edit.dialog.tab.common"), commonScroll);
@@ -180,12 +202,22 @@ public class ToolEditDialog extends JDialog implements I18nManager.LanguageChang
         // 完整文档
         fullDoc = new JTextArea(4, 70);
         fullDoc.setEditable(false);
-        // 设置支持中文的字体，优先使用等宽字体
 //        fullDoc.setFont(getUnicodeFont(8));
         fullDoc.setBackground(new Color(248, 248, 248));
         // 确保正确显示UTF-8编码的中文
         setupTextAreaForUTF8(fullDoc);
         fullDoc.setText(generateCompactDocumentation());
+        
+        // 添加双击事件监听器和工具提示
+        fullDoc.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (e.getClickCount() == 2) {
+                    showPlaceholderHelpDialog();
+                }
+            }
+        });
+        fullDoc.setToolTipText("双击查看完整的占位符变量文档");
         
         JScrollPane fullScroll = new JScrollPane(fullDoc);
         tabbedPane.addTab(helpI18n.getText("tool.edit.dialog.tab.full"), fullScroll);
@@ -252,23 +284,44 @@ public class ToolEditDialog extends JDialog implements I18nManager.LanguageChang
      * @return 常用占位符文本
      */
     private String generateCommonPlaceholderText() {
-        I18nManager i18n = I18nManager.getInstance();
-        return "# " + i18n.getText("tool.edit.placeholder.doc.request.basic") + "\n" +
-               "%http.request.url%              - " + i18n.getText("tool.edit.placeholder.url") + "\n" +
-               "%http.request.host%             - " + i18n.getText("tool.edit.placeholder.host") + "\n" +
-               "%http.request.port%             - " + i18n.getText("tool.edit.placeholder.port") + "\n" +
-               "%http.request.path%             - " + i18n.getText("tool.edit.placeholder.path") + "\n" +
-               "%http.request.method%           - " + i18n.getText("tool.edit.placeholder.method") + "\n" +
-               "\n" +
-               "# " + i18n.getText("tool.edit.placeholder.doc.request.headers") + "\n" +
-               "%http.request.headers.user.agent%    - " + i18n.getText("tool.edit.placeholder.user.agent") + "\n" +
-               "%http.request.headers.cookies%       - " + i18n.getText("tool.edit.placeholder.cookies") + "\n" +
-               "%http.request.headers.authorization% - " + i18n.getText("tool.edit.placeholder.authorization") + "\n" +
-               "%http.request.headers.referer%       - " + i18n.getText("tool.edit.placeholder.referer") + "\n" +
-               "\n" +
-               "# " + i18n.getText("tool.edit.placeholder.doc.request.body") + "\n" +
-               "%http.request.body%             - " + i18n.getText("tool.edit.placeholder.body") + "\n" +
-               "%http.request.body.len%         - " + i18n.getText("tool.edit.placeholder.body.len");
+        StringBuilder text = new StringBuilder();
+        
+        // 使用PlaceholderDocumentation获取常用变量
+        text.append("=== 常用HTTP占位符变量 ===\n\n");
+        
+        // 请求基础信息
+        text.append("📋 请求基础信息：\n");
+        for (PlaceholderDocumentation.PlaceholderVariable var : PlaceholderDocumentation.getRequestBasicVariables()) {
+            text.append(String.format("  %-35s - %s\n", var.getName(), var.getDescription()));
+        }
+        text.append("\n");
+        
+        // 请求头部信息（只显示常用的）
+        text.append("📋 常用请求头部：\n");
+        text.append("  %http.request.headers.user.agent%    - User agent字符串\n");
+        text.append("  %http.request.headers.cookies%       - 完整Cookie字符串\n");
+        text.append("  %http.request.headers.authorization% - 认证头信息\n");
+        text.append("  %http.request.headers.referer%       - 来源页面\n");
+        text.append("  %http.request.headers.content.type%  - 请求内容类型\n");
+        text.append("\n");
+        
+        // 请求体信息
+        text.append("📋 请求体信息：\n");
+        text.append("  %http.request.body%                  - 完整请求体内容\n");
+        text.append("  %http.request.body.len%              - 请求体长度\n");
+        text.append("\n");
+        
+        // 响应信息
+        text.append("📋 响应信息：\n");
+        text.append("  %http.response.status%               - HTTP响应状态码\n");
+        text.append("  %http.response.body%                 - 完整响应体内容\n");
+        text.append("  %http.response.body.len%             - 响应体长度\n");
+        text.append("\n");
+        
+        // 使用提示
+        text.append("💡 提示：双击此面板可查看完整的占位符文档");
+        
+        return text.toString();
     }
     
     /**
@@ -276,41 +329,8 @@ public class ToolEditDialog extends JDialog implements I18nManager.LanguageChang
      * @return 文档字符串
      */
     private String generateCompactDocumentation() {
-        I18nManager i18n = I18nManager.getInstance();
-        return "# " + i18n.getText("tool.edit.placeholder.doc.title") + "\n\n" +
-               "## " + i18n.getText("tool.edit.placeholder.doc.request.basic") + "\n" +
-               "%http.request.url%              - " + i18n.getText("tool.edit.placeholder.url") + "\n" +
-               "%http.request.host%             - " + i18n.getText("tool.edit.placeholder.host") + "\n" +
-               "%http.request.port%             - " + i18n.getText("tool.edit.placeholder.port") + "\n" +
-               "%http.request.path%             - " + i18n.getText("tool.edit.placeholder.path") + "\n" +
-               "%http.request.query%            - " + i18n.getText("tool.edit.placeholder.query") + "\n" +
-               "%http.request.method%           - " + i18n.getText("tool.edit.placeholder.method") + "\n" +
-               "%http.request.protocol%         - " + i18n.getText("tool.edit.placeholder.protocol") + "\n\n" +
-               
-               "## " + i18n.getText("tool.edit.placeholder.doc.request.headers") + "\n" +
-               "%http.request.headers.user.agent%    - " + i18n.getText("tool.edit.placeholder.user.agent") + "\n" +
-               "%http.request.headers.cookies%       - " + i18n.getText("tool.edit.placeholder.cookies") + "\n" +
-               "%http.request.headers.authorization% - " + i18n.getText("tool.edit.placeholder.authorization") + "\n" +
-               "%http.request.headers.referer%       - " + i18n.getText("tool.edit.placeholder.referer") + "\n" +
-               "%http.request.headers.content.type%  - " + i18n.getText("tool.edit.placeholder.content.type") + "\n\n" +
-               
-               "## " + i18n.getText("tool.edit.placeholder.doc.request.params") + "\n" +
-               "%http.request.params.get%       - " + i18n.getText("tool.edit.placeholder.params.get") + "\n" +
-               "%http.request.params.post%      - " + i18n.getText("tool.edit.placeholder.params.post") + "\n" +
-               "%http.request.params.all%       - " + i18n.getText("tool.edit.placeholder.params.all") + "\n\n" +
-               
-               "## " + i18n.getText("tool.edit.placeholder.doc.request.body") + "\n" +
-               "%http.request.body%             - " + i18n.getText("tool.edit.placeholder.body") + "\n" +
-               "%http.request.body.len%         - " + i18n.getText("tool.edit.placeholder.body.len") + "\n\n" +
-               
-               "## " + i18n.getText("tool.edit.placeholder.doc.response.basic") + "\n" +
-               "%http.response.status%          - " + i18n.getText("tool.edit.placeholder.response.status") + "\n" +
-               "%http.response.headers%         - " + i18n.getText("tool.edit.placeholder.response.headers") + "\n" +
-               "%http.response.body%            - " + i18n.getText("tool.edit.placeholder.response.body") + "\n" +
-               "%http.response.body.len%        - " + i18n.getText("tool.edit.placeholder.response.body.len") + "\n\n" +
-               
-               i18n.getText("tool.edit.placeholder.doc.example") + ":\n" +
-               "sqlmap -u \"%http.request.url%\" --cookie=\"%http.request.headers.cookies%\"";
+        // 直接使用PlaceholderDocumentation的完整文档
+        return PlaceholderDocumentation.getAllPlaceholderDocumentation();
     }
     
     /**
@@ -537,6 +557,14 @@ public class ToolEditDialog extends JDialog implements I18nManager.LanguageChang
     }
     
     /**
+     * 显示占位符帮助对话框
+     */
+    private void showPlaceholderHelpDialog() {
+        PlaceholderHelpDialog helpDialog = new PlaceholderHelpDialog(this);
+        helpDialog.setVisible(true);
+    }
+    
+    /**
      * 更新UI文本
      */
     private void updateUITexts() {
@@ -581,7 +609,7 @@ public class ToolEditDialog extends JDialog implements I18nManager.LanguageChang
             }
         }
         
-        // 重新生成文档内容
+        // 重新生成文档内容（如果需要国际化的话，这里可以重新生成）
         if (commonPlaceholders != null) {
             commonPlaceholders.setText(generateCommonPlaceholderText());
         }
