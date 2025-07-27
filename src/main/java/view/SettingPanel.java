@@ -371,6 +371,9 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
             languageComboBox.addItem(language);
         }
         
+        // 根据用户当前地区自动设置语言
+        autoSetLanguageByLocale();
+        
         // 创建语言切换监听器
         languageActionListener = e -> {
             I18nManager.SupportedLanguage selected = (I18nManager.SupportedLanguage) languageComboBox.getSelectedItem();
@@ -416,6 +419,81 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
         languagePanel.add(languageDescArea, gbc);
         
         return languagePanel;
+    }
+    
+    /**
+     * 根据用户当前地区自动设置语言
+     */
+    private void autoSetLanguageByLocale() {
+        try {
+            // 获取系统默认地区
+            Locale systemLocale = Locale.getDefault();
+            String language = systemLocale.getLanguage();
+            String country = systemLocale.getCountry();
+            
+            logInfo("检测到系统地区: " + systemLocale.toString() + " (语言: " + language + ", 国家: " + country + ")");
+            
+            // 判断是否为中文地区
+            I18nManager.SupportedLanguage targetLanguage;
+            if (isChineseLocale(language, country)) {
+                targetLanguage = I18nManager.SupportedLanguage.CHINESE;
+                logInfo("检测到中文地区，设置语言为中文");
+            } else {
+                targetLanguage = I18nManager.SupportedLanguage.ENGLISH;
+                logInfo("检测到非中文地区，设置语言为英文");
+            }
+            
+            // 检查当前语言是否已经是目标语言
+            I18nManager.SupportedLanguage currentLanguage = I18nManager.getInstance().getCurrentLanguage();
+            if (currentLanguage != targetLanguage) {
+                // 临时移除ActionListener，避免在初始化时触发
+                if (languageActionListener != null) {
+                    languageComboBox.removeActionListener(languageActionListener);
+                }
+                
+                try {
+                    // 设置语言
+                    I18nManager.getInstance().setCurrentLanguage(targetLanguage);
+                    languageComboBox.setSelectedItem(targetLanguage);
+                    logInfo("已根据系统地区自动设置语言为: " + targetLanguage.getDisplayName());
+                } finally {
+                    // 重新添加ActionListener
+                    if (languageActionListener != null) {
+                        languageComboBox.addActionListener(languageActionListener);
+                    }
+                }
+            } else {
+                logInfo("当前语言已经匹配系统地区，无需更改");
+            }
+            
+        } catch (Exception e) {
+            logError("自动设置语言失败: " + e.getMessage());
+            // 失败时使用默认设置
+        }
+    }
+    
+    /**
+     * 判断是否为中文地区
+     * @param language 语言代码
+     * @param country 国家代码
+     * @return 是否为中文地区
+     */
+    private boolean isChineseLocale(String language, String country) {
+        // 检查语言代码
+        if ("zh".equalsIgnoreCase(language)) {
+            return true;
+        }
+        
+        // 检查国家代码（中文地区）
+        if ("CN".equalsIgnoreCase(country) ||    // 中国大陆
+            "TW".equalsIgnoreCase(country) ||    // 台湾
+            "HK".equalsIgnoreCase(country) ||    // 香港
+            "MO".equalsIgnoreCase(country) ||    // 澳门
+            "SG".equalsIgnoreCase(country)) {    // 新加坡（有中文用户）
+            return true;
+        }
+        
+        return false;
     }
     
     /**
@@ -925,7 +1003,7 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
             }
         }
         
-        updateLanguageStatus("当前语言: " + currentLanguage.getDisplayName(), Color.GREEN);
+        updateLanguageStatus("当前语言: " + currentLanguage.getDisplayName() + " (已根据系统地区自动设置)", Color.GREEN);
         
         // 更新配置状态
         updateConfigStatus("配置状态: 已加载", Color.GREEN);
