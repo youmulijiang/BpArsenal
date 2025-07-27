@@ -124,7 +124,7 @@ public class ToolEditDialog extends JDialog implements I18nManager.LanguageChang
         gbc.gridx = 1; gbc.fill = GridBagConstraints.BOTH;
         gbc.weightx = 1.0; gbc.weighty = 1.0;
         commandArea = new JTextArea(10, 50);
-        commandArea.setFont(new Font("Consolas", Font.PLAIN, 11));
+//        commandArea.setFont(new Font("微软雅黑", Font.PLAIN, 11));
         commandArea.setLineWrap(true);
         commandArea.setWrapStyleWord(true);
         commandArea.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
@@ -168,7 +168,7 @@ public class ToolEditDialog extends JDialog implements I18nManager.LanguageChang
         commonPlaceholders = new JTextArea(4, 70);
         commonPlaceholders.setEditable(false);
         // 设置支持中文的字体，优先使用等宽字体
-        commonPlaceholders.setFont(getUnicodeFont(9));
+//        commonPlaceholders.setFont(getUnicodeFont(9));
         commonPlaceholders.setBackground(new Color(248, 248, 248));
         // 确保正确显示UTF-8编码的中文
         setupTextAreaForUTF8(commonPlaceholders);
@@ -181,7 +181,7 @@ public class ToolEditDialog extends JDialog implements I18nManager.LanguageChang
         fullDoc = new JTextArea(4, 70);
         fullDoc.setEditable(false);
         // 设置支持中文的字体，优先使用等宽字体
-        fullDoc.setFont(getUnicodeFont(8));
+//        fullDoc.setFont(getUnicodeFont(8));
         fullDoc.setBackground(new Color(248, 248, 248));
         // 确保正确显示UTF-8编码的中文
         setupTextAreaForUTF8(fullDoc);
@@ -385,8 +385,8 @@ public class ToolEditDialog extends JDialog implements I18nManager.LanguageChang
             categoryComboBox.setSelectedIndex(0);
             
             // 设置默认模板
-            I18nManager loadI18n = I18nManager.getInstance();
-            commandArea.setText(loadI18n.getText("tool.edit.dialog.template.comment"));
+//            I18nManager loadI18n = I18nManager.getInstance();
+//            commandArea.setText(loadI18n.getText("tool.edit.dialog.template.comment"));
         }
     }
     

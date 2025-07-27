@@ -480,7 +480,7 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
         infoPanel.add(authorLabelTitle, gbc);
         
         gbc.gridx = 1; gbc.gridy = 2;
-        authorLabel = new JLabel("Security Team");
+        authorLabel = new JLabel("youmulijiang");
         authorLabel.setFont(new Font("微软雅黑", Font.PLAIN, 12));
         infoPanel.add(authorLabel, gbc);
         
@@ -491,31 +491,31 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
         gbc.weightx = 1.0;
         gbc.weighty = 1.0;
         
-        JLabel changelogTitle = new JLabel("更新日志:");
-        changelogTitle.setFont(new Font("微软雅黑", Font.BOLD, 12));
-        infoPanel.add(changelogTitle, gbc);
-        
-        gbc.gridy = 4;
-        changelogArea = new JTextArea(8, 50);
-        changelogArea.setText("v1.0.0 (2024-01-15)\n" +
-                             "- 初始版本发布\n" +
-                             "- 支持HTTP工具管理和执行\n" +
-                             "- 支持第三方工具启动\n" +
-                             "- 支持网站导航功能\n" +
-                             "- 支持上下文菜单Arsenal工具\n" +
-                             "- 支持命令数组格式配置\n" +
-                             "- 支持配置文件导入导出\n" +
-                             "- 支持工具目录设置");
-        changelogArea.setEditable(false);
-        changelogArea.setFont(new Font("微软雅黑", Font.PLAIN, 11));
-        changelogArea.setBackground(new Color(248, 248, 248));
-        changelogArea.setLineWrap(true);
-        changelogArea.setWrapStyleWord(true);
-        
-        JScrollPane changelogScrollPane = new JScrollPane(changelogArea);
-        changelogScrollPane.setPreferredSize(new Dimension(400, 150));
-        changelogScrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
-        infoPanel.add(changelogScrollPane, gbc);
+//        JLabel changelogTitle = new JLabel("更新日志:");
+//        changelogTitle.setFont(new Font("微软雅黑", Font.BOLD, 12));
+//        infoPanel.add(changelogTitle, gbc);
+//
+//        gbc.gridy = 4;
+//        changelogArea = new JTextArea(8, 50);
+//        changelogArea.setText("v1.0.0 (2024-01-15)\n" +
+//                             "- 初始版本发布\n" +
+//                             "- 支持HTTP工具管理和执行\n" +
+//                             "- 支持第三方工具启动\n" +
+//                             "- 支持网站导航功能\n" +
+//                             "- 支持上下文菜单Arsenal工具\n" +
+//                             "- 支持命令数组格式配置\n" +
+//                             "- 支持配置文件导入导出\n" +
+//                             "- 支持工具目录设置");
+//        changelogArea.setEditable(false);
+//        changelogArea.setFont(new Font("微软雅黑", Font.PLAIN, 11));
+//        changelogArea.setBackground(new Color(248, 248, 248));
+//        changelogArea.setLineWrap(true);
+//        changelogArea.setWrapStyleWord(true);
+//
+//        JScrollPane changelogScrollPane = new JScrollPane(changelogArea);
+//        changelogScrollPane.setPreferredSize(new Dimension(400, 150));
+//        changelogScrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+//        infoPanel.add(changelogScrollPane, gbc);
         
         return infoPanel;
     }

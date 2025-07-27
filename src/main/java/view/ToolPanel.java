@@ -814,14 +814,14 @@ class PlainTextRenderer extends DefaultTableCellRenderer {
             String command = value.toString();
             
             // 设置为等宽字体，更适合显示命令
-            setFont(new Font("Consolas", Font.PLAIN, 10));
+//            setFont(new Font("Consolas", Font.PLAIN, 10));
             
             // 显示完整命令作为提示
             setToolTipText(command);
             
             // 如果命令太长，截断显示
             if (command.length() > 130) {
-                setText(command.substring(0, 57) + "...");
+                setText(command.substring(0, 87) + "...");
             } else {
                 setText(command);
             }
