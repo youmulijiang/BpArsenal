@@ -126,7 +126,8 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
      * 初始化对话框属性
      */
     private void initializeDialog() {
-        setTitle(I18nManager.getInstance().getText("dialog.arsenal.title"));
+        I18nManager i18n = I18nManager.getInstance();
+        setTitle(i18n.getText("dialog.arsenal.title"));
         setSize(950, 800);  // 增加高度以适应选项卡
         // 不在这里设置位置，由调用方决定位置
         setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
@@ -181,7 +182,12 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
         initializeFilterComponents();
         
         // 创建工具表格
-        String[] columnNames = {"工具名称", "命令", "分类"};
+        I18nManager i18n = I18nManager.getInstance();
+        String[] columnNames = {
+            i18n.getText("arsenal.dialog.table.column.tool.name"),
+            i18n.getText("arsenal.dialog.table.column.command"), 
+            i18n.getText("arsenal.dialog.table.column.category")
+        };
         tableModel = new DefaultTableModel(columnNames, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -210,7 +216,7 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
         initializeCommandTabs();
         
         // 创建运行按钮
-        runButton = new JButton("Run");
+        runButton = new JButton(i18n.getText("arsenal.dialog.button.run"));
         runButton.setFont(new Font("微软雅黑", Font.BOLD, 12));
         runButton.setBackground(new Color(40, 167, 69));
         runButton.setForeground(Color.WHITE);
@@ -218,7 +224,7 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
         runButton.setPreferredSize(new Dimension(100, 30));
         
         // 创建复制命令按钮（替换原来的刷新变量按钮）
-        copyCommandButton = new JButton("复制命令");
+        copyCommandButton = new JButton(i18n.getText("arsenal.dialog.button.copy.command"));
         copyCommandButton.setFont(new Font("微软雅黑", Font.BOLD, 11));
         copyCommandButton.setBackground(new Color(255, 193, 7));
         copyCommandButton.setForeground(Color.BLACK);
@@ -231,8 +237,8 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
         commandResultArea.setFont(new Font("微软雅黑", Font.PLAIN, 11));  // 使用支持中文的字体
         commandResultArea.setBackground(Color.WHITE);  // 修改为白色背景
         commandResultArea.setForeground(Color.BLACK);  // 修改为黑色文字
-        commandResultArea.setBorder(BorderFactory.createTitledBorder("执行历史"));  // 修改标题
-        commandResultArea.setText("点击Run按钮执行命令，命令将在新窗口中运行...\n");
+        commandResultArea.setBorder(BorderFactory.createTitledBorder(i18n.getText("arsenal.dialog.execution.history")));  // 修改标题
+        commandResultArea.setText(i18n.getText("arsenal.dialog.execution.hint") + "\n");
         
         resultScrollPane = new JScrollPane(commandResultArea);
         resultScrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
@@ -285,14 +291,15 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
         variablesScrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         
         // 添加选项卡
-        commandTabbedPane.addTab("模板命令", originalScrollPane);
-        commandTabbedPane.addTab("渲染命令", renderedScrollPane);
-        commandTabbedPane.addTab("变量预览", variablesScrollPane);
+        I18nManager tabI18n = I18nManager.getInstance();
+        commandTabbedPane.addTab(tabI18n.getText("arsenal.dialog.tab.original.command"), originalScrollPane);
+        commandTabbedPane.addTab(tabI18n.getText("arsenal.dialog.tab.rendered.command"), renderedScrollPane);
+        commandTabbedPane.addTab(tabI18n.getText("arsenal.dialog.tab.variables.preview"), variablesScrollPane);
         
         // 设置选项卡提示
-        commandTabbedPane.setToolTipTextAt(0, "显示未经变量替换的原始命令模板，可以手动编辑");
-        commandTabbedPane.setToolTipTextAt(1, "显示经过变量替换的命令，可以手动编辑后执行");
-        commandTabbedPane.setToolTipTextAt(2, "显示当前HTTP请求/响应解析出的所有可用变量");
+        commandTabbedPane.setToolTipTextAt(0, tabI18n.getText("arsenal.dialog.tab.tooltip.original"));
+        commandTabbedPane.setToolTipTextAt(1, tabI18n.getText("arsenal.dialog.tab.tooltip.rendered"));
+        commandTabbedPane.setToolTipTextAt(2, tabI18n.getText("arsenal.dialog.tab.tooltip.variables"));
     }
     
     /**
@@ -300,17 +307,18 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
      */
     private void initializeFilterComponents() {
         // 工具名称筛选框
+        I18nManager filterI18n = I18nManager.getInstance();
         toolNameFilterField = new JTextField(15);
         toolNameFilterField.setFont(new Font("微软雅黑", Font.PLAIN, 12));
-        toolNameFilterField.setBorder(BorderFactory.createTitledBorder("工具名称"));
+        toolNameFilterField.setBorder(BorderFactory.createTitledBorder(filterI18n.getText("arsenal.dialog.filter.tool.name")));
         
         // 分类筛选下拉框
         categoryFilterCombo = new JComboBox<>();
         categoryFilterCombo.setFont(new Font("微软雅黑", Font.PLAIN, 12));
-        categoryFilterCombo.addItem("全部分类");
+        categoryFilterCombo.addItem(filterI18n.getText("arsenal.dialog.filter.category.all"));
         
         // 清除筛选按钮
-        clearFilterButton = new JButton("清除筛选");
+        clearFilterButton = new JButton(filterI18n.getText("arsenal.dialog.button.clear.filter"));
         clearFilterButton.setFont(new Font("微软雅黑", Font.PLAIN, 11));
         clearFilterButton.setPreferredSize(new Dimension(80, 25));
     }
@@ -328,7 +336,8 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
         // 中部：工具表格
         JScrollPane tableScrollPane = new JScrollPane(toolTable);
         tableScrollPane.setPreferredSize(new Dimension(930, 200));
-        tableScrollPane.setBorder(BorderFactory.createTitledBorder("工具列表"));
+        I18nManager layoutI18n = I18nManager.getInstance();
+        tableScrollPane.setBorder(BorderFactory.createTitledBorder(layoutI18n.getText("arsenal.dialog.border.tool.list")));
         
         // 命令预览选项卡和运行按钮面板
         JPanel middlePanel = new JPanel(new BorderLayout());
@@ -362,7 +371,8 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
      */
     private JPanel createFilterPanel() {
         JPanel filterPanel = new JPanel(new GridBagLayout());
-        filterPanel.setBorder(BorderFactory.createTitledBorder("筛选条件"));
+        I18nManager panelI18n = I18nManager.getInstance();
+        filterPanel.setBorder(BorderFactory.createTitledBorder(panelI18n.getText("arsenal.dialog.border.filter.conditions")));
         filterPanel.setPreferredSize(new Dimension(930, 80));
         
         GridBagConstraints gbc = new GridBagConstraints();
@@ -371,7 +381,7 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
         
         // 工具名称标签和输入框
         gbc.gridx = 0; gbc.gridy = 0;
-        filterPanel.add(new JLabel("工具名称:"), gbc);
+        filterPanel.add(new JLabel(panelI18n.getText("arsenal.dialog.filter.label.tool.name")), gbc);
         
         gbc.gridx = 1; gbc.gridy = 0;
         gbc.fill = GridBagConstraints.HORIZONTAL;
@@ -382,7 +392,7 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
         gbc.gridx = 2; gbc.gridy = 0;
         gbc.fill = GridBagConstraints.NONE;
         gbc.weightx = 0;
-        filterPanel.add(new JLabel("分类:"), gbc);
+        filterPanel.add(new JLabel(panelI18n.getText("arsenal.dialog.filter.label.category")), gbc);
         
         gbc.gridx = 3; gbc.gridy = 0;
         gbc.fill = GridBagConstraints.HORIZONTAL;
@@ -487,7 +497,8 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
      */
     private void updateVariablesPreview() {
         if (httpRequest == null) {
-            variablesPreviewArea.setText("# 无HTTP请求数据\n请在Burp Suite中拦截或选择一个HTTP请求，然后右键选择Arsenal工具。");
+            I18nManager variableI18n = I18nManager.getInstance();
+            variablesPreviewArea.setText(variableI18n.getText("arsenal.dialog.variables.no.request"));
             return;
         }
         
@@ -553,7 +564,8 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
             variablesPreviewArea.setCaretPosition(0);
             
         } catch (Exception e) {
-            String errorMsg = "变量解析失败: " + e.getMessage();
+            I18nManager parseErrorI18n = I18nManager.getInstance();
+            String errorMsg = parseErrorI18n.getText("arsenal.dialog.error.variable.parse", e.getMessage());
             variablesPreviewArea.setText("# 错误\n" + errorMsg);
             ApiManager.getInstance().getApi().logging().logToError(errorMsg);
         }
@@ -600,7 +612,8 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
             }
             
             // 分类筛选
-            if (categoryFilter != null && !categoryFilter.equals("全部分类")) {
+                                    I18nManager applyI18n = I18nManager.getInstance();
+                        if (categoryFilter != null && !categoryFilter.equals(applyI18n.getText("arsenal.dialog.filter.category.all"))) {
                 String toolCategory = toolCommand.getCategory();
                 matchesCategory = categoryFilter.equals(toolCategory);
             }
@@ -658,7 +671,8 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
             // 初始化分类下拉框
             SwingUtilities.invokeLater(() -> {
                 categoryFilterCombo.removeAllItems();
-                categoryFilterCombo.addItem("全部分类");
+                I18nManager loadI18n = I18nManager.getInstance();
+                categoryFilterCombo.addItem(loadI18n.getText("arsenal.dialog.filter.category.all"));
                 
                 Set<String> categories = extractAllCategories();
                 for (String category : categories.stream().sorted().collect(Collectors.toList())) {
@@ -679,10 +693,13 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
     private void loadToolData() {
         tableModel.setRowCount(0); // 清空表格
         
+        I18nManager loadDataI18n = I18nManager.getInstance();
         for (HttpToolCommand toolCommand : filteredToolCommands) {
-            String toolName = toolCommand.getDisplayName() != null ? toolCommand.getDisplayName() : "未知工具";
+            String toolName = toolCommand.getDisplayName() != null ? toolCommand.getDisplayName() : 
+                loadDataI18n.getText("arsenal.dialog.unknown.tool");
             String command = toolCommand.getCommand() != null ? toolCommand.getCommand() : "";
-            String category = toolCommand.getCategory() != null ? toolCommand.getCategory() : "未分类";
+            String category = toolCommand.getCategory() != null ? toolCommand.getCategory() : 
+                loadDataI18n.getText("arsenal.dialog.uncategorized");
             
             // 截断过长的命令显示
             String displayCommand = command.length() > 50 ? 
@@ -703,8 +720,10 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
      * 更新筛选状态显示
      */
     private void updateFilterStatus() {
-        String title = String.format("Arsenal - 武器库 (显示 %d/%d 个命令)", 
-                                    filteredToolCommands.size(), allToolCommands.size());
+        I18nManager statusI18n = I18nManager.getInstance();
+        String title = statusI18n.getText("arsenal.dialog.title.pattern", 
+                                    String.valueOf(filteredToolCommands.size()), 
+                                    String.valueOf(allToolCommands.size()));
         setTitle(title);
     }
     
@@ -726,7 +745,8 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
         } catch (Exception e) {
             ApiManager.getInstance().getApi().logging().logToError("获取工具分类失败: " + e.getMessage());
         }
-        return "未分类";
+        I18nManager categoryI18n = I18nManager.getInstance();
+        return categoryI18n.getText("arsenal.dialog.uncategorized");
     }
     
     /**
@@ -746,7 +766,8 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
                     renderedCommandArea.setText(renderedCommand);
                     renderedCommandArea.setCaretPosition(0);
                 } else {
-                    renderedCommandArea.setText("无HTTP请求数据，无法渲染变量");
+                    I18nManager renderI18n = I18nManager.getInstance();
+                    renderedCommandArea.setText(renderI18n.getText("arsenal.dialog.no.request.render"));
                 }
                 
                 // 更新变量预览
@@ -895,31 +916,35 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
         String command;
         String commandType;
         
+        I18nManager execI18n = I18nManager.getInstance();
         if (selectedTab == 0) { // 原始命令选项卡
             command = originalCommandArea.getText();
-            commandType = "原始命令";
+            commandType = execI18n.getText("arsenal.dialog.execution.original.command");
         } else if (selectedTab == 1) { // 渲染命令选项卡
             command = renderedCommandArea.getText();
-            commandType = "渲染命令";
+            commandType = execI18n.getText("arsenal.dialog.execution.rendered.command");
         } else {
-            JOptionPane.showMessageDialog(this, "请选择原始命令或渲染命令选项卡进行执行！", "提示", JOptionPane.WARNING_MESSAGE);
+            JOptionPane.showMessageDialog(this, execI18n.getText("arsenal.dialog.message.select.tab"), 
+                execI18n.getText("dialog.title.warning"), JOptionPane.WARNING_MESSAGE);
             return;
         }
         
         if (command == null || command.trim().isEmpty()) {
-            JOptionPane.showMessageDialog(this, "命令不能为空！", "错误", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, execI18n.getText("arsenal.dialog.message.command.empty"), 
+                execI18n.getText("dialog.title.error"), JOptionPane.ERROR_MESSAGE);
             return;
         }
         
         // 获取工具名称
-        String toolName = selectedToolCommand != null ? selectedToolCommand.getToolName() : "手动命令";
+        String toolName = selectedToolCommand != null ? selectedToolCommand.getToolName() : 
+            execI18n.getText("arsenal.dialog.manual.command");
         
         // 禁用运行按钮防止重复执行
         runButton.setEnabled(false);
-        runButton.setText("执行中...");
+        runButton.setText(execI18n.getText("arsenal.dialog.button.running"));
         
         // 记录执行开始
-        addExecutionLogEntry("开始执行", toolName, commandType, command.trim());
+        addExecutionLogEntry(execI18n.getText("arsenal.dialog.execution.start"), toolName, commandType, command.trim());
         
         try {
             // 对于原始命令，需要进行变量替换；对于渲染命令，直接使用
@@ -931,21 +956,23 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
             // 渲染命令选项卡中的内容已经是纯命令，直接使用
             
             // 记录最终执行的命令
-            addExecutionLogEntry("实际执行", toolName, "系统命令", finalCommand);
+            addExecutionLogEntry(execI18n.getText("arsenal.dialog.execution.actual"), toolName, 
+                execI18n.getText("arsenal.dialog.execution.system.command"), finalCommand);
             
             // 生成并执行临时脚本
             executeCommandViaScript(finalCommand, toolName);
             
         } catch (Exception e) {
-            addExecutionLogEntry("执行异常", toolName, "错误", e.getMessage());
+            addExecutionLogEntry(execI18n.getText("arsenal.dialog.execution.script.exception"), toolName, 
+                execI18n.getText("arsenal.dialog.execution.error"), e.getMessage());
             // 恢复按钮状态
             runButton.setEnabled(true);
-            runButton.setText("Run");
+            runButton.setText(execI18n.getText("arsenal.dialog.button.run"));
             
             // 显示错误对话框
             JOptionPane.showMessageDialog(this, 
-                "命令执行失败: " + e.getMessage(), 
-                "执行错误", 
+                execI18n.getText("arsenal.dialog.copy.failed.pattern", e.getMessage()), 
+                execI18n.getText("dialog.title.error"), 
                 JOptionPane.ERROR_MESSAGE);
         }
     }
@@ -960,26 +987,31 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
             // 获取插件路径
             String extensionPath = getExtensionPath();
             if (extensionPath == null) {
-                throw new Exception("无法获取插件路径");
+                I18nManager pathErrorI18n = I18nManager.getInstance();
+                throw new Exception(pathErrorI18n.getText("arsenal.dialog.error.no.plugin.path"));
             }
             
             // 生成临时脚本文件
             java.io.File scriptFile = createTemporaryScript(command, extensionPath);
-            addExecutionLogEntry("脚本生成", toolName, "脚本路径", scriptFile.getAbsolutePath());
+            I18nManager scriptI18n = I18nManager.getInstance();
+            addExecutionLogEntry(scriptI18n.getText("arsenal.dialog.execution.script.generated"), toolName, 
+                scriptI18n.getText("arsenal.dialog.execution.script.path"), scriptFile.getAbsolutePath());
             
             // 执行脚本
             executeScript(scriptFile, toolName);
             
         } catch (Exception e) {
-            addExecutionLogEntry("脚本执行异常", toolName, "错误", e.getMessage());
+            I18nManager scriptExecI18n = I18nManager.getInstance();
+            addExecutionLogEntry(scriptExecI18n.getText("arsenal.dialog.execution.script.exception"), toolName, 
+                scriptExecI18n.getText("arsenal.dialog.execution.error"), e.getMessage());
             // 恢复按钮状态
             runButton.setEnabled(true);
-            runButton.setText("Run");
+            runButton.setText(scriptExecI18n.getText("arsenal.dialog.button.run"));
             
             // 显示错误对话框
             JOptionPane.showMessageDialog(this, 
-                "脚本执行失败: " + e.getMessage(), 
-                "执行错误", 
+                scriptExecI18n.getText("arsenal.dialog.copy.failed.pattern", e.getMessage()), 
+                scriptExecI18n.getText("dialog.title.error"), 
                 JOptionPane.ERROR_MESSAGE);
         }
     }
@@ -1001,7 +1033,9 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
             // 如果无法获取插件路径，使用系统临时目录
             return System.getProperty("java.io.tmpdir");
         } catch (Exception e) {
-            addExecutionLogEntry("路径获取", "系统", "警告", "无法获取插件路径，使用系统临时目录: " + e.getMessage());
+            I18nManager pathI18n = I18nManager.getInstance();
+            addExecutionLogEntry(pathI18n.getText("arsenal.dialog.execution.tool"), pathI18n.getText("arsenal.dialog.execution.system.command"), 
+                pathI18n.getText("arsenal.dialog.execution.warning"), pathI18n.getText("arsenal.dialog.error.plugin.path.use.temp", e.getMessage()));
             return System.getProperty("java.io.tmpdir");
         }
     }
@@ -1062,7 +1096,8 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
         script.append("color 0A\r\n"); // 设置绿色文本
         script.append("echo.\r\n");
         script.append("echo ========================================\r\n");
-        script.append("echo BpArsenal Weapon Arsenal Tool Execution\r\n");
+        I18nManager batchI18n = I18nManager.getInstance();
+        script.append("echo ").append(batchI18n.getText("arsenal.dialog.shell.title.bparsenal")).append("\r\n");
         script.append("echo Time: %date% %time%\r\n");
         script.append("echo ========================================\r\n");
         script.append("echo.\r\n");
@@ -1096,17 +1131,18 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
      * @return 脚本内容
      */
     private String generateShellScript(String command) {
+        I18nManager shellI18n = I18nManager.getInstance();
         StringBuilder script = new StringBuilder();
         script.append("#!/bin/bash\n");
-        script.append("# BpArsenal 武器库工具执行脚本\n");
+        script.append("# ").append(shellI18n.getText("arsenal.dialog.shell.comment")).append("\n");
         script.append("# 自动生成于: $(date)\n\n");
         
         script.append("echo \"========================================\"\n");
-        script.append("echo \"BpArsenal 武器库工具执行\"\n");
-        script.append("echo \"时间: $(date)\"\n");
+        script.append("echo \"").append(shellI18n.getText("arsenal.dialog.shell.title.bparsenal")).append("\"\n");
+        script.append("echo \"").append(shellI18n.getText("arsenal.dialog.shell.time")).append("\"\n");
         script.append("echo \"========================================\"\n");
         script.append("echo\n");
-        script.append("echo \"正在执行命令:\"\n");
+        script.append("echo \"").append(shellI18n.getText("arsenal.dialog.shell.executing.command")).append("\"\n");
         script.append("echo \"").append(command.replace("\"", "\\\"")).append("\"\n"); // 转义双引号
         script.append("echo\n");
         script.append("echo \"========================================\"\n");
@@ -1119,9 +1155,9 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
         script.append("\n");
         script.append("echo\n");
         script.append("echo \"========================================\"\n");
-        script.append("echo \"命令执行完成，退出码: $EXIT_CODE\"\n");
+        script.append("echo \"").append(shellI18n.getText("arsenal.dialog.shell.command.completed")).append("\"\n");
         script.append("echo \"========================================\"\n");
-        script.append("read -p \"按回车键继续...\"\n"); // 暂停以便查看结果
+        script.append("read -p \"").append(shellI18n.getText("arsenal.dialog.shell.press.enter")).append("\"\n"); // 暂停以便查看结果
         
         return script.toString();
     }
@@ -1173,7 +1209,9 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
             // 启动进程
             Process process = processBuilder.start();
             
-            addExecutionLogEntry("脚本启动", toolName, "成功", "脚本已在新窗口中启动执行");
+            I18nManager launchI18n = I18nManager.getInstance();
+            addExecutionLogEntry(launchI18n.getText("arsenal.dialog.execution.script.started"), toolName, 
+                launchI18n.getText("arsenal.dialog.execution.success"), launchI18n.getText("arsenal.dialog.script.started.success"));
             
             // 异步等待进程完成并清理
             CompletableFuture.runAsync(() -> {
@@ -1181,12 +1219,15 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
                     int exitCode = process.waitFor();
                     
                     SwingUtilities.invokeLater(() -> {
-                        String status = exitCode == 0 ? "执行成功" : "执行完成";
-                        addExecutionLogEntry("脚本完成", toolName, status, "退出码: " + exitCode);
+                        I18nManager processI18n = I18nManager.getInstance();
+                        String status = exitCode == 0 ? processI18n.getText("arsenal.dialog.execution.success.hint") : 
+                            processI18n.getText("arsenal.dialog.execution.completed.hint");
+                        addExecutionLogEntry(processI18n.getText("arsenal.dialog.execution.script.completed"), toolName, 
+                            status, processI18n.getText("arsenal.dialog.exit.code", String.valueOf(exitCode)));
                         
                         // 恢复按钮状态
                         runButton.setEnabled(true);
-                        runButton.setText("Run");
+                        runButton.setText(processI18n.getText("arsenal.dialog.button.run"));
                     });
                     
                     // 延迟删除脚本文件（给进程时间完成）
@@ -1199,19 +1240,23 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
                     Thread.currentThread().interrupt();
                 } catch (Exception e) {
                     SwingUtilities.invokeLater(() -> {
-                        addExecutionLogEntry("脚本异常", toolName, "错误", e.getMessage());
+                        I18nManager exceptionI18n = I18nManager.getInstance();
+                        addExecutionLogEntry(exceptionI18n.getText("arsenal.dialog.execution.script.exception"), toolName, 
+                            exceptionI18n.getText("arsenal.dialog.execution.error"), e.getMessage());
                         runButton.setEnabled(true);
-                        runButton.setText("Run");
+                        runButton.setText(exceptionI18n.getText("arsenal.dialog.button.run"));
                     });
                 }
             });
             
         } catch (Exception e) {
-            addExecutionLogEntry("脚本启动失败", toolName, "错误", e.getMessage());
+            I18nManager startFailI18n = I18nManager.getInstance();
+            addExecutionLogEntry(startFailI18n.getText("arsenal.dialog.execution.script.failed"), toolName, 
+                startFailI18n.getText("arsenal.dialog.execution.error"), e.getMessage());
             // 恢复按钮状态
             runButton.setEnabled(true);
-            runButton.setText("Run");
-            throw new RuntimeException("脚本启动失败: " + e.getMessage(), e);
+            runButton.setText(startFailI18n.getText("arsenal.dialog.button.run"));
+            throw new RuntimeException(startFailI18n.getText("arsenal.dialog.copy.failed.pattern", e.getMessage()), e);
         }
     }
     
@@ -1226,18 +1271,19 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
         java.text.SimpleDateFormat formatter = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         String timestamp = formatter.format(new java.util.Date());
         
+        I18nManager logI18n = I18nManager.getInstance();
         StringBuilder logEntry = new StringBuilder();
         logEntry.append("[").append(timestamp).append("] ");
         logEntry.append(action).append(" - ");
-        logEntry.append("工具: ").append(toolName).append(" | ");
-        logEntry.append("类型: ").append(type).append("\n");
+        logEntry.append(logI18n.getText("arsenal.dialog.execution.tool")).append(": ").append(toolName).append(" | ");
+        logEntry.append(logI18n.getText("arsenal.dialog.execution.type")).append(": ").append(type).append("\n");
         
         // 如果details太长，进行截断显示
         String displayDetails = details;
         if (details.length() > 200) {
             displayDetails = details.substring(0, 200) + "...";
         }
-        logEntry.append("详情: ").append(displayDetails).append("\n");
+        logEntry.append(logI18n.getText("arsenal.dialog.execution.details")).append(": ").append(displayDetails).append("\n");
         logEntry.append(createSeparator(50)).append("\n");
         
         commandResultArea.append(logEntry.toString());
@@ -1284,18 +1330,21 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
      * 复制渲染后的命令到剪贴板
      */
     private void copyRenderedCommand() {
+        I18nManager copyI18n = I18nManager.getInstance();
         if (selectedToolCommand == null) {
-            JOptionPane.showMessageDialog(this, "请先选择一个工具！", "提示", JOptionPane.WARNING_MESSAGE);
+            JOptionPane.showMessageDialog(this, copyI18n.getText("arsenal.dialog.message.select.tool"), 
+                copyI18n.getText("dialog.title.warning"), JOptionPane.WARNING_MESSAGE);
             return;
         }
         
         try {
             // 总是复制渲染后的命令，不依赖当前选中的选项卡
             String commandToCopy = renderedCommandArea.getText();
-            String commandType = "渲染命令";
+            String commandType = copyI18n.getText("arsenal.dialog.copy.type.rendered");
             
             if (commandToCopy == null || commandToCopy.trim().isEmpty()) {
-                JOptionPane.showMessageDialog(this, "渲染命令内容为空，无法复制！", "提示", JOptionPane.WARNING_MESSAGE);
+                JOptionPane.showMessageDialog(this, copyI18n.getText("arsenal.dialog.message.rendered.empty"), 
+                    copyI18n.getText("dialog.title.warning"), JOptionPane.WARNING_MESSAGE);
                 return;
             }
             
@@ -1306,23 +1355,26 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
             
             // 显示成功提示
             String toolName = selectedToolCommand.getToolName();
-            String message = String.format("已将%s复制到剪贴板\n\n工具: %s\n命令长度: %d 字符", 
-                                          commandType, toolName, commandToCopy.trim().length());
-            JOptionPane.showMessageDialog(this, message, "复制成功", JOptionPane.INFORMATION_MESSAGE);
+            String message = copyI18n.getText("arsenal.dialog.copy.success.pattern", 
+                commandType, toolName, String.valueOf(commandToCopy.trim().length()));
+            JOptionPane.showMessageDialog(this, message, copyI18n.getText("arsenal.dialog.copy.success.title"), 
+                JOptionPane.INFORMATION_MESSAGE);
             
             // 记录到执行历史
-            addExecutionLogEntry("命令复制", toolName, commandType, "已复制到剪贴板，长度: " + commandToCopy.trim().length() + " 字符");
+            addExecutionLogEntry(copyI18n.getText("arsenal.dialog.execution.tool"), toolName, commandType, 
+                copyI18n.getText("arsenal.dialog.copied.clipboard", String.valueOf(commandToCopy.trim().length())));
             
             // 记录到Burp日志
             if (ApiManager.getInstance().isInitialized()) {
                 ApiManager.getInstance().getApi().logging().logToOutput(
-                    String.format("BpArsenal: 复制命令到剪贴板 - 工具: %s, 类型: %s", toolName, commandType)
+                    copyI18n.getText("arsenal.dialog.log.copy.command", toolName, commandType)
                 );
             }
             
         } catch (Exception ex) {
-            String errorMsg = "复制命令失败: " + ex.getMessage();
-            JOptionPane.showMessageDialog(this, errorMsg, "复制失败", JOptionPane.ERROR_MESSAGE);
+            String errorMsg = copyI18n.getText("arsenal.dialog.copy.failed.pattern", ex.getMessage());
+            JOptionPane.showMessageDialog(this, errorMsg, copyI18n.getText("arsenal.dialog.copy.failed.title"), 
+                JOptionPane.ERROR_MESSAGE);
             
             if (ApiManager.getInstance().isInitialized()) {
                 ApiManager.getInstance().getApi().logging().logToError(errorMsg);
@@ -1413,13 +1465,14 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
             }
             
             // 统计信息
-            variables.put("httpList.summary", String.format(
-                "总请求数: %d, 唯一URL: %d, 唯一主机: %d", 
-                allRequests.size(), urls.size(), hosts.size()));
+            I18nManager summaryI18n = I18nManager.getInstance();
+            variables.put("httpList.summary", summaryI18n.getText("arsenal.dialog.requests.summary",
+                String.valueOf(allRequests.size()), String.valueOf(urls.size()), String.valueOf(hosts.size())));
                 
         } catch (Exception e) {
+            I18nManager errorI18n = I18nManager.getInstance();
             ApiManager.getInstance().getApi().logging().logToError(
-                "添加httpList变量失败: " + e.getMessage());
+                errorI18n.getText("arsenal.dialog.error.httplist.failed", e.getMessage()));
             variables.put("httpList.error", e.getMessage());
         }
     }
@@ -1478,9 +1531,10 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
             tempFile.deleteOnExit();
             
             // 记录创建的临时文件
+            I18nManager tempFileI18n = I18nManager.getInstance();
             ApiManager.getInstance().getApi().logging().logToOutput(
-                String.format("BpArsenal: 创建临时文件 %s，包含 %d 项数据", 
-                    tempFile.getAbsolutePath(), items.size()));
+                tempFileI18n.getText("arsenal.dialog.log.temp.file", 
+                    tempFile.getAbsolutePath(), String.valueOf(items.size())));
             
             return tempFile.getAbsolutePath();
             
@@ -1524,18 +1578,16 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
      * 更新按钮文本
      */
     private void updateButtonTexts(I18nManager i18n) {
-        // 这里需要根据实际的按钮变量名来更新
-        // 由于没有看到所有按钮的定义，这里给出示例结构
         try {
-            // 示例：如果有executeButton
-            // if (executeButton != null) {
-            //     executeButton.setText(i18n.getText("arsenal.dialog.execute"));
-            // }
-            
-            // 示例：如果有closeButton
-            // if (closeButton != null) {
-            //     closeButton.setText(i18n.getText("arsenal.dialog.close"));
-            // }
+            if (runButton != null) {
+                runButton.setText(i18n.getText("arsenal.dialog.button.run"));
+            }
+            if (copyCommandButton != null) {
+                copyCommandButton.setText(i18n.getText("arsenal.dialog.button.copy.command"));
+            }
+            if (clearFilterButton != null) {
+                clearFilterButton.setText(i18n.getText("arsenal.dialog.button.clear.filter"));
+            }
         } catch (Exception e) {
             // 忽略更新错误
         }
@@ -1549,10 +1601,9 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
             try {
                 // 更新表格列名
                 tableModel.setColumnIdentifiers(new String[]{
-                    i18n.getText("arsenal.dialog.tool.name"),
-                    i18n.getText("arsenal.dialog.category"),
-                    i18n.getText("arsenal.dialog.command"),
-                    i18n.getText("arsenal.dialog.description")
+                    i18n.getText("arsenal.dialog.table.column.tool.name"),
+                    i18n.getText("arsenal.dialog.table.column.command"),
+                    i18n.getText("arsenal.dialog.table.column.category")
                 });
             } catch (Exception e) {
                 // 忽略更新错误
@@ -1564,13 +1615,35 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
      * 更新标签文本
      */
     private void updateLabelTexts(I18nManager i18n) {
-        // 这里需要根据实际的标签变量名来更新
-        // 示例结构
         try {
-            // 如果有搜索相关的标签
-            // if (searchLabel != null) {
-            //     searchLabel.setText(i18n.getText("arsenal.dialog.search"));
-            // }
+            // 更新选项卡标题
+            if (commandTabbedPane != null) {
+                commandTabbedPane.setTitleAt(0, i18n.getText("arsenal.dialog.tab.original.command"));
+                commandTabbedPane.setTitleAt(1, i18n.getText("arsenal.dialog.tab.rendered.command"));
+                commandTabbedPane.setTitleAt(2, i18n.getText("arsenal.dialog.tab.variables.preview"));
+                
+                // 更新选项卡提示
+                commandTabbedPane.setToolTipTextAt(0, i18n.getText("arsenal.dialog.tab.tooltip.original"));
+                commandTabbedPane.setToolTipTextAt(1, i18n.getText("arsenal.dialog.tab.tooltip.rendered"));
+                commandTabbedPane.setToolTipTextAt(2, i18n.getText("arsenal.dialog.tab.tooltip.variables"));
+            }
+            
+            // 更新边框标题
+            if (commandResultArea != null) {
+                commandResultArea.setBorder(BorderFactory.createTitledBorder(i18n.getText("arsenal.dialog.execution.history")));
+            }
+            
+            // 更新分类下拉框
+            if (categoryFilterCombo != null && categoryFilterCombo.getItemCount() > 0) {
+                String selectedItem = (String) categoryFilterCombo.getSelectedItem();
+                String allCategoriesText = i18n.getText("arsenal.dialog.filter.category.all");
+                categoryFilterCombo.removeItemAt(0);
+                categoryFilterCombo.insertItemAt(allCategoriesText, 0);
+                if (selectedItem != null && selectedItem.equals(allCategoriesText)) {
+                    categoryFilterCombo.setSelectedIndex(0);
+                }
+            }
+            
         } catch (Exception e) {
             // 忽略更新错误
         }
