@@ -4,6 +4,7 @@ import model.WebSite;
 import controller.ToolController;
 import view.component.WebSiteEditDialog;
 import view.menu.ArsenalMenuProvider;
+import util.I18nManager;
 
 import javax.swing.*;
 import javax.swing.table.*;
@@ -19,7 +20,7 @@ import java.util.List;
  * 网站导航面板 (View层)
  * 用于快速访问常用安全网站
  */
-public class WebsitePanel extends JPanel {
+public class WebsitePanel extends JPanel implements I18nManager.LanguageChangeListener {
     
     private JTable websiteTable;
     private WebSiteTableModel tableModel;
@@ -36,6 +37,9 @@ public class WebsitePanel extends JPanel {
     public WebsitePanel() {
         initializeUI();
         setupEventHandlers();
+        
+        // 注册语言变更监听器
+        I18nManager.getInstance().addLanguageChangeListener(this);
     }
     
     /**
@@ -70,21 +74,27 @@ public class WebsitePanel extends JPanel {
         JPanel leftPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
         
         // 搜索框
-        JLabel searchLabel = new JLabel("搜索:");
+        I18nManager i18n = I18nManager.getInstance();
+        JLabel searchLabel = new JLabel(i18n.getText("label.search"));
         searchLabel.setFont(new Font("微软雅黑", Font.PLAIN, 12));
         searchField = new JTextField(15);
         searchField.setFont(new Font("微软雅黑", Font.PLAIN, 11));
-        searchField.setToolTipText("输入内容进行搜索");
+        searchField.setToolTipText(i18n.getText("tooltip.search.input"));
         
         // 搜索列筛选
-        JLabel searchColumnLabel = new JLabel("搜索范围:");
+        JLabel searchColumnLabel = new JLabel(i18n.getText("label.search.scope"));
         searchColumnLabel.setFont(new Font("微软雅黑", Font.PLAIN, 12));
-        searchColumnFilter = new JComboBox<>(new String[]{"全部", "网站名称", "网站地址", "分类"});
+        searchColumnFilter = new JComboBox<>(new String[]{
+            i18n.getText("filter.all"), 
+            i18n.getText("websites.name"), 
+            i18n.getText("websites.url"), 
+            i18n.getText("label.category")
+        });
         searchColumnFilter.setFont(new Font("微软雅黑", Font.PLAIN, 11));
-        searchColumnFilter.setToolTipText("选择要搜索的列");
+        searchColumnFilter.setToolTipText(i18n.getText("tooltip.search.column"));
         
         // 分类过滤
-        JLabel categoryLabel = new JLabel("分类:");
+        JLabel categoryLabel = new JLabel(i18n.getText("label.category"));
         categoryLabel.setFont(new Font("微软雅黑", Font.PLAIN, 12));
         categoryFilter = new JComboBox<>();
         categoryFilter.setFont(new Font("微软雅黑", Font.PLAIN, 11));
@@ -106,11 +116,11 @@ public class WebsitePanel extends JPanel {
         // 右侧：操作按钮
         JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 5, 0));
         
-        addButton = createButton("+ 添加网站", "添加新的网站", new Color(46, 125, 50));
-        editButton = createButton("编辑", "编辑选中的网站", new Color(25, 118, 210));
-        deleteButton = createButton("删除", "删除选中的网站", new Color(211, 47, 47));
-        favoriteButton = createButton("收藏", "切换收藏状态", new Color(255, 152, 0));
-        openButton = createButton("打开", "在浏览器中打开网站", new Color(76, 175, 80));
+        addButton = createButton(i18n.getText("websites.button.add"), i18n.getText("websites.tooltip.add"), new Color(46, 125, 50));
+        editButton = createButton(i18n.getText("button.edit"), i18n.getText("websites.tooltip.edit"), new Color(25, 118, 210));
+        deleteButton = createButton(i18n.getText("button.delete"), i18n.getText("websites.tooltip.delete"), new Color(211, 47, 47));
+        favoriteButton = createButton(i18n.getText("button.favorite"), i18n.getText("websites.tooltip.favorite"), new Color(255, 152, 0));
+        openButton = createButton(i18n.getText("websites.button.open"), i18n.getText("websites.tooltip.open"), new Color(76, 175, 80));
         
         rightPanel.add(addButton);
         rightPanel.add(editButton);
@@ -143,7 +153,7 @@ public class WebsitePanel extends JPanel {
         scrollPane.setPreferredSize(new Dimension(800, 450));
         scrollPane.setBorder(BorderFactory.createTitledBorder(
             BorderFactory.createEtchedBorder(), 
-            "网站导航列表", 
+            I18nManager.getInstance().getText("websites.table.title"), 
             TitledBorder.LEFT, 
             TitledBorder.TOP,
             new Font("微软雅黑", Font.BOLD, 12)
@@ -163,7 +173,7 @@ public class WebsitePanel extends JPanel {
         bottomPanel.setBorder(BorderFactory.createEmptyBorder(10, 0, 0, 0));
         
         // 状态信息
-        statusLabel = new JLabel("就绪");
+        statusLabel = new JLabel(I18nManager.getInstance().getText("status.ready"));
         statusLabel.setFont(new Font("微软雅黑", Font.PLAIN, 11));
         statusLabel.setForeground(new Color(100, 100, 100));
         
@@ -583,6 +593,91 @@ public class WebsitePanel extends JPanel {
     private void logError(String message) {
         System.err.println("WebsitePanel: " + message);
     }
+    
+    /**
+     * 语言变更监听器实现
+     * @param newLanguage 新的语言
+     */
+    @Override
+    public void onLanguageChanged(I18nManager.SupportedLanguage newLanguage) {
+        SwingUtilities.invokeLater(() -> {
+            updateUITexts();
+            revalidate();
+            repaint();
+        });
+    }
+    
+    /**
+     * 更新UI文本
+     */
+    private void updateUITexts() {
+        I18nManager i18n = I18nManager.getInstance();
+        
+        // 更新按钮文本
+        if (addButton != null) {
+            addButton.setText(i18n.getText("websites.button.add"));
+            addButton.setToolTipText(i18n.getText("websites.tooltip.add"));
+        }
+        if (editButton != null) {
+            editButton.setText(i18n.getText("button.edit"));
+            editButton.setToolTipText(i18n.getText("websites.tooltip.edit"));
+        }
+        if (deleteButton != null) {
+            deleteButton.setText(i18n.getText("button.delete"));
+            deleteButton.setToolTipText(i18n.getText("websites.tooltip.delete"));
+        }
+        if (favoriteButton != null) {
+            favoriteButton.setText(i18n.getText("button.favorite"));
+            favoriteButton.setToolTipText(i18n.getText("websites.tooltip.favorite"));
+        }
+        if (openButton != null) {
+            openButton.setText(i18n.getText("websites.button.open"));
+            openButton.setToolTipText(i18n.getText("websites.tooltip.open"));
+        }
+        
+        // 更新状态标签
+        if (statusLabel != null) {
+            statusLabel.setText(i18n.getText("status.ready"));
+        }
+        
+        // 更新表格列名
+        if (tableModel != null) {
+            tableModel.updateColumnNames();
+            tableModel.fireTableStructureChanged();
+        }
+        
+        // 更新搜索范围下拉框选项
+        updateSearchColumnFilter();
+        
+        // 重新加载分类选项（可能包含国际化的默认分类）
+        loadCategoryOptions();
+    }
+    
+    /**
+     * 更新搜索范围下拉框选项
+     */
+    private void updateSearchColumnFilter() {
+        if (searchColumnFilter != null) {
+            I18nManager i18n = I18nManager.getInstance();
+            
+            // 保存当前选中的索引
+            int selectedIndex = searchColumnFilter.getSelectedIndex();
+            
+            // 移除所有项目
+            searchColumnFilter.removeAllItems();
+            
+            // 添加新的国际化项目
+            searchColumnFilter.addItem(i18n.getText("filter.all"));
+            searchColumnFilter.addItem(i18n.getText("websites.name"));
+            searchColumnFilter.addItem(i18n.getText("websites.url"));
+            searchColumnFilter.addItem(i18n.getText("label.category"));
+            
+            // 恢复选中状态
+            if (selectedIndex >= 0 && selectedIndex < searchColumnFilter.getItemCount()) {
+                searchColumnFilter.setSelectedIndex(selectedIndex);
+            }
+        }
+    }
 
     /**
      * 动态加载分类选项
@@ -597,11 +692,12 @@ public class WebsitePanel extends JPanel {
             categoryFilter.setSelectedIndex(0); // 默认选中"全部"
         } catch (Exception e) {
             // 如果加载失败，使用默认选项
+            I18nManager i18n = I18nManager.getInstance();
             categoryFilter.removeAllItems();
-            categoryFilter.addItem("全部");
+            categoryFilter.addItem(i18n.getText("filter.all"));
             categoryFilter.addItem("OSINT");
             categoryFilter.addItem("Recon");
-            categoryFilter.addItem("漏洞库");
+            categoryFilter.addItem(i18n.getText("websites.category.vulnerability.db"));
             logError("加载分类选项失败: " + e.getMessage());
         }
     }
@@ -611,8 +707,22 @@ public class WebsitePanel extends JPanel {
  * 网站表格模型
  */
 class WebSiteTableModel extends AbstractTableModel {
-    private final String[] columnNames = {"网站名称", "网站地址", "收藏", "分类"};
+    private String[] columnNames;
     private List<WebSite> websites = new ArrayList<>();
+    
+    public WebSiteTableModel() {
+        updateColumnNames();
+    }
+    
+    public void updateColumnNames() {
+        I18nManager i18n = I18nManager.getInstance();
+        columnNames = new String[]{
+            i18n.getText("websites.name"), 
+            i18n.getText("websites.url"), 
+            i18n.getText("column.favorite"), 
+            i18n.getText("label.category")
+        };
+    }
     
     @Override
     public int getRowCount() {
