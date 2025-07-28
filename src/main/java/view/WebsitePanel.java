@@ -1,10 +1,12 @@
 package view;
 
 import model.WebSite;
+import model.WebSiteTableModel;
+import controller.WebSitePanelController;
 import controller.ToolController;
 import view.component.WebSiteEditDialog;
-import view.menu.ArsenalMenuProvider;
 import util.I18nManager;
+import util.WebSiteRendererFactory;
 
 import javax.swing.*;
 import javax.swing.table.*;
@@ -12,15 +14,14 @@ import javax.swing.border.TitledBorder;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.net.URI;
-import java.util.ArrayList;
 import java.util.List;
 
 /**
  * 网站导航面板 (View层)
- * 用于快速访问常用安全网站
+ * 重构为MVC架构，仅负责UI展示和用户交互
  */
-public class WebsitePanel extends JPanel implements I18nManager.LanguageChangeListener {
+public class WebsitePanel extends JPanel implements I18nManager.LanguageChangeListener,
+        WebSitePanelController.WebSitePanelView, WebSitePanelController.WebSitePanelListener {
     
     private JTable websiteTable;
     private WebSiteTableModel tableModel;
@@ -34,12 +35,30 @@ public class WebsitePanel extends JPanel implements I18nManager.LanguageChangeLi
     private JComboBox<String> categoryFilter;
     private JLabel statusLabel;
     
+    // 控制器
+    private WebSitePanelController controller;
+    
+    // 列索引常量
+    private static final int FAVORITE_COLUMN_INDEX = 2;
+    private static final int URL_COLUMN_INDEX = 1;
+    
     public WebsitePanel() {
+        // 初始化控制器
+        controller = WebSitePanelController.getInstance();
+        controller.setView(this);
+        controller.setListener(this);
+        
+        // 获取表格模型
+        tableModel = controller.getTableModel();
+        
         initializeUI();
         setupEventHandlers();
         
         // 注册语言变更监听器
         I18nManager.getInstance().addLanguageChangeListener(this);
+        
+        // 加载数据
+        loadData();
     }
     
     /**
@@ -71,10 +90,26 @@ public class WebsitePanel extends JPanel implements I18nManager.LanguageChangeLi
         toolbarPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
         
         // 左侧：搜索和过滤
+        JPanel leftPanel = createSearchPanel();
+        
+        // 右侧：操作按钮
+        JPanel rightPanel = createButtonPanel();
+        
+        toolbarPanel.add(leftPanel, BorderLayout.WEST);
+        toolbarPanel.add(rightPanel, BorderLayout.EAST);
+        
+        return toolbarPanel;
+    }
+    
+    /**
+     * 创建搜索面板
+     */
+    private JPanel createSearchPanel() {
         JPanel leftPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
         
-        // 搜索框
         I18nManager i18n = I18nManager.getInstance();
+        
+        // 搜索框
         JLabel searchLabel = new JLabel(i18n.getText("label.search"));
         searchLabel.setFont(new Font("微软雅黑", Font.PLAIN, 12));
         searchField = new JTextField(15);
@@ -87,7 +122,6 @@ public class WebsitePanel extends JPanel implements I18nManager.LanguageChangeLi
         searchColumnFilter = new JComboBox<>();
         searchColumnFilter.setFont(new Font("微软雅黑", Font.PLAIN, 11));
         searchColumnFilter.setToolTipText(i18n.getText("tooltip.search.column"));
-        // 初始化搜索范围选项
         initializeSearchColumnFilter();
         
         // 分类过滤
@@ -95,7 +129,6 @@ public class WebsitePanel extends JPanel implements I18nManager.LanguageChangeLi
         categoryLabel.setFont(new Font("微软雅黑", Font.PLAIN, 12));
         categoryFilter = new JComboBox<>();
         categoryFilter.setFont(new Font("微软雅黑", Font.PLAIN, 11));
-        // 动态加载分类选项
         loadCategoryOptions();
         
         leftPanel.add(searchLabel);
@@ -110,8 +143,16 @@ public class WebsitePanel extends JPanel implements I18nManager.LanguageChangeLi
         leftPanel.add(Box.createHorizontalStrut(5));
         leftPanel.add(categoryFilter);
         
-        // 右侧：操作按钮
+        return leftPanel;
+    }
+    
+    /**
+     * 创建按钮面板
+     */
+    private JPanel createButtonPanel() {
         JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 5, 0));
+        
+        I18nManager i18n = I18nManager.getInstance();
         
         addButton = createButton(i18n.getText("websites.button.add"), i18n.getText("websites.tooltip.add"), new Color(46, 125, 50));
         editButton = createButton(i18n.getText("button.edit"), i18n.getText("websites.tooltip.edit"), new Color(25, 118, 210));
@@ -125,10 +166,7 @@ public class WebsitePanel extends JPanel implements I18nManager.LanguageChangeLi
         rightPanel.add(favoriteButton);
         rightPanel.add(openButton);
         
-        toolbarPanel.add(leftPanel, BorderLayout.WEST);
-        toolbarPanel.add(rightPanel, BorderLayout.EAST);
-        
-        return toolbarPanel;
+        return rightPanel;
     }
     
     /**
@@ -138,11 +176,8 @@ public class WebsitePanel extends JPanel implements I18nManager.LanguageChangeLi
     private JPanel createTablePanel() {
         JPanel tablePanel = new JPanel(new BorderLayout());
         
-        // 创建表格模型和表格
-        tableModel = new WebSiteTableModel();
+        // 创建表格
         websiteTable = new JTable(tableModel);
-        
-        // 设置表格属性
         setupTable();
         
         // 创建滚动面板
@@ -181,10 +216,6 @@ public class WebsitePanel extends JPanel implements I18nManager.LanguageChangeLi
     
     /**
      * 创建按钮
-     * @param text 按钮文本
-     * @param tooltip 提示文本
-     * @param color 背景颜色
-     * @return 按钮
      */
     private JButton createButton(String text, String tooltip, Color color) {
         JButton button = new JButton(text);
@@ -202,18 +233,8 @@ public class WebsitePanel extends JPanel implements I18nManager.LanguageChangeLi
      * 设置表格属性
      */
     private void setupTable() {
-        // 基本设置
-        websiteTable.setFont(new Font("微软雅黑", Font.PLAIN, 11));
-        websiteTable.setRowHeight(25);
-        websiteTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-//        websiteTable.setGridColor(new Color(230, 230, 230));
-//        websiteTable.setShowGrid(true);
-        
-        // 设置表头
-        JTableHeader header = websiteTable.getTableHeader();
-        header.setFont(new Font("微软雅黑", Font.BOLD, 12));
-//        header.setBackground(new Color(245, 245, 245));
-        header.setReorderingAllowed(false);
+        // 应用基本表格样式
+        WebSiteRendererFactory.applyTableStyle(websiteTable);
         
         // 设置列宽
         TableColumnModel columnModel = websiteTable.getColumnModel();
@@ -222,36 +243,32 @@ public class WebsitePanel extends JPanel implements I18nManager.LanguageChangeLi
         columnModel.getColumn(2).setPreferredWidth(60);   // 收藏
         columnModel.getColumn(3).setPreferredWidth(80);   // 分类
         
-        // 设置收藏列渲染器
-        columnModel.getColumn(2).setCellRenderer(new WebSiteFavoriteRenderer());
-        
-        // 设置URL列渲染器（可点击链接样式）
-        columnModel.getColumn(1).setCellRenderer(new WebSiteUrlRenderer());
+        // 设置渲染器
+        configureTableRenderers();
+    }
+    
+    /**
+     * 配置表格渲染器
+     */
+    private void configureTableRenderers() {
+        WebSiteRendererFactory.configureTableRenderers(websiteTable, FAVORITE_COLUMN_INDEX, URL_COLUMN_INDEX);
     }
     
     /**
      * 设置事件处理器
      */
     private void setupEventHandlers() {
-        // 表格双击打开网站
+        // 表格事件
         websiteTable.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
                 if (e.getClickCount() == 2) {
                     openSelectedWebsite();
                 } else if (e.getClickCount() == 1 && e.getButton() == MouseEvent.BUTTON3) {
-                    // 右键菜单（可扩展）
                     showContextMenu(e);
                 }
             }
         });
-        
-        // 选择变化处理
-//        websiteTable.getSelectionModel().addListSelectionListener(e -> {
-//            if (!e.getValueIsAdjusting()) {
-//                updateButtonStates();
-//            }
-//        });
         
         // 按钮事件
         addButton.addActionListener(e -> addNewWebsite());
@@ -270,47 +287,14 @@ public class WebsitePanel extends JPanel implements I18nManager.LanguageChangeLi
      * 加载数据
      */
     public void loadData() {
-        try {
-            // 先加载原始数据到表格
-            List<WebSite> websites = ToolController.getInstance().getAllWebSites();
-            tableModel.setWebSites(websites);
-            
-            // 然后应用当前的筛选条件
-            filterTable();
-            
-        } catch (Exception e) {
-            updateStatus("加载失败: " + e.getMessage());
-            logError("加载网站数据失败: " + e.getMessage());
-        }
+        controller.loadData();
     }
     
     /**
      * 添加新网站
      */
     private void addNewWebsite() {
-        WebSiteEditDialog dialog = new WebSiteEditDialog(SwingUtilities.getWindowAncestor(this), null);
-        dialog.setVisible(true);
-        
-        if (dialog.isConfirmed()) {
-            WebSite newWebsite = dialog.getWebSite();
-            String category = dialog.getSelectedCategory();
-            
-            if (ToolController.getInstance().addWebSite(newWebsite, category)) {
-                loadData();
-                updateStatus("已添加网站: " + newWebsite.getDesc() + " (分类: " + category + ")");
-                
-                // 如果新网站是收藏状态，更新菜单
-                if (newWebsite.isFavor()) {
-                    try {
-                        ArsenalMenuProvider.updateWebsiteMenu();
-                    } catch (Exception e) {
-                        logError("更新菜单失败: " + e.getMessage());
-                    }
-                }
-            } else {
-                updateStatus("添加网站失败");
-            }
-        }
+        controller.addNewWebSite(this);
     }
     
     /**
@@ -318,37 +302,7 @@ public class WebsitePanel extends JPanel implements I18nManager.LanguageChangeLi
      */
     private void editSelectedWebsite() {
         int selectedRow = websiteTable.getSelectedRow();
-        if (selectedRow == -1) {
-            JOptionPane.showMessageDialog(this, "请先选择要编辑的网站", "提示", JOptionPane.INFORMATION_MESSAGE);
-            return;
-        }
-        
-        WebSite website = tableModel.getWebSiteAt(selectedRow);
-        boolean oldFavoriteState = website.isFavor();
-        
-        WebSiteEditDialog dialog = new WebSiteEditDialog(SwingUtilities.getWindowAncestor(this), website);
-        dialog.setVisible(true);
-        
-        if (dialog.isConfirmed()) {
-            WebSite updatedWebsite = dialog.getWebSite();
-            String newCategory = dialog.getSelectedCategory();
-            
-            if (ToolController.getInstance().updateWebSite(website, updatedWebsite, newCategory)) {
-                loadData();
-                updateStatus("已更新网站: " + updatedWebsite.getDesc() + " (分类: " + newCategory + ")");
-                
-                // 如果收藏状态发生变化，更新菜单
-                if (oldFavoriteState != updatedWebsite.isFavor()) {
-                    try {
-                        ArsenalMenuProvider.updateWebsiteMenu();
-                    } catch (Exception e) {
-                        logError("更新菜单失败: " + e.getMessage());
-                    }
-                }
-            } else {
-                updateStatus("更新网站失败");
-            }
-        }
+        controller.editSelectedWebSite(selectedRow, this);
     }
     
     /**
@@ -356,37 +310,7 @@ public class WebsitePanel extends JPanel implements I18nManager.LanguageChangeLi
      */
     private void deleteSelectedWebsite() {
         int selectedRow = websiteTable.getSelectedRow();
-        if (selectedRow == -1) {
-            JOptionPane.showMessageDialog(this, "请先选择要删除的网站", "提示", JOptionPane.INFORMATION_MESSAGE);
-            return;
-        }
-        
-        WebSite website = tableModel.getWebSiteAt(selectedRow);
-        boolean wasFavorite = website.isFavor();
-        
-        int result = JOptionPane.showConfirmDialog(this,
-            "确定要删除网站 \"" + website.getDesc() + "\" 吗？",
-            "确认删除",
-            JOptionPane.YES_NO_OPTION,
-            JOptionPane.WARNING_MESSAGE);
-            
-        if (result == JOptionPane.YES_OPTION) {
-            if (ToolController.getInstance().removeWebSite(website)) {
-                loadData();
-                updateStatus("已删除网站: " + website.getDesc());
-                
-                // 如果删除的是收藏网站，更新菜单
-                if (wasFavorite) {
-                    try {
-                        ArsenalMenuProvider.updateWebsiteMenu();
-                    } catch (Exception e) {
-                        logError("更新菜单失败: " + e.getMessage());
-                    }
-                }
-            } else {
-                updateStatus("删除网站失败");
-            }
-        }
+        controller.deleteSelectedWebSite(selectedRow, this);
     }
     
     /**
@@ -394,30 +318,7 @@ public class WebsitePanel extends JPanel implements I18nManager.LanguageChangeLi
      */
     private void toggleFavorite() {
         int selectedRow = websiteTable.getSelectedRow();
-        if (selectedRow == -1) {
-            JOptionPane.showMessageDialog(this, "请先选择网站", "提示", JOptionPane.INFORMATION_MESSAGE);
-            return;
-        }
-        
-        WebSite website = tableModel.getWebSiteAt(selectedRow);
-        boolean newFavoriteState = !website.isFavor();
-        
-        if (ToolController.getInstance().updateWebSiteFavorite(website, newFavoriteState)) {
-            website.setFavor(newFavoriteState);
-            tableModel.fireTableDataChanged();
-            
-            String status = website.isFavor() ? "已收藏" : "已取消收藏";
-            updateStatus(status + ": " + website.getDesc());
-            
-            // 动态更新菜单栏
-            try {
-                ArsenalMenuProvider.updateWebsiteMenu();
-            } catch (Exception e) {
-                logError("更新菜单失败: " + e.getMessage());
-            }
-        } else {
-            updateStatus("更新收藏状态失败");
-        }
+        controller.toggleFavorite(selectedRow, this);
     }
     
     /**
@@ -425,40 +326,22 @@ public class WebsitePanel extends JPanel implements I18nManager.LanguageChangeLi
      */
     private void openSelectedWebsite() {
         int selectedRow = websiteTable.getSelectedRow();
-        if (selectedRow == -1) {
-            JOptionPane.showMessageDialog(this, "请先选择要打开的网站", "提示", JOptionPane.INFORMATION_MESSAGE);
-            return;
-        }
+        controller.openSelectedWebSite(selectedRow, this);
+    }
+    
+    /**
+     * 过滤表格
+     */
+    private void filterTable() {
+        String searchText = searchField.getText();
+        int searchColumnIndex = searchColumnFilter.getSelectedIndex();
+        String selectedCategory = (String) categoryFilter.getSelectedItem();
         
-        WebSite website = tableModel.getWebSiteAt(selectedRow);
-        
-        try {
-            Desktop desktop = Desktop.getDesktop();
-            if (desktop.isSupported(Desktop.Action.BROWSE)) {
-                desktop.browse(new URI(website.getUrl()));
-                updateStatus("正在打开: " + website.getDesc() + " - " + website.getUrl());
-            } else {
-                updateStatus("系统不支持打开浏览器");
-                JOptionPane.showMessageDialog(this,
-                    "系统不支持打开浏览器\n网站地址: " + website.getUrl(),
-                    "无法打开网站",
-                    JOptionPane.WARNING_MESSAGE);
-            }
-            
-        } catch (Exception e) {
-            updateStatus("打开网站失败: " + e.getMessage());
-            logError("打开网站失败: " + e.getMessage());
-            
-            JOptionPane.showMessageDialog(this,
-                "打开网站失败！\n错误: " + e.getMessage() + "\n网站地址: " + website.getUrl(),
-                "打开失败",
-                JOptionPane.ERROR_MESSAGE);
-        }
+        controller.filterTable(searchText, searchColumnIndex, selectedCategory);
     }
     
     /**
      * 显示右键菜单
-     * @param e 鼠标事件
      */
     private void showContextMenu(MouseEvent e) {
         int row = websiteTable.rowAtPoint(e.getPoint());
@@ -481,6 +364,13 @@ public class WebsitePanel extends JPanel implements I18nManager.LanguageChangeLi
             favoriteItem.addActionListener(event -> toggleFavorite());
             contextMenu.add(favoriteItem);
             
+            // 复制URL
+            JMenuItem copyItem = new JMenuItem("复制网站地址");
+            copyItem.addActionListener(event -> {
+                controller.copyUrlToClipboard(websiteTable.getSelectedRow());
+            });
+            contextMenu.add(copyItem);
+            
             JMenuItem deleteItem = new JMenuItem("删除");
             deleteItem.addActionListener(event -> deleteSelectedWebsite());
             contextMenu.add(deleteItem);
@@ -490,114 +380,164 @@ public class WebsitePanel extends JPanel implements I18nManager.LanguageChangeLi
     }
     
     /**
-     * 过滤表格
+     * 初始化搜索范围下拉框选项
      */
-    private void filterTable() {
-        String searchText = searchField.getText().toLowerCase().trim();
-        String selectedSearchColumn = (String) searchColumnFilter.getSelectedItem();
-        String selectedCategory = (String) categoryFilter.getSelectedItem();
-        
-        // 获取原始数据
-        List<WebSite> allWebSites = ToolController.getInstance().getAllWebSites();
-        List<WebSite> filteredSites = new ArrayList<>();
-        
-        for (WebSite website : allWebSites) {
-            boolean matchesSearch = false;
-            boolean matchesCategory = false;
-            
-            // 检查搜索条件
-            if (searchText.isEmpty()) {
-                matchesSearch = true;
-            } else {
-                String websiteCategory = ToolController.getInstance().getWebSiteCategory(website.getDesc());
-                // 使用索引而不是字符串比较，避免国际化问题
-                int searchColumnIndex = searchColumnFilter.getSelectedIndex();
-                switch (searchColumnIndex) {
-                    case 0: // 全部
-                        matchesSearch = website.getDesc().toLowerCase().contains(searchText) ||
-                                       website.getUrl().toLowerCase().contains(searchText) ||
-                                       websiteCategory.toLowerCase().contains(searchText);
-                        break;
-                    case 1: // 网站名称
-                        matchesSearch = website.getDesc().toLowerCase().contains(searchText);
-                        break;
-                    case 2: // 网站地址
-                        matchesSearch = website.getUrl().toLowerCase().contains(searchText);
-                        break;
-                    case 3: // 分类
-                        matchesSearch = websiteCategory.toLowerCase().contains(searchText);
-                        break;
-                    default:
-                        matchesSearch = true;
-                        break;
-                }
-            }
-            
-            // 检查分类过滤条件
+    private void initializeSearchColumnFilter() {
+        if (searchColumnFilter != null) {
             I18nManager i18n = I18nManager.getInstance();
-            if (selectedCategory.equals(i18n.getText("filter.all"))) {
-                matchesCategory = true;
-            } else {
-                String websiteCategory = ToolController.getInstance().getWebSiteCategory(website.getDesc());
-                matchesCategory = websiteCategory.equals(selectedCategory);
-            }
             
-            // 同时满足搜索和分类条件的记录才会被显示
-            if (matchesSearch && matchesCategory) {
-                filteredSites.add(website);
+            searchColumnFilter.addItem(i18n.getText("filter.all"));
+            searchColumnFilter.addItem(i18n.getText("websites.name"));
+            searchColumnFilter.addItem(i18n.getText("websites.url"));
+            searchColumnFilter.addItem(i18n.getText("label.category"));
+            
+            searchColumnFilter.setSelectedIndex(0);
+        }
+    }
+    
+    /**
+     * 更新搜索范围下拉框选项
+     */
+    private void updateSearchColumnFilter() {
+        if (searchColumnFilter != null) {
+            I18nManager i18n = I18nManager.getInstance();
+            
+            int selectedIndex = searchColumnFilter.getSelectedIndex();
+            
+            searchColumnFilter.removeAllItems();
+            
+            searchColumnFilter.addItem(i18n.getText("filter.all"));
+            searchColumnFilter.addItem(i18n.getText("websites.name"));
+            searchColumnFilter.addItem(i18n.getText("websites.url"));
+            searchColumnFilter.addItem(i18n.getText("label.category"));
+            
+            if (selectedIndex >= 0 && selectedIndex < searchColumnFilter.getItemCount()) {
+                searchColumnFilter.setSelectedIndex(selectedIndex);
             }
         }
-        
-        // 更新表格数据
-        tableModel.setWebSites(filteredSites);
-        
-        // 更新状态信息
-        String statusMsg = String.format("显示 %d/%d 个网站", 
-                                        filteredSites.size(), 
-                                        allWebSites.size());
-        if (!searchText.isEmpty()) {
-            String searchScope = searchColumnFilter.getSelectedItem() != null ? 
-                (String) searchColumnFilter.getSelectedItem() : selectedSearchColumn;
-            statusMsg += " | 搜索: " + searchText + " (范围: " + searchScope + ")";
-        }
-        I18nManager i18nForStatus = I18nManager.getInstance();
-        if (!selectedCategory.equals(i18nForStatus.getText("filter.all"))) {
-            statusMsg += " | 分类: " + selectedCategory;
-        }
-        updateStatus(statusMsg);
     }
-    
+
     /**
-     * 更新按钮状态
+     * 动态加载分类选项
      */
-    private void updateButtonStates() {
-        boolean hasSelection = websiteTable.getSelectedRow() != -1;
-        editButton.setEnabled(hasSelection);
-        deleteButton.setEnabled(hasSelection);
-        favoriteButton.setEnabled(hasSelection);
-        openButton.setEnabled(hasSelection);
-    }
-    
-    /**
-     * 更新状态
-     * @param message 状态消息
-     */
-    private void updateStatus(String message) {
-        statusLabel.setText(message);
+    private void loadCategoryOptions() {
+        try {
+            List<String> categories = ToolController.getInstance().getAllWebSiteCategories();
+            categoryFilter.removeAllItems();
+            for (String category : categories) {
+                categoryFilter.addItem(category);
+            }
+            categoryFilter.setSelectedIndex(0);
+        } catch (Exception e) {
+            I18nManager i18n = I18nManager.getInstance();
+            categoryFilter.removeAllItems();
+            categoryFilter.addItem(i18n.getText("filter.all"));
+            categoryFilter.addItem("OSINT");
+            categoryFilter.addItem("Recon");
+            categoryFilter.addItem(i18n.getText("websites.category.vulnerability.db"));
+            logError("加载分类选项失败: " + e.getMessage());
+        }
     }
     
     /**
      * 记录错误日志
-     * @param message 错误消息
      */
     private void logError(String message) {
         System.err.println("WebsitePanel: " + message);
     }
     
-    /**
-     * 语言变更监听器实现
-     * @param newLanguage 新的语言
-     */
+    // =========================== 实现WebSitePanelView接口 ===========================
+    
+    @Override
+    public WebSite showAddWebSiteDialog(Component parentComponent) {
+        WebSiteEditDialog dialog = new WebSiteEditDialog(SwingUtilities.getWindowAncestor(parentComponent), null);
+        dialog.setVisible(true);
+        
+        if (dialog.isConfirmed()) {
+            return dialog.getWebSite();
+        }
+        return null;
+    }
+    
+    @Override
+    public WebSite showEditWebSiteDialog(Component parentComponent, WebSite website) {
+        WebSiteEditDialog dialog = new WebSiteEditDialog(SwingUtilities.getWindowAncestor(parentComponent), website);
+        dialog.setVisible(true);
+        
+        if (dialog.isConfirmed()) {
+            return dialog.getWebSite();
+        }
+        return null;
+    }
+    
+    @Override
+    public String getSelectedCategory() {
+        // 这里需要从对话框中获取选中的分类，暂时返回默认值
+        return "OSINT";
+    }
+    
+    @Override
+    public void updateStatus(String message) {
+        if (statusLabel != null) {
+            statusLabel.setText(message);
+        }
+    }
+    
+    @Override
+    public void showMessage(Component parent, String message, String title, int messageType) {
+        JOptionPane.showMessageDialog(parent, message, title, messageType);
+    }
+    
+    // =========================== 实现WebSitePanelListener接口 ===========================
+    
+    @Override
+    public void onDataLoaded(int count) {
+        // 数据加载完成后的处理
+    }
+    
+    @Override
+    public void onDataFiltered(int filteredCount, int totalCount) {
+        // 数据过滤完成后的处理
+    }
+    
+    @Override
+    public void onWebSiteAdded(WebSite website) {
+        // 网站添加完成后的处理
+    }
+    
+    @Override
+    public void onWebSiteUpdated(WebSite website) {
+        // 网站更新完成后的处理
+    }
+    
+    @Override
+    public void onWebSiteDeleted(WebSite website) {
+        // 网站删除完成后的处理
+    }
+    
+    @Override
+    public void onFavoriteToggled(WebSite website, boolean newState) {
+        // 收藏状态切换完成后的处理
+    }
+    
+    @Override
+    public void onWebSiteOpened(WebSite website) {
+        // 网站打开完成后的处理
+    }
+    
+    @Override
+    public void onUrlCopied(WebSite website) {
+        // URL复制完成后的处理
+    }
+    
+    @Override
+    public void onError(String operation, String errorMessage) {
+        // 错误处理
+        logError(operation + "失败: " + errorMessage);
+    }
+    
+    // =========================== 实现LanguageChangeListener接口 ===========================
+    
     @Override
     public void onLanguageChanged(I18nManager.SupportedLanguage newLanguage) {
         SwingUtilities.invokeLater(() -> {
@@ -646,253 +586,15 @@ public class WebsitePanel extends JPanel implements I18nManager.LanguageChangeLi
             tableModel.fireTableStructureChanged();
             
             // 重新设置渲染器（因为fireTableStructureChanged会重置所有列）
-            if (websiteTable != null) {
-                TableColumnModel columnModel = websiteTable.getColumnModel();
-                // 重新设置收藏列渲染器
-                columnModel.getColumn(2).setCellRenderer(new WebSiteFavoriteRenderer());
-                // 重新设置URL列渲染器
-                columnModel.getColumn(1).setCellRenderer(new WebSiteUrlRenderer());
-            }
+            configureTableRenderers();
         }
         
         // 更新搜索范围下拉框选项
         updateSearchColumnFilter();
         
-        // 重新加载分类选项（可能包含国际化的默认分类）
+        // 重新加载分类选项
         loadCategoryOptions();
     }
-    
-    /**
-     * 初始化搜索范围下拉框选项
-     */
-    private void initializeSearchColumnFilter() {
-        if (searchColumnFilter != null) {
-            I18nManager i18n = I18nManager.getInstance();
-            
-            // 添加国际化项目
-            searchColumnFilter.addItem(i18n.getText("filter.all"));
-            searchColumnFilter.addItem(i18n.getText("websites.name"));
-            searchColumnFilter.addItem(i18n.getText("websites.url"));
-            searchColumnFilter.addItem(i18n.getText("label.category"));
-            
-            // 默认选中第一项
-            searchColumnFilter.setSelectedIndex(0);
-        }
-    }
-    
-    /**
-     * 更新搜索范围下拉框选项
-     */
-    private void updateSearchColumnFilter() {
-        if (searchColumnFilter != null) {
-            I18nManager i18n = I18nManager.getInstance();
-            
-            // 保存当前选中的索引
-            int selectedIndex = searchColumnFilter.getSelectedIndex();
-            
-            // 移除所有项目
-            searchColumnFilter.removeAllItems();
-            
-            // 添加新的国际化项目
-            searchColumnFilter.addItem(i18n.getText("filter.all"));
-            searchColumnFilter.addItem(i18n.getText("websites.name"));
-            searchColumnFilter.addItem(i18n.getText("websites.url"));
-            searchColumnFilter.addItem(i18n.getText("label.category"));
-            
-            // 恢复选中状态
-            if (selectedIndex >= 0 && selectedIndex < searchColumnFilter.getItemCount()) {
-                searchColumnFilter.setSelectedIndex(selectedIndex);
-            }
-        }
-    }
-
-    /**
-     * 动态加载分类选项
-     */
-    private void loadCategoryOptions() {
-        try {
-            List<String> categories = ToolController.getInstance().getAllWebSiteCategories();
-            categoryFilter.removeAllItems();
-            for (String category : categories) {
-                categoryFilter.addItem(category);
-            }
-            categoryFilter.setSelectedIndex(0); // 默认选中"全部"
-        } catch (Exception e) {
-            // 如果加载失败，使用默认选项
-            I18nManager i18n = I18nManager.getInstance();
-            categoryFilter.removeAllItems();
-            categoryFilter.addItem(i18n.getText("filter.all"));
-            categoryFilter.addItem("OSINT");
-            categoryFilter.addItem("Recon");
-            categoryFilter.addItem(i18n.getText("websites.category.vulnerability.db"));
-            logError("加载分类选项失败: " + e.getMessage());
-        }
-    }
 }
 
-/**
- * 网站表格模型
- */
-class WebSiteTableModel extends AbstractTableModel {
-    private String[] columnNames;
-    private List<WebSite> websites = new ArrayList<>();
-    
-    public WebSiteTableModel() {
-        updateColumnNames();
-    }
-    
-    public void updateColumnNames() {
-        I18nManager i18n = I18nManager.getInstance();
-        columnNames = new String[]{
-            i18n.getText("websites.name"), 
-            i18n.getText("websites.url"), 
-            i18n.getText("column.favorite"), 
-            i18n.getText("label.category")
-        };
-    }
-    
-    @Override
-    public int getRowCount() {
-        return websites.size();
-    }
-    
-    @Override
-    public int getColumnCount() {
-        return columnNames.length;
-    }
-    
-    @Override
-    public String getColumnName(int column) {
-        return columnNames[column];
-    }
-    
-    @Override
-    public Object getValueAt(int rowIndex, int columnIndex) {
-        WebSite website = websites.get(rowIndex);
-        switch (columnIndex) {
-            case 0: return website.getDesc();
-            case 1: return website.getUrl();
-            case 2: return website.isFavor();
-            case 3: return ToolController.getInstance().getWebSiteCategory(website.getDesc());
-            default: return null;
-        }
-    }
-    
-    @Override
-    public Class<?> getColumnClass(int columnIndex) {
-        if (columnIndex == 2) return Boolean.class;
-        return String.class;
-    }
-    
-    @Override
-    public boolean isCellEditable(int rowIndex, int columnIndex) {
-        return columnIndex == 2; // 只有收藏列可编辑
-    }
-    
-    @Override
-    public void setValueAt(Object value, int rowIndex, int columnIndex) {
-        if (columnIndex == 2) {
-            WebSite website = websites.get(rowIndex);
-            boolean oldFavoriteState = website.isFavor();
-            website.setFavor((Boolean) value);
-            
-            // 更新数据库中的收藏状态
-            boolean favoriteChanged = (oldFavoriteState != website.isFavor());
-            if (favoriteChanged) {
-                ToolController.getInstance().updateWebSiteFavorite(website, website.isFavor());
-                
-                // 更新菜单
-                try {
-                    ArsenalMenuProvider.updateWebsiteMenu();
-                } catch (Exception e) {
-                    System.err.println("更新菜单失败: " + e.getMessage());
-                }
-            }
-            
-            fireTableCellUpdated(rowIndex, columnIndex);
-        }
-    }
-    
-    public void setWebSites(List<WebSite> websites) {
-        this.websites = new ArrayList<>(websites);
-        fireTableDataChanged();
-    }
-    
-    public WebSite getWebSiteAt(int index) {
-        return websites.get(index);
-    }
-    
-    public List<WebSite> getWebSites() {
-        return new ArrayList<>(websites);
-    }
-}
-
-/**
- * 收藏状态渲染器
- */
-class WebSiteFavoriteRenderer extends DefaultTableCellRenderer {
-   @Override
-   public Component getTableCellRendererComponent(JTable table, Object value,
-           boolean isSelected, boolean hasFocus, int row, int column) {
-
-       JLabel label = new JLabel();
-
-       label.setHorizontalAlignment(JLabel.CENTER);
-       label.setOpaque(true);
-
-       if (isSelected) {
-           label.setBackground(table.getSelectionBackground());
-           label.setForeground(table.getSelectionForeground());
-       } else {
-           label.setBackground(table.getBackground());
-           label.setForeground(table.getForeground());
-       }
-
-       if (value instanceof Boolean) {
-           label.setText(((Boolean) value) ? "★" : "☆");
-           label.setForeground(((Boolean) value) ? new Color(255, 152, 0) : new Color(158, 158, 158));
-       }
-
-       return label;
-   }
-}
-
-/**
- * URL渲染器 - 链接样式
- */
-class WebSiteUrlRenderer extends DefaultTableCellRenderer {
-    @Override
-    public Component getTableCellRendererComponent(JTable table, Object value, 
-            boolean isSelected, boolean hasFocus, int row, int column) {
-        
-        Component comp = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
-        
-        if (value != null) {
-            String url = value.toString();
-            
-            // 设置为等宽字体
-            setFont(new Font("Consolas", Font.PLAIN, 10));
-            
-            // 设置链接样式
-            if (!isSelected) {
-                setForeground(new Color(0, 0, 238)); // 蓝色链接
-            }
-            
-            // 显示完整URL作为提示
-            setToolTipText(url);
-            
-            // 如果URL太长，截断显示
-            if (url.length() > 100) {
-                setText(url.substring(0, 57) + "...");
-            } else {
-                setText(url);
-            }
-            
-            // 设置文本对齐
-            setHorizontalAlignment(JLabel.LEFT);
-        }
-        
-        return comp;
-    }
-}
  
