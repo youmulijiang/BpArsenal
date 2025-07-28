@@ -1,11 +1,8 @@
 package view;
 
-import manager.ApiManager;
-import manager.ConfigManager;
-import util.JsonUtil;
-import util.OsUtils;
+import controller.SettingPanelController;
+import model.SettingModel;
 import util.I18nManager;
-import model.Config;
 
 import javax.swing.*;
 import javax.swing.border.TitledBorder;
@@ -13,19 +10,18 @@ import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.io.*;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.Properties;
-import java.util.Locale;
+import java.io.File;
 
 /**
  * 设置面板 (View层)
- * 用于插件配置和管理
+ * 重构为MVC架构，仅负责UI展示和用户交互
  */
-public class SettingPanel extends JPanel implements I18nManager.LanguageChangeListener {
+public class SettingPanel extends JPanel implements I18nManager.LanguageChangeListener,
+        SettingPanelController.SettingPanelView, SettingPanelController.SettingPanelListener {
+    
+    // 控制器
+    private SettingPanelController controller;
+    private SettingModel settingModel;
     
     // 配置文件相关组件
     private JButton importConfigButton;
@@ -49,26 +45,28 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
     // 语言设置相关组件
     private JComboBox<I18nManager.SupportedLanguage> languageComboBox;
     private JLabel languageStatusLabel;
-    private java.awt.event.ActionListener languageActionListener;
-    
-
+    private ActionListener languageActionListener;
     
     // 插件信息组件
     private JLabel versionLabel;
     private JLabel authorLabel;
-    private JTextArea changelogArea;
-    
-    // 配置文件路径
-    private static final String TOOL_CONFIG_FILE = "tool_settings.properties";
-    private Properties toolSettings;
     
     public SettingPanel() {
-        loadToolSettings();
+        // 初始化控制器
+        controller = SettingPanelController.getInstance();
+        controller.setView(this);
+        controller.setListener(this);
+        
+        // 获取设置模型
+        settingModel = controller.getSettingModel();
+        
         initializeUI();
-        loadCurrentSettings();
         
         // 注册语言变更监听器
         I18nManager.getInstance().addLanguageChangeListener(this);
+        
+        // 初始化设置
+        controller.initializeSettings();
     }
     
     /**
@@ -89,7 +87,6 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
     
     /**
      * 创建主面板
-     * @return 主面板
      */
     private JPanel createMainPanel() {
         JPanel mainPanel = new JPanel();
@@ -120,7 +117,6 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
     
     /**
      * 创建配置文件管理面板
-     * @return 配置面板
      */
     private JPanel createConfigPanel() {
         JPanel configPanel = new JPanel(new GridBagLayout());
@@ -136,23 +132,22 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
         gbc.insets = new Insets(10, 10, 10, 10);
         gbc.anchor = GridBagConstraints.WEST;
         
-        // 导入配置按钮
-        gbc.gridx = 0; gbc.gridy = 0;
         I18nManager i18n = I18nManager.getInstance();
-        importConfigButton = createStyledButton(i18n.getText("settings.config.import"), i18n.getText("settings.config.import"), new Color(46, 125, 50));
+        
+        // 按钮行
+        gbc.gridx = 0; gbc.gridy = 0;
+        importConfigButton = createStyledButton(i18n.getText("settings.config.import"), new Color(46, 125, 50));
         configPanel.add(importConfigButton, gbc);
         
-        // 导出配置按钮
         gbc.gridx = 1; gbc.gridy = 0;
-        exportConfigButton = createStyledButton(i18n.getText("settings.config.export"), i18n.getText("settings.config.export"), new Color(25, 118, 210));
+        exportConfigButton = createStyledButton(i18n.getText("settings.config.export"), new Color(25, 118, 210));
         configPanel.add(exportConfigButton, gbc);
         
-        // 重置配置按钮
         gbc.gridx = 2; gbc.gridy = 0;
-        resetConfigButton = createStyledButton(i18n.getText("settings.config.reset"), i18n.getText("settings.config.reset"), new Color(211, 47, 47));
+        resetConfigButton = createStyledButton(i18n.getText("settings.config.reset"), new Color(211, 47, 47));
         configPanel.add(resetConfigButton, gbc);
         
-        // 配置状态标签
+        // 状态标签
         gbc.gridx = 0; gbc.gridy = 1;
         gbc.gridwidth = 3;
         gbc.fill = GridBagConstraints.HORIZONTAL;
@@ -161,7 +156,7 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
         configStatusLabel.setForeground(new Color(100, 100, 100));
         configPanel.add(configStatusLabel, gbc);
         
-        // 配置说明
+        // 说明文本
         gbc.gridy = 2;
         JTextArea configDescArea = new JTextArea(3, 50);
         configDescArea.setText(i18n.getText("desc.config.management"));
@@ -178,7 +173,6 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
     
     /**
      * 创建工具目录设置面板
-     * @return 工具目录面板
      */
     private JPanel createToolDirectoryPanel() {
         JPanel directoryPanel = new JPanel(new GridBagLayout());
@@ -194,13 +188,12 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
         gbc.insets = new Insets(10, 10, 10, 10);
         gbc.anchor = GridBagConstraints.WEST;
         
-        // 工具目录标签
+        // 目录输入行
         gbc.gridx = 0; gbc.gridy = 0;
         JLabel directoryLabel = new JLabel("工具根目录:");
         directoryLabel.setFont(new Font("微软雅黑", Font.PLAIN, 12));
         directoryPanel.add(directoryLabel, gbc);
         
-        // 工具目录输入框
         gbc.gridx = 1; gbc.gridy = 0;
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.weightx = 1.0;
@@ -209,21 +202,19 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
         toolDirectoryField.setToolTipText("设置渗透测试工具的根目录路径");
         directoryPanel.add(toolDirectoryField, gbc);
         
-        // 浏览按钮
         gbc.gridx = 2; gbc.gridy = 0;
         gbc.fill = GridBagConstraints.NONE;
         gbc.weightx = 0;
-        browseDirectoryButton = createStyledButton("浏览", "选择工具目录", new Color(255, 152, 0));
+        browseDirectoryButton = createStyledButton("浏览", new Color(255, 152, 0));
         browseDirectoryButton.setPreferredSize(new Dimension(70, 25));
         directoryPanel.add(browseDirectoryButton, gbc);
         
-        // 应用按钮
         gbc.gridx = 3; gbc.gridy = 0;
-        applyDirectoryButton = createStyledButton("应用", "应用目录设置", new Color(46, 125, 50));
+        applyDirectoryButton = createStyledButton("应用", new Color(46, 125, 50));
         applyDirectoryButton.setPreferredSize(new Dimension(70, 25));
         directoryPanel.add(applyDirectoryButton, gbc);
         
-        // 目录状态标签
+        // 状态行
         gbc.gridx = 0; gbc.gridy = 1;
         gbc.gridwidth = 4;
         gbc.fill = GridBagConstraints.HORIZONTAL;
@@ -232,7 +223,7 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
         directoryStatusLabel.setForeground(new Color(100, 100, 100));
         directoryPanel.add(directoryStatusLabel, gbc);
         
-        // 目录说明
+        // 说明文本
         gbc.gridy = 2;
         JTextArea directoryDescArea = new JTextArea(3, 50);
         directoryDescArea.setText("工具根目录用于快速访问常用的渗透测试工具。\n" +
@@ -251,7 +242,6 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
     
     /**
      * 创建系统前缀设置面板
-     * @return 系统前缀面板
      */
     private JPanel createSystemPrefixPanel() {
         JPanel prefixPanel = new JPanel(new GridBagLayout());
@@ -267,16 +257,16 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
         gbc.insets = new Insets(10, 10, 10, 10);
         gbc.anchor = GridBagConstraints.WEST;
         
-        // 系统信息标签
+        // 系统信息
         gbc.gridx = 0; gbc.gridy = 0;
         gbc.gridwidth = 4;
         gbc.fill = GridBagConstraints.HORIZONTAL;
-        systemInfoLabel = new JLabel("当前系统: " + OsUtils.getOsType() + " (" + OsUtils.getOsName() + ")");
+        systemInfoLabel = new JLabel("当前系统: " + settingModel.getSystemInfo());
         systemInfoLabel.setFont(new Font("微软雅黑", Font.BOLD, 12));
         systemInfoLabel.setForeground(new Color(46, 125, 50));
         prefixPanel.add(systemInfoLabel, gbc);
         
-        // 命令前缀标签
+        // 前缀输入行
         gbc.gridx = 0; gbc.gridy = 1;
         gbc.gridwidth = 1;
         gbc.fill = GridBagConstraints.NONE;
@@ -284,7 +274,6 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
         prefixLabel.setFont(new Font("微软雅黑", Font.PLAIN, 12));
         prefixPanel.add(prefixLabel, gbc);
         
-        // 命令前缀输入框
         gbc.gridx = 1; gbc.gridy = 1;
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.weightx = 1.0;
@@ -293,21 +282,19 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
         commandPrefixField.setToolTipText("设置命令执行前缀，如: cmd /c 或 /bin/bash -c");
         prefixPanel.add(commandPrefixField, gbc);
         
-        // 重置按钮
         gbc.gridx = 2; gbc.gridy = 1;
         gbc.fill = GridBagConstraints.NONE;
         gbc.weightx = 0;
-        resetPrefixButton = createStyledButton("重置", "重置为系统默认前缀", new Color(255, 152, 0));
+        resetPrefixButton = createStyledButton("重置", new Color(255, 152, 0));
         resetPrefixButton.setPreferredSize(new Dimension(70, 25));
         prefixPanel.add(resetPrefixButton, gbc);
         
-        // 应用按钮
         gbc.gridx = 3; gbc.gridy = 1;
-        applyPrefixButton = createStyledButton("应用", "应用前缀设置", new Color(46, 125, 50));
+        applyPrefixButton = createStyledButton("应用", new Color(46, 125, 50));
         applyPrefixButton.setPreferredSize(new Dimension(70, 25));
         prefixPanel.add(applyPrefixButton, gbc);
         
-        // 前缀状态标签
+        // 状态行
         gbc.gridx = 0; gbc.gridy = 2;
         gbc.gridwidth = 4;
         gbc.fill = GridBagConstraints.HORIZONTAL;
@@ -316,7 +303,7 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
         prefixStatusLabel.setForeground(new Color(100, 100, 100));
         prefixPanel.add(prefixStatusLabel, gbc);
         
-        // 前缀说明
+        // 说明文本
         gbc.gridy = 3;
         JTextArea prefixDescArea = new JTextArea(4, 50);
         prefixDescArea.setText("命令前缀用于在操作系统中执行工具命令。\n" +
@@ -336,7 +323,6 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
     
     /**
      * 创建语言设置面板
-     * @return 语言设置面板
      */
     private JPanel createLanguagePanel() {
         JPanel languagePanel = new JPanel(new GridBagLayout());
@@ -352,13 +338,12 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
         gbc.insets = new Insets(10, 10, 10, 10);
         gbc.anchor = GridBagConstraints.WEST;
         
-        // 语言选择标签
+        // 语言选择行
         gbc.gridx = 0; gbc.gridy = 0;
         JLabel languageLabel = new JLabel(I18nManager.getInstance().getText("settings.language.label"));
         languageLabel.setFont(new Font("微软雅黑", Font.PLAIN, 12));
         languagePanel.add(languageLabel, gbc);
         
-        // 语言选择下拉框
         gbc.gridx = 1; gbc.gridy = 0;
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.weightx = 1.0;
@@ -371,33 +356,18 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
             languageComboBox.addItem(language);
         }
         
-        // 根据用户当前地区自动设置语言
-        autoSetLanguageByLocale();
-        
         // 创建语言切换监听器
         languageActionListener = e -> {
             I18nManager.SupportedLanguage selected = (I18nManager.SupportedLanguage) languageComboBox.getSelectedItem();
             if (selected != null) {
-                I18nManager.SupportedLanguage current = I18nManager.getInstance().getCurrentLanguage();
-                if (selected != current) {
-                    try {
-                        I18nManager.getInstance().setCurrentLanguage(selected);
-                        updateLanguageStatus(I18nManager.getInstance().getText("success.settings.applied"), Color.GREEN);
-                        logInfo("语言设置已更改为: " + selected.getDisplayName());
-                    } catch (Exception ex) {
-                        updateLanguageStatus("语言设置失败: " + ex.getMessage(), Color.RED);
-                        logError("应用语言设置失败: " + ex.getMessage());
-                    }
-                }
+                controller.setLanguage(selected);
             }
         };
         
-        // 添加语言切换监听器
         languageComboBox.addActionListener(languageActionListener);
-        
         languagePanel.add(languageComboBox, gbc);
         
-        // 语言状态标签
+        // 状态行
         gbc.gridx = 0; gbc.gridy = 1;
         gbc.gridwidth = 2;
         gbc.fill = GridBagConstraints.HORIZONTAL;
@@ -406,7 +376,7 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
         languageStatusLabel.setForeground(new Color(100, 100, 100));
         languagePanel.add(languageStatusLabel, gbc);
         
-        // 语言说明
+        // 说明文本
         gbc.gridy = 2;
         JTextArea languageDescArea = new JTextArea(2, 50);
         languageDescArea.setText(I18nManager.getInstance().getText("desc.language.setting"));
@@ -422,98 +392,7 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
     }
     
     /**
-     * 根据用户当前地区自动设置语言
-     */
-    private void autoSetLanguageByLocale() {
-        try {
-            // 获取系统默认地区
-            Locale systemLocale = Locale.getDefault();
-            String language = systemLocale.getLanguage();
-            String country = systemLocale.getCountry();
-            
-            logInfo("检测到系统地区: " + systemLocale.toString() + " (语言: " + language + ", 国家: " + country + ")");
-            
-            // 判断是否为中文地区
-            I18nManager.SupportedLanguage targetLanguage;
-            if (isChineseLocale(language, country)) {
-                targetLanguage = I18nManager.SupportedLanguage.CHINESE;
-                logInfo("检测到中文地区，设置语言为中文");
-            } else {
-                targetLanguage = I18nManager.SupportedLanguage.ENGLISH;
-                logInfo("检测到非中文地区，设置语言为英文");
-            }
-            
-            // 检查当前语言是否已经是目标语言
-            I18nManager.SupportedLanguage currentLanguage = I18nManager.getInstance().getCurrentLanguage();
-            if (currentLanguage != targetLanguage) {
-                // 临时移除ActionListener，避免在初始化时触发
-                if (languageActionListener != null) {
-                    languageComboBox.removeActionListener(languageActionListener);
-                }
-                
-                try {
-                    // 设置语言
-                    I18nManager.getInstance().setCurrentLanguage(targetLanguage);
-                    languageComboBox.setSelectedItem(targetLanguage);
-                    logInfo("已根据系统地区自动设置语言为: " + targetLanguage.getDisplayName());
-                } finally {
-                    // 重新添加ActionListener
-                    if (languageActionListener != null) {
-                        languageComboBox.addActionListener(languageActionListener);
-                    }
-                }
-            } else {
-                logInfo("当前语言已经匹配系统地区，无需更改");
-            }
-            
-        } catch (Exception e) {
-            logError("自动设置语言失败: " + e.getMessage());
-            // 失败时使用默认设置
-        }
-    }
-    
-    /**
-     * 判断是否为中文地区
-     * @param language 语言代码
-     * @param country 国家代码
-     * @return 是否为中文地区
-     */
-    private boolean isChineseLocale(String language, String country) {
-        // 检查语言代码
-        if ("zh".equalsIgnoreCase(language)) {
-            return true;
-        }
-        
-        // 检查国家代码（中文地区）
-        if ("CN".equalsIgnoreCase(country) ||    // 中国大陆
-            "TW".equalsIgnoreCase(country) ||    // 台湾
-            "HK".equalsIgnoreCase(country) ||    // 香港
-            "MO".equalsIgnoreCase(country) ||    // 澳门
-            "SG".equalsIgnoreCase(country)) {    // 新加坡（有中文用户）
-            return true;
-        }
-        
-        return false;
-    }
-    
-    /**
-     * 获取语言显示名称
-     * @param locale 语言环境
-     * @return 显示名称
-     */
-    private String getLanguageDisplayName(Locale locale) {
-        if (locale.equals(I18nManager.SupportedLanguage.CHINESE.getLocale())) {
-            return "中文 (简体)";
-        } else if (locale.equals(I18nManager.SupportedLanguage.ENGLISH.getLocale())) {
-            return "English (US)";
-        } else {
-            return locale.getDisplayName();
-        }
-    }
-    
-    /**
      * 创建插件信息面板
-     * @return 插件信息面板
      */
     private JPanel createPluginInfoPanel() {
         JPanel infoPanel = new JPanel(new GridBagLayout());
@@ -536,7 +415,7 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
         infoPanel.add(nameLabel, gbc);
         
         gbc.gridx = 1; gbc.gridy = 0;
-        JLabel nameValueLabel = new JLabel("BpArsenal - Burp Suite武器库");
+        JLabel nameValueLabel = new JLabel(settingModel.getPluginName());
         nameValueLabel.setFont(new Font("微软雅黑", Font.PLAIN, 12));
         infoPanel.add(nameValueLabel, gbc);
         
@@ -547,7 +426,7 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
         infoPanel.add(versionLabelTitle, gbc);
         
         gbc.gridx = 1; gbc.gridy = 1;
-        versionLabel = new JLabel("v1.0.0");
+        versionLabel = new JLabel(settingModel.getPluginVersion());
         versionLabel.setFont(new Font("微软雅黑", Font.PLAIN, 12));
         infoPanel.add(versionLabel, gbc);
         
@@ -558,54 +437,17 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
         infoPanel.add(authorLabelTitle, gbc);
         
         gbc.gridx = 1; gbc.gridy = 2;
-        authorLabel = new JLabel("youmulijiang");
+        authorLabel = new JLabel(settingModel.getPluginAuthor());
         authorLabel.setFont(new Font("微软雅黑", Font.PLAIN, 12));
         infoPanel.add(authorLabel, gbc);
-        
-        // 更新日志
-        gbc.gridx = 0; gbc.gridy = 3;
-        gbc.gridwidth = 2;
-        gbc.fill = GridBagConstraints.BOTH;
-        gbc.weightx = 1.0;
-        gbc.weighty = 1.0;
-        
-//        JLabel changelogTitle = new JLabel("更新日志:");
-//        changelogTitle.setFont(new Font("微软雅黑", Font.BOLD, 12));
-//        infoPanel.add(changelogTitle, gbc);
-//
-//        gbc.gridy = 4;
-//        changelogArea = new JTextArea(8, 50);
-//        changelogArea.setText("v1.0.0 (2024-01-15)\n" +
-//                             "- 初始版本发布\n" +
-//                             "- 支持HTTP工具管理和执行\n" +
-//                             "- 支持第三方工具启动\n" +
-//                             "- 支持网站导航功能\n" +
-//                             "- 支持上下文菜单Arsenal工具\n" +
-//                             "- 支持命令数组格式配置\n" +
-//                             "- 支持配置文件导入导出\n" +
-//                             "- 支持工具目录设置");
-//        changelogArea.setEditable(false);
-//        changelogArea.setFont(new Font("微软雅黑", Font.PLAIN, 11));
-//        changelogArea.setBackground(new Color(248, 248, 248));
-//        changelogArea.setLineWrap(true);
-//        changelogArea.setWrapStyleWord(true);
-//
-//        JScrollPane changelogScrollPane = new JScrollPane(changelogArea);
-//        changelogScrollPane.setPreferredSize(new Dimension(400, 150));
-//        changelogScrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
-//        infoPanel.add(changelogScrollPane, gbc);
         
         return infoPanel;
     }
     
     /**
      * 创建样式化按钮
-     * @param text 按钮文本
-     * @param tooltip 提示文本
-     * @param color 背景颜色
-     * @return 按钮
      */
-    private JButton createStyledButton(String text, String tooltip, Color color) {
+    private JButton createStyledButton(String text, Color color) {
         JButton button = new JButton(text);
         button.setFont(new Font("微软雅黑", Font.PLAIN, 11));
         button.setPreferredSize(new Dimension(90, 30));
@@ -613,7 +455,6 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
         button.setForeground(Color.WHITE);
         button.setFocusPainted(false);
         button.setBorder(BorderFactory.createRaisedBevelBorder());
-        button.setToolTipText(tooltip);
         
         // 添加事件监听器
         button.addActionListener(createButtonActionListener(text));
@@ -623,37 +464,32 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
     
     /**
      * 创建按钮事件监听器
-     * @param buttonText 按钮文本
-     * @return 事件监听器
      */
     private ActionListener createButtonActionListener(String buttonText) {
-        return new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                switch (buttonText) {
-                    case "导入配置":
-                        importConfiguration();
-                        break;
-                    case "导出配置":
-                        exportConfiguration();
-                        break;
-                    case "重置配置":
-                        resetConfiguration();
-                        break;
-                    case "浏览":
-                        browseToolDirectory();
-                        break;
-                    case "应用":
-                        if (e.getSource() == applyDirectoryButton) {
-                            applyToolDirectory();
-                        } else if (e.getSource() == applyPrefixButton) {
-                            applyCommandPrefix();
-                        }
-                        break;
-                    case "重置":
-                        resetCommandPrefix();
-                        break;
-                }
+        return e -> {
+            switch (buttonText) {
+                case "导入配置":
+                    importConfiguration();
+                    break;
+                case "导出配置":
+                    exportConfiguration();
+                    break;
+                case "重置配置":
+                    resetConfiguration();
+                    break;
+                case "浏览":
+                    browseToolDirectory();
+                    break;
+                case "应用":
+                    if (e.getSource() == applyDirectoryButton) {
+                        applyToolDirectory();
+                    } else if (e.getSource() == applyPrefixButton) {
+                        applyCommandPrefix();
+                    }
+                    break;
+                case "重置":
+                    resetCommandPrefix();
+                    break;
             }
         };
     }
@@ -669,58 +505,7 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
         int result = fileChooser.showOpenDialog(this);
         if (result == JFileChooser.APPROVE_OPTION) {
             File selectedFile = fileChooser.getSelectedFile();
-            
-            try {
-                // 读取文件内容
-                String jsonContent = new String(Files.readAllBytes(selectedFile.toPath()), StandardCharsets.UTF_8);
-                
-                // 验证JSON格式
-                Config config = JsonUtil.fromJson(jsonContent, Config.class);
-                
-                // 确认导入
-                int confirmResult = JOptionPane.showConfirmDialog(
-                    this,
-                    "确定要导入配置文件吗？\n这将覆盖当前的所有配置！\n\n文件: " + selectedFile.getName(),
-                    "确认导入",
-                    JOptionPane.YES_NO_OPTION,
-                    JOptionPane.WARNING_MESSAGE
-                );
-                
-                if (confirmResult == JOptionPane.YES_OPTION) {
-                    // 备份当前配置文件
-                    backupCurrentConfig();
-                    
-                    // 写入新配置
-                    Path configPath = Paths.get("src/main/resources/config.json");
-                    Files.write(configPath, jsonContent.getBytes(StandardCharsets.UTF_8));
-                    
-                    // 重新加载配置
-                    ConfigManager.getInstance().reloadConfig();
-                    
-                    updateConfigStatus("配置导入成功: " + selectedFile.getName(), Color.GREEN);
-                    
-                    // 记录日志
-                    logInfo("配置文件导入成功: " + selectedFile.getAbsolutePath());
-                    
-                    JOptionPane.showMessageDialog(
-                        this,
-                        "配置导入成功！\n请重启插件以确保所有更改生效。",
-                        "导入成功",
-                        JOptionPane.INFORMATION_MESSAGE
-                    );
-                }
-                
-            } catch (Exception ex) {
-                updateConfigStatus("配置导入失败: " + ex.getMessage(), Color.RED);
-                logError("配置文件导入失败: " + ex.getMessage());
-                
-                JOptionPane.showMessageDialog(
-                    this,
-                    "配置导入失败！\n错误: " + ex.getMessage(),
-                    "导入失败",
-                    JOptionPane.ERROR_MESSAGE
-                );
-            }
+            controller.importConfiguration(selectedFile.getAbsolutePath(), this);
         }
     }
     
@@ -742,37 +527,7 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
                 selectedFile = new File(selectedFile.getAbsolutePath() + ".json");
             }
             
-            try {
-                // 获取当前配置
-                Config config = ConfigManager.getInstance().getConfig();
-                
-                // 转换为JSON
-                String jsonContent = JsonUtil.toJson(config);
-                
-                // 写入文件
-                Files.write(selectedFile.toPath(), jsonContent.getBytes(StandardCharsets.UTF_8));
-                
-                updateConfigStatus("配置导出成功: " + selectedFile.getName(), Color.GREEN);
-                logInfo("配置文件导出成功: " + selectedFile.getAbsolutePath());
-                
-                JOptionPane.showMessageDialog(
-                    this,
-                    "配置导出成功！\n文件位置: " + selectedFile.getAbsolutePath(),
-                    "导出成功",
-                    JOptionPane.INFORMATION_MESSAGE
-                );
-                
-            } catch (Exception ex) {
-                updateConfigStatus("配置导出失败: " + ex.getMessage(), Color.RED);
-                logError("配置文件导出失败: " + ex.getMessage());
-                
-                JOptionPane.showMessageDialog(
-                    this,
-                    "配置导出失败！\n错误: " + ex.getMessage(),
-                    "导出失败",
-                    JOptionPane.ERROR_MESSAGE
-                );
-            }
+            controller.exportConfiguration(selectedFile.getAbsolutePath());
         }
     }
     
@@ -780,52 +535,7 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
      * 重置配置文件
      */
     private void resetConfiguration() {
-        int result = JOptionPane.showConfirmDialog(
-            this,
-            "确定要重置配置文件吗？\n这将恢复所有默认设置，当前配置将丢失！",
-            "确认重置",
-            JOptionPane.YES_NO_OPTION,
-            JOptionPane.WARNING_MESSAGE
-        );
-        
-        if (result == JOptionPane.YES_OPTION) {
-            try {
-                // 备份当前配置
-                backupCurrentConfig();
-                
-                // 创建默认配置
-                Config defaultConfig = createDefaultConfig();
-                
-                // 写入默认配置
-                String jsonContent = JsonUtil.toJson(defaultConfig);
-                Path configPath = Paths.get("src/main/resources/config.json");
-                Files.write(configPath, jsonContent.getBytes(StandardCharsets.UTF_8));
-                
-                // 重新加载配置
-                ConfigManager.getInstance().reloadConfig();
-                
-                updateConfigStatus("配置已重置为默认设置", Color.BLUE);
-                logInfo("配置文件已重置为默认设置");
-                
-                JOptionPane.showMessageDialog(
-                    this,
-                    "配置重置成功！\n已恢复默认设置。",
-                    "重置成功",
-                    JOptionPane.INFORMATION_MESSAGE
-                );
-                
-            } catch (Exception ex) {
-                updateConfigStatus("配置重置失败: " + ex.getMessage(), Color.RED);
-                logError("配置重置失败: " + ex.getMessage());
-                
-                JOptionPane.showMessageDialog(
-                    this,
-                    "配置重置失败！\n错误: " + ex.getMessage(),
-                    "重置失败",
-                    JOptionPane.ERROR_MESSAGE
-                );
-            }
-        }
+        controller.resetConfiguration(this);
     }
     
     /**
@@ -857,58 +567,7 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
      */
     private void applyToolDirectory() {
         String directoryPath = toolDirectoryField.getText().trim();
-        
-        if (directoryPath.isEmpty()) {
-            updateDirectoryStatus("工具目录不能为空", Color.RED);
-            return;
-        }
-        
-        File directory = new File(directoryPath);
-        if (!directory.exists()) {
-            int result = JOptionPane.showConfirmDialog(
-                this,
-                "指定的目录不存在，是否创建？\n路径: " + directoryPath,
-                "目录不存在",
-                JOptionPane.YES_NO_OPTION,
-                JOptionPane.QUESTION_MESSAGE
-            );
-            
-            if (result == JOptionPane.YES_OPTION) {
-                try {
-                    Files.createDirectories(directory.toPath());
-                } catch (Exception ex) {
-                    updateDirectoryStatus("创建目录失败: " + ex.getMessage(), Color.RED);
-                    return;
-                }
-            } else {
-                return;
-            }
-        }
-        
-        if (!directory.isDirectory()) {
-            updateDirectoryStatus("指定路径不是有效目录", Color.RED);
-            return;
-        }
-        
-        try {
-            // 保存工具目录设置
-            toolSettings.setProperty("tool.directory", directoryPath);
-            saveToolSettings();
-            
-            updateDirectoryStatus("工具目录设置成功: " + directoryPath, Color.GREEN);
-            logInfo("工具目录设置成功: " + directoryPath);
-            
-            JOptionPane.showMessageDialog(
-                this,
-                "工具目录设置成功！\n路径: " + directoryPath,
-                "设置成功",
-                JOptionPane.INFORMATION_MESSAGE
-            );
-            
-        } catch (Exception ex) {
-            updateDirectoryStatus("保存设置失败: " + ex.getMessage(), Color.RED);
-            logError("保存工具目录设置失败: " + ex.getMessage());
-        }
+        controller.setToolDirectory(directoryPath);
     }
     
     /**
@@ -916,218 +575,23 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
      */
     private void applyCommandPrefix() {
         String prefix = commandPrefixField.getText().trim();
-        
-        try {
-            // 保存命令前缀设置
-            if (prefix.isEmpty()) {
-                toolSettings.remove("command.prefix");
-                updatePrefixStatus("已重置为系统默认前缀", Color.BLUE);
-            } else {
-                toolSettings.setProperty("command.prefix", prefix);
-                updatePrefixStatus("自定义前缀设置成功: " + prefix, Color.GREEN);
-            }
-            
-            saveToolSettings();
-            logInfo("命令前缀设置成功: " + (prefix.isEmpty() ? "系统默认" : prefix));
-            
-            JOptionPane.showMessageDialog(
-                this,
-                "命令前缀设置成功！\n前缀: " + (prefix.isEmpty() ? "系统默认" : prefix),
-                "设置成功",
-                JOptionPane.INFORMATION_MESSAGE
-            );
-            
-        } catch (Exception ex) {
-            updatePrefixStatus("保存设置失败: " + ex.getMessage(), Color.RED);
-            logError("保存命令前缀设置失败: " + ex.getMessage());
-        }
+        controller.setCommandPrefix(prefix);
     }
     
     /**
      * 重置命令前缀
      */
     private void resetCommandPrefix() {
-        String[] defaultPrefix = OsUtils.getDefaultCommandPrefix();
-        String defaultPrefixString = String.join(" ", defaultPrefix);
-        commandPrefixField.setText(defaultPrefixString);
-        updatePrefixStatus("已重置为系统默认: " + defaultPrefixString, Color.BLUE);
-    }
-    
-
-    
-    /**
-     * 加载当前设置
-     */
-    private void loadCurrentSettings() {
-        // 加载工具目录设置
-        String toolDirectory = toolSettings.getProperty("tool.directory", "");
-        toolDirectoryField.setText(toolDirectory);
-        
-        if (!toolDirectory.isEmpty()) {
-            File directory = new File(toolDirectory);
-            if (directory.exists() && directory.isDirectory()) {
-                updateDirectoryStatus("工具目录: " + toolDirectory, Color.GREEN);
-            } else {
-                updateDirectoryStatus("工具目录无效: " + toolDirectory, Color.RED);
-            }
-        } else {
-            updateDirectoryStatus("工具目录未设置", Color.GRAY);
-        }
-        
-        // 加载命令前缀设置
-        String commandPrefix = toolSettings.getProperty("command.prefix", "");
-        if (!commandPrefix.isEmpty()) {
-            commandPrefixField.setText(commandPrefix);
-            updatePrefixStatus("自定义前缀: " + commandPrefix, Color.GREEN);
-        } else {
-            String[] defaultPrefix = OsUtils.getDefaultCommandPrefix();
-            String defaultPrefixString = String.join(" ", defaultPrefix);
-            commandPrefixField.setText(defaultPrefixString);
-            updatePrefixStatus("使用系统默认: " + defaultPrefixString, Color.BLUE);
-        }
-        
-        // 加载语言设置
-        I18nManager.SupportedLanguage currentLanguage = I18nManager.getInstance().getCurrentLanguage();
-        
-        // 临时移除ActionListener，避免在初始化时触发
-        if (languageActionListener != null) {
-            languageComboBox.removeActionListener(languageActionListener);
-        }
-        
-        try {
-            languageComboBox.setSelectedItem(currentLanguage);
-        } finally {
-            // 重新添加ActionListener
-            if (languageActionListener != null) {
-                languageComboBox.addActionListener(languageActionListener);
-            }
-        }
-        
-        updateLanguageStatus("当前语言: " + currentLanguage.getDisplayName() + " (已根据系统地区自动设置)", Color.GREEN);
-        
-        // 更新配置状态
-        updateConfigStatus("配置状态: 已加载", Color.GREEN);
+        String defaultPrefix = settingModel.getDefaultCommandPrefix();
+        commandPrefixField.setText(defaultPrefix);
+        updatePrefixStatus("已重置为系统默认: " + defaultPrefix, SettingPanelController.StatusType.INFO);
     }
     
     /**
-     * 加载工具设置
+     * 刷新设置面板
      */
-    private void loadToolSettings() {
-        toolSettings = new Properties();
-        File settingsFile = new File(TOOL_CONFIG_FILE);
-        
-        if (settingsFile.exists()) {
-            try (FileInputStream fis = new FileInputStream(settingsFile)) {
-                toolSettings.load(fis);
-            } catch (IOException e) {
-                logError("加载工具设置失败: " + e.getMessage());
-            }
-        }
-    }
-    
-    /**
-     * 保存工具设置
-     */
-    private void saveToolSettings() throws IOException {
-        try (FileOutputStream fos = new FileOutputStream(TOOL_CONFIG_FILE)) {
-            toolSettings.store(fos, "BpArsenal Tool Settings");
-        }
-    }
-    
-    /**
-     * 备份当前配置文件
-     */
-    private void backupCurrentConfig() {
-        try {
-            Path configPath = Paths.get("src/main/resources/config.json");
-            if (Files.exists(configPath)) {
-                Path backupPath = Paths.get("src/main/resources/config_backup_" + System.currentTimeMillis() + ".json");
-                Files.copy(configPath, backupPath);
-                logInfo("配置文件已备份: " + backupPath.toString());
-            }
-        } catch (Exception e) {
-            logError("备份配置文件失败: " + e.getMessage());
-        }
-    }
-    
-    /**
-     * 创建默认配置
-     * @return 默认配置对象
-     */
-    private Config createDefaultConfig() {
-        Config config = new Config();
-        config.setHttpTool(new java.util.ArrayList<>());
-        config.setThirtyPart(new java.util.ArrayList<>());
-        config.setWebSite(new java.util.ArrayList<>());
-        return config;
-    }
-    
-    /**
-     * 更新配置状态显示
-     * @param message 状态消息
-     * @param color 状态颜色
-     */
-    private void updateConfigStatus(String message, Color color) {
-        configStatusLabel.setText("配置状态: " + message);
-        configStatusLabel.setForeground(color);
-    }
-    
-    /**
-     * 更新目录状态显示
-     * @param message 状态消息
-     * @param color 状态颜色
-     */
-    private void updateDirectoryStatus(String message, Color color) {
-        directoryStatusLabel.setText("目录状态: " + message);
-        directoryStatusLabel.setForeground(color);
-    }
-    
-    /**
-     * 更新前缀状态显示
-     * @param message 状态消息
-     * @param color 状态颜色
-     */
-    private void updatePrefixStatus(String message, Color color) {
-        prefixStatusLabel.setText("前缀状态: " + message);
-        prefixStatusLabel.setForeground(color);
-    }
-    
-    /**
-     * 更新语言状态显示
-     * @param message 状态消息
-     * @param color 状态颜色
-     */
-    private void updateLanguageStatus(String message, Color color) {
-        languageStatusLabel.setText("语言状态: " + message);
-        languageStatusLabel.setForeground(color);
-    }
-    
-    /**
-     * 记录信息日志
-     * @param message 日志消息
-     */
-    private void logInfo(String message) {
-        try {
-            if (ApiManager.getInstance().isInitialized()) {
-                ApiManager.getInstance().getApi().logging().logToOutput("SettingPanel: " + message);
-            }
-        } catch (Exception e) {
-            System.out.println("SettingPanel: " + message);
-        }
-    }
-    
-    /**
-     * 记录错误日志
-     * @param message 错误消息
-     */
-    private void logError(String message) {
-        try {
-            if (ApiManager.getInstance().isInitialized()) {
-                ApiManager.getInstance().getApi().logging().logToError("SettingPanel: " + message);
-            }
-        } catch (Exception e) {
-            System.err.println("SettingPanel: " + message);
-        }
+    public void refreshPanel() {
+        controller.refreshSettings();
     }
     
     /**
@@ -1135,7 +599,7 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
      * @return 工具目录路径
      */
     public String getToolDirectory() {
-        return toolSettings.getProperty("tool.directory", "");
+        return settingModel.getToolDirectory();
     }
     
     /**
@@ -1143,7 +607,7 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
      * @return 命令前缀
      */
     public String getCommandPrefix() {
-        return toolSettings.getProperty("command.prefix", "");
+        return settingModel.getCommandPrefix();
     }
     
     /**
@@ -1151,32 +615,263 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
      * @return 命令前缀数组
      */
     public String[] getCommandPrefixArray() {
-        String prefix = getCommandPrefix();
-        if (prefix.isEmpty()) {
-            return OsUtils.getDefaultCommandPrefix();
-        } else {
-            return prefix.split("\\s+");
+        return settingModel.getCommandPrefixArray();
+    }
+    
+    // =========================== 实现SettingPanelView接口 ===========================
+    
+    @Override
+    public boolean confirmImportConfiguration(String fileName) {
+        int result = JOptionPane.showConfirmDialog(
+            this,
+            "确定要导入配置文件吗？\n这将覆盖当前的所有配置！\n\n文件: " + fileName,
+            "确认导入",
+            JOptionPane.YES_NO_OPTION,
+            JOptionPane.WARNING_MESSAGE
+        );
+        return result == JOptionPane.YES_OPTION;
+    }
+    
+    @Override
+    public boolean confirmResetConfiguration() {
+        int result = JOptionPane.showConfirmDialog(
+            this,
+            "确定要重置配置文件吗？\n这将恢复所有默认设置，当前配置将丢失！",
+            "确认重置",
+            JOptionPane.YES_NO_OPTION,
+            JOptionPane.WARNING_MESSAGE
+        );
+        return result == JOptionPane.YES_OPTION;
+    }
+    
+    @Override
+    public boolean confirmCreateDirectory(String directoryPath) {
+        int result = JOptionPane.showConfirmDialog(
+            this,
+            "指定的目录不存在，是否创建？\n路径: " + directoryPath,
+            "目录不存在",
+            JOptionPane.YES_NO_OPTION,
+            JOptionPane.QUESTION_MESSAGE
+        );
+        return result == JOptionPane.YES_OPTION;
+    }
+    
+    @Override
+    public void showImportSuccessMessage(String fileName) {
+        JOptionPane.showMessageDialog(
+            this,
+            "配置导入成功！\n请重启插件以确保所有更改生效。",
+            "导入成功",
+            JOptionPane.INFORMATION_MESSAGE
+        );
+    }
+    
+    @Override
+    public void showImportErrorMessage(String errorMessage) {
+        JOptionPane.showMessageDialog(
+            this,
+            "配置导入失败！\n错误: " + errorMessage,
+            "导入失败",
+            JOptionPane.ERROR_MESSAGE
+        );
+    }
+    
+    @Override
+    public void showExportSuccessMessage(String filePath) {
+        JOptionPane.showMessageDialog(
+            this,
+            "配置导出成功！\n文件位置: " + filePath,
+            "导出成功",
+            JOptionPane.INFORMATION_MESSAGE
+        );
+    }
+    
+    @Override
+    public void showExportErrorMessage(String errorMessage) {
+        JOptionPane.showMessageDialog(
+            this,
+            "配置导出失败！\n错误: " + errorMessage,
+            "导出失败",
+            JOptionPane.ERROR_MESSAGE
+        );
+    }
+    
+    @Override
+    public void showResetSuccessMessage() {
+        JOptionPane.showMessageDialog(
+            this,
+            "配置重置成功！\n已恢复默认设置。",
+            "重置成功",
+            JOptionPane.INFORMATION_MESSAGE
+        );
+    }
+    
+    @Override
+    public void showResetErrorMessage(String errorMessage) {
+        JOptionPane.showMessageDialog(
+            this,
+            "配置重置失败！\n错误: " + errorMessage,
+            "重置失败",
+            JOptionPane.ERROR_MESSAGE
+        );
+    }
+    
+    @Override
+    public void showDirectorySuccessMessage(String directoryPath) {
+        JOptionPane.showMessageDialog(
+            this,
+            "工具目录设置成功！\n路径: " + directoryPath,
+            "设置成功",
+            JOptionPane.INFORMATION_MESSAGE
+        );
+    }
+    
+    @Override
+    public void showPrefixSuccessMessage(String prefix) {
+        JOptionPane.showMessageDialog(
+            this,
+            "命令前缀设置成功！\n前缀: " + (prefix == null || prefix.trim().isEmpty() ? "系统默认" : prefix),
+            "设置成功",
+            JOptionPane.INFORMATION_MESSAGE
+        );
+    }
+    
+    @Override
+    public void updateToolDirectory(String directory) {
+        if (toolDirectoryField != null) {
+            toolDirectoryField.setText(directory);
+        }
+    }
+    
+    @Override
+    public void updateCommandPrefix(String prefix) {
+        if (commandPrefixField != null) {
+            commandPrefixField.setText(prefix);
+        }
+    }
+    
+    @Override
+    public void updateLanguage(I18nManager.SupportedLanguage language) {
+        if (languageComboBox != null && languageActionListener != null) {
+            // 临时移除监听器避免循环触发
+            languageComboBox.removeActionListener(languageActionListener);
+            try {
+                languageComboBox.setSelectedItem(language);
+            } finally {
+                languageComboBox.addActionListener(languageActionListener);
+            }
+        }
+    }
+    
+    @Override
+    public void updateStatus(String message, SettingPanelController.StatusType type) {
+        // 可以根据需要添加通用状态显示
+    }
+    
+    @Override
+    public void updateConfigStatus(String message, SettingPanelController.StatusType type) {
+        if (configStatusLabel != null) {
+            configStatusLabel.setText("配置状态: " + message);
+            configStatusLabel.setForeground(getStatusColor(type));
+        }
+    }
+    
+    @Override
+    public void updateDirectoryStatus(String message, SettingPanelController.StatusType type) {
+        if (directoryStatusLabel != null) {
+            directoryStatusLabel.setText("目录状态: " + message);
+            directoryStatusLabel.setForeground(getStatusColor(type));
+        }
+    }
+    
+    @Override
+    public void updatePrefixStatus(String message, SettingPanelController.StatusType type) {
+        if (prefixStatusLabel != null) {
+            prefixStatusLabel.setText("前缀状态: " + message);
+            prefixStatusLabel.setForeground(getStatusColor(type));
+        }
+    }
+    
+    @Override
+    public void updateLanguageStatus(String message, SettingPanelController.StatusType type) {
+        if (languageStatusLabel != null) {
+            languageStatusLabel.setText("语言状态: " + message);
+            languageStatusLabel.setForeground(getStatusColor(type));
         }
     }
     
     /**
-     * 刷新设置面板
+     * 获取状态颜色
      */
-    public void refreshPanel() {
-        loadCurrentSettings();
+    private Color getStatusColor(SettingPanelController.StatusType type) {
+        switch (type) {
+            case SUCCESS: return Color.GREEN;
+            case ERROR: return Color.RED;
+            case WARNING: return Color.ORANGE;
+            case INFO: 
+            default: return new Color(100, 100, 100);
+        }
     }
     
-    /**
-     * 语言变更监听器实现
-     * @param newLanguage 新的语言
-     */
+    // =========================== 实现SettingPanelListener接口 ===========================
+    
+    @Override
+    public void onSettingsInitialized() {
+        // 设置初始化完成后的处理
+    }
+    
+    @Override
+    public void onSettingsLoaded() {
+        // 设置加载完成后的处理
+    }
+    
+    @Override
+    public void onConfigurationImported(String filePath) {
+        // 配置导入完成后的处理
+    }
+    
+    @Override
+    public void onConfigurationExported(String filePath) {
+        // 配置导出完成后的处理
+    }
+    
+    @Override
+    public void onConfigurationReset() {
+        // 配置重置完成后的处理
+    }
+    
+    @Override
+    public void onToolDirectoryChanged(String directory) {
+        // 工具目录更改完成后的处理
+    }
+    
+    @Override
+    public void onCommandPrefixChanged(String prefix) {
+        // 命令前缀更改完成后的处理
+    }
+    
+
+    
+    @Override
+    public void onLanguageAutoSet(I18nManager.SupportedLanguage language) {
+        // 语言自动设置完成后的处理
+        updateLanguage(language);
+    }
+    
+    @Override
+    public void onError(String operation, String errorMessage) {
+        // 错误处理
+        System.err.println("SettingPanel错误 - " + operation + ": " + errorMessage);
+    }
+    
+    // =========================== 实现LanguageChangeListener接口 ===========================
+    
     @Override
     public void onLanguageChanged(I18nManager.SupportedLanguage newLanguage) {
         SwingUtilities.invokeLater(() -> {
             updateUITexts();
             revalidate();
             repaint();
-            updateLanguageStatus(I18nManager.getInstance().getText("success.settings.applied"), Color.GREEN);
         });
     }
     
@@ -1223,14 +918,10 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
      */
     private void updateLanguageComboBox() {
         if (languageComboBox != null && languageActionListener != null) {
-            // 临时移除ActionListener，避免循环触发
             languageComboBox.removeActionListener(languageActionListener);
             
             try {
-                I18nManager.SupportedLanguage currentSelected = null;
-                if (languageComboBox.getSelectedItem() != null) {
-                    currentSelected = (I18nManager.SupportedLanguage) languageComboBox.getSelectedItem();
-                }
+                I18nManager.SupportedLanguage currentSelected = (I18nManager.SupportedLanguage) languageComboBox.getSelectedItem();
                 
                 languageComboBox.removeAllItems();
                 I18nManager i18n = I18nManager.getInstance();
@@ -1238,13 +929,12 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
                     languageComboBox.addItem(language);
                 }
                 
-                // 恢复选择 - 使用当前I18nManager的语言而不是UI状态
+                // 恢复选择
                 I18nManager.SupportedLanguage actualCurrent = i18n.getCurrentLanguage();
                 if (actualCurrent != null) {
                     languageComboBox.setSelectedItem(actualCurrent);
                 }
             } finally {
-                // 重新添加ActionListener
                 languageComboBox.addActionListener(languageActionListener);
             }
         }
