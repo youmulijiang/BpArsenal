@@ -227,9 +227,6 @@ public class WebsitePanel extends JPanel implements I18nManager.LanguageChangeLi
         
         // 设置URL列渲染器（可点击链接样式）
         columnModel.getColumn(1).setCellRenderer(new WebSiteUrlRenderer());
-        
-        // 设置行颜色交替
-//        websiteTable.setDefaultRenderer(Object.class, new WebSiteAlternateRowRenderer());
     }
     
     /**
@@ -647,14 +644,15 @@ public class WebsitePanel extends JPanel implements I18nManager.LanguageChangeLi
         if (tableModel != null) {
             tableModel.updateColumnNames();
             tableModel.fireTableStructureChanged();
-        }
-
-        if (websiteTable != null) {
-            TableColumnModel columnModel = websiteTable.getColumnModel();
-            // 重新设置收藏列渲染器
-            columnModel.getColumn(2).setCellRenderer(new FavoriteRenderer());
-            // 重新设置命令列渲染器
-            columnModel.getColumn(1).setCellRenderer(new PlainTextRenderer());
+            
+            // 重新设置渲染器（因为fireTableStructureChanged会重置所有列）
+            if (websiteTable != null) {
+                TableColumnModel columnModel = websiteTable.getColumnModel();
+                // 重新设置收藏列渲染器
+                columnModel.getColumn(2).setCellRenderer(new WebSiteFavoriteRenderer());
+                // 重新设置URL列渲染器
+                columnModel.getColumn(1).setCellRenderer(new WebSiteUrlRenderer());
+            }
         }
         
         // 更新搜索范围下拉框选项
@@ -840,7 +838,7 @@ class WebSiteFavoriteRenderer extends DefaultTableCellRenderer {
        JLabel label = new JLabel();
 
        label.setHorizontalAlignment(JLabel.CENTER);
-//        label.setOpaque(true);
+       label.setOpaque(true);
 
        if (isSelected) {
            label.setBackground(table.getSelectionBackground());
@@ -857,46 +855,7 @@ class WebSiteFavoriteRenderer extends DefaultTableCellRenderer {
 
        return label;
    }
-
-
 }
-// class WebSiteFavoriteRenderer  extends DefaultTableCellRenderer {
-//     private final JToggleButton toggleButton;
-
-//     public WebSiteFavoriteRenderer() {
-//         toggleButton = new JToggleButton();
-//         toggleButton.setMargin(new Insets(0, 0, 0, 0)); // 减少按钮边距
-//         toggleButton.setBorderPainted(false); // 不绘制边框
-//         toggleButton.setContentAreaFilled(false); // 不填充内容区域
-//         toggleButton.setFocusPainted(false); // 不绘制焦点状态
-//         toggleButton.setHorizontalAlignment(SwingConstants.CENTER);
-//     }
-
-//     @Override
-//     public Component getTableCellRendererComponent(JTable table, Object value,
-//                                                    boolean isSelected, boolean hasFocus, int row, int column) {
-//         toggleButton.setText("☆");
-//         // 设置按钮的选中状态
-//         if (value instanceof Boolean) {
-//             boolean selected = (Boolean) value;
-//             toggleButton.setSelected(selected);
-//             toggleButton.setText(selected ? "★" : "☆");
-//             toggleButton.setForeground(selected ? new Color(255, 152, 0) : new Color(158, 158, 158));
-//         }
-
-//         // 设置选中行的背景色
-//         if (isSelected) {
-//             toggleButton.setBackground(table.getSelectionBackground());
-//             toggleButton.setForeground(table.getSelectionForeground());
-//         } else {
-//             toggleButton.setBackground(table.getBackground());
-//             toggleButton.setForeground(table.getForeground());
-//         }
-
-//         return toggleButton;
-//     }
-// }
-
 
 /**
  * URL渲染器 - 链接样式
@@ -936,25 +895,4 @@ class WebSiteUrlRenderer extends DefaultTableCellRenderer {
         return comp;
     }
 }
-
-/**
- * 交替行颜色渲染器
- */
-class WebSiteAlternateRowRenderer extends DefaultTableCellRenderer {
-    @Override
-    public Component getTableCellRendererComponent(JTable table, Object value, 
-            boolean isSelected, boolean hasFocus, int row, int column) {
-        
-        Component comp = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
-        
-        if (!isSelected) {
-            if (row % 2 == 0) {
-                comp.setBackground(Color.WHITE);
-            } else {
-                comp.setBackground(new Color(248, 248, 248));
-            }
-        }
-        
-        return comp;
-    }
-} 
+ 

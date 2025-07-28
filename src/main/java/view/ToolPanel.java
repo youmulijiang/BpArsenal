@@ -2,9 +2,11 @@ package view;
 
 import model.HttpTool;
 import model.HttpToolCommand;
-import controller.ToolController;
+import model.ToolTableModel;
+import controller.ToolPanelController;
 import view.component.ToolEditDialog;
 import util.I18nManager;
+import util.TableRendererFactory;
 
 import javax.swing.*;
 import javax.swing.table.*;
@@ -12,15 +14,19 @@ import javax.swing.border.TitledBorder;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.util.ArrayList;
 import java.util.List;
 
 /**
- * HTTP工具面板
+ * HTTP工具面板 (View层)
  * 提供HTTP渗透测试工具的管理、配置和执行功能
+ * 重构后的纯视图层，业务逻辑由ToolPanelController处理
  */
-public class ToolPanel extends JPanel implements I18nManager.LanguageChangeListener {
+public class ToolPanel extends JPanel implements 
+        I18nManager.LanguageChangeListener, 
+        ToolPanelController.ToolPanelListener,
+        ToolPanelController.ToolPanelView {
     
+    // UI组件
     private JTable toolTable;
     private ToolTableModel tableModel;
     private JButton addButton;
@@ -32,12 +38,28 @@ public class ToolPanel extends JPanel implements I18nManager.LanguageChangeListe
     private JComboBox<String> categoryFilter;
     private JLabel statusLabel;
     
+    // Controller
+    private ToolPanelController controller;
+    
+    // 常量定义
+    private static final int FAVORITE_COLUMN_INDEX = 2;
+    private static final int COMMAND_COLUMN_INDEX = 1;
+    
     public ToolPanel() {
+        // 初始化Controller
+        controller = ToolPanelController.getInstance();
+        controller.setView(this);
+        controller.addListener(this);
+        
+        // 初始化UI
         initializeUI();
         setupEventHandlers();
         
         // 注册语言变更监听器
         I18nManager.getInstance().addLanguageChangeListener(this);
+        
+        // 加载初始数据
+        controller.loadData();
     }
     
     /**
@@ -62,17 +84,32 @@ public class ToolPanel extends JPanel implements I18nManager.LanguageChangeListe
     
     /**
      * 创建顶部工具栏
-     * @return 工具栏面板
      */
     private JPanel createToolbarPanel() {
         JPanel toolbarPanel = new JPanel(new BorderLayout(10, 0));
         toolbarPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
         
         // 左侧：搜索和过滤
+        JPanel leftPanel = createSearchPanel();
+        
+        // 右侧：操作按钮
+        JPanel rightPanel = createButtonPanel();
+        
+        toolbarPanel.add(leftPanel, BorderLayout.WEST);
+        toolbarPanel.add(rightPanel, BorderLayout.EAST);
+        
+        return toolbarPanel;
+    }
+    
+    /**
+     * 创建搜索面板
+     */
+    private JPanel createSearchPanel() {
         JPanel leftPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
         
-        // 搜索框
         I18nManager i18n = I18nManager.getInstance();
+        
+        // 搜索框
         JLabel searchLabel = new JLabel(i18n.getText("label.search"));
         searchLabel.setFont(new Font("微软雅黑", Font.PLAIN, 12));
         searchField = new JTextField(15);
@@ -85,7 +122,6 @@ public class ToolPanel extends JPanel implements I18nManager.LanguageChangeListe
         searchColumnFilter = new JComboBox<>();
         searchColumnFilter.setFont(new Font("微软雅黑", Font.PLAIN, 11));
         searchColumnFilter.setToolTipText(i18n.getText("tooltip.search.column"));
-        // 初始化搜索范围选项
         initializeSearchColumnFilter();
         
         // 分类过滤
@@ -93,9 +129,9 @@ public class ToolPanel extends JPanel implements I18nManager.LanguageChangeListe
         categoryLabel.setFont(new Font("微软雅黑", Font.PLAIN, 12));
         categoryFilter = new JComboBox<>();
         categoryFilter.setFont(new Font("微软雅黑", Font.PLAIN, 11));
-        // 动态加载分类选项
         loadCategoryOptions();
         
+        // 组装面板
         leftPanel.add(searchLabel);
         leftPanel.add(Box.createHorizontalStrut(5));
         leftPanel.add(searchField);
@@ -108,8 +144,16 @@ public class ToolPanel extends JPanel implements I18nManager.LanguageChangeListe
         leftPanel.add(Box.createHorizontalStrut(5));
         leftPanel.add(categoryFilter);
         
-        // 右侧：操作按钮
+        return leftPanel;
+    }
+    
+    /**
+     * 创建按钮面板
+     */
+    private JPanel createButtonPanel() {
         JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 5, 0));
+        
+        I18nManager i18n = I18nManager.getInstance();
         
         addButton = createButton(i18n.getText("tools.button.add"), i18n.getText("tools.tooltip.add"), new Color(46, 125, 50));
         editButton = createButton(i18n.getText("button.edit"), i18n.getText("tools.tooltip.edit"), new Color(25, 118, 210));
@@ -121,15 +165,11 @@ public class ToolPanel extends JPanel implements I18nManager.LanguageChangeListe
         rightPanel.add(deleteButton);
         rightPanel.add(favoriteButton);
         
-        toolbarPanel.add(leftPanel, BorderLayout.WEST);
-        toolbarPanel.add(rightPanel, BorderLayout.EAST);
-        
-        return toolbarPanel;
+        return rightPanel;
     }
     
     /**
      * 创建表格面板
-     * @return 表格面板
      */
     private JPanel createTablePanel() {
         JPanel tablePanel = new JPanel(new BorderLayout());
@@ -138,7 +178,7 @@ public class ToolPanel extends JPanel implements I18nManager.LanguageChangeListe
         tableModel = new ToolTableModel();
         toolTable = new JTable(tableModel);
         
-        // 设置表格属性
+        // 设置表格样式和渲染器
         setupTable();
         
         // 创建滚动面板
@@ -159,7 +199,6 @@ public class ToolPanel extends JPanel implements I18nManager.LanguageChangeListe
     
     /**
      * 创建底部状态面板
-     * @return 底部面板
      */
     private JPanel createBottomPanel() {
         JPanel bottomPanel = new JPanel(new BorderLayout(10, 0));
@@ -177,10 +216,6 @@ public class ToolPanel extends JPanel implements I18nManager.LanguageChangeListe
     
     /**
      * 创建按钮
-     * @param text 按钮文本
-     * @param tooltip 提示文本
-     * @param color 背景颜色
-     * @return 按钮
      */
     private JButton createButton(String text, String tooltip, Color color) {
         JButton button = new JButton(text);
@@ -198,34 +233,25 @@ public class ToolPanel extends JPanel implements I18nManager.LanguageChangeListe
      * 设置表格属性
      */
     private void setupTable() {
-        // 基本设置
-        toolTable.setFont(new Font("微软雅黑", Font.PLAIN, 11));
-        toolTable.setRowHeight(25);
-        toolTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-//        toolTable.setGridColor(new Color(230, 230, 230));
-//        toolTable.setShowGrid(true);
-        
-        // 设置表头
-        JTableHeader header = toolTable.getTableHeader();
-        header.setFont(new Font("微软雅黑", Font.BOLD, 12));
-        header.setBackground(new Color(245, 245, 245));
-        header.setReorderingAllowed(false);
+        // 应用基本样式
+        TableRendererFactory.applyTableStyle(toolTable);
         
         // 设置列宽
+        setupColumnWidths();
+        
+        // 配置渲染器
+        TableRendererFactory.configureTableRenderers(toolTable, FAVORITE_COLUMN_INDEX, COMMAND_COLUMN_INDEX);
+    }
+    
+    /**
+     * 设置列宽
+     */
+    private void setupColumnWidths() {
         TableColumnModel columnModel = toolTable.getColumnModel();
         columnModel.getColumn(0).setPreferredWidth(120);  // 工具名称
         columnModel.getColumn(1).setPreferredWidth(400);  // 命令
         columnModel.getColumn(2).setPreferredWidth(60);   // 收藏
         columnModel.getColumn(3).setPreferredWidth(80);   // 分类
-        
-        // 设置收藏列渲染器
-        columnModel.getColumn(2).setCellRenderer(new FavoriteRenderer());
-        
-        // 设置命令列渲染器（纯文本格式）
-        columnModel.getColumn(1).setCellRenderer(new PlainTextRenderer());
-        
-        // 设置行颜色交替
-//        toolTable.setDefaultRenderer(Object.class, new AlternateRowRenderer());
     }
     
     /**
@@ -236,246 +262,46 @@ public class ToolPanel extends JPanel implements I18nManager.LanguageChangeListe
         toolTable.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
-                if (e.getClickCount() == 2) {
-                    editSelectedTool();
-                } else if (e.getClickCount() == 1 && e.getButton() == MouseEvent.BUTTON3) {
-                    // 右键菜单
-                    showContextMenu(e);
-                }
+                handleTableMouseClick(e);
             }
         });
         
-        // 选择变化处理
-//        toolTable.getSelectionModel().addListSelectionListener(e -> {
-//            if (!e.getValueIsAdjusting()) {
-//                updateButtonStates();
-//            }
-//        });
-//
         // 按钮事件
-        addButton.addActionListener(e -> addNewTool());
-        editButton.addActionListener(e -> editSelectedTool());
-        deleteButton.addActionListener(e -> deleteSelectedTool());
-        favoriteButton.addActionListener(e -> toggleFavorite());
+        addButton.addActionListener(e -> controller.addNewTool());
+        editButton.addActionListener(e -> controller.editSelectedTool(toolTable.getSelectedRow(), tableModel.getToolCommands()));
+        deleteButton.addActionListener(e -> controller.deleteSelectedTool(toolTable.getSelectedRow(), tableModel.getToolCommands()));
+        favoriteButton.addActionListener(e -> controller.toggleFavorite(toolTable.getSelectedRow(), tableModel.getToolCommands()));
         
         // 搜索事件
-        searchField.addCaretListener(e -> filterTable());
-        searchColumnFilter.addActionListener(e -> filterTable());
-        categoryFilter.addActionListener(e -> filterTable());
+        searchField.addCaretListener(e -> performFilter());
+        searchColumnFilter.addActionListener(e -> performFilter());
+        categoryFilter.addActionListener(e -> performFilter());
     }
     
     /**
-     * 加载数据
+     * 处理表格鼠标点击事件
      */
-    public void loadData() {
-        try {
-            // 先加载原始数据到表格
-            List<HttpToolCommand> toolCommands = ToolController.getInstance().getAllToolCommands();
-            tableModel.setToolCommands(toolCommands);
-            
-            // 然后应用当前的筛选条件
-            filterTable();
-            
-        } catch (Exception e) {
-            updateStatus("加载失败: " + e.getMessage());
-            logError("加载工具数据失败: " + e.getMessage());
+    private void handleTableMouseClick(MouseEvent e) {
+        if (e.getClickCount() == 2) {
+            controller.editSelectedTool(toolTable.getSelectedRow(), tableModel.getToolCommands());
+        } else if (e.getClickCount() == 1 && e.getButton() == MouseEvent.BUTTON3) {
+            showContextMenu(e);
         }
     }
     
     /**
-     * 添加新工具
+     * 执行过滤操作
      */
-    private void addNewTool() {
-        ToolEditDialog dialog = new ToolEditDialog(SwingUtilities.getWindowAncestor(this), null);
-        dialog.setVisible(true);
-        
-        if (dialog.isConfirmed()) {
-            HttpTool newTool = dialog.getTool();
-            String category = dialog.getSelectedCategory();
-            
-            if (ToolController.getInstance().addTool(newTool, category)) {
-                // 重新加载数据以显示新添加的工具命令
-                loadData();
-                updateStatus("已添加工具: " + newTool.getToolName() + " (分类: " + category + ")");
-            } else {
-                updateStatus("添加工具失败");
-            }
-        }
-    }
-    
-    /**
-     * 编辑选中工具
-     */
-    private void editSelectedTool() {
-        int selectedRow = toolTable.getSelectedRow();
-        if (selectedRow == -1) {
-            JOptionPane.showMessageDialog(this, "请先选择要编辑的工具", "提示", JOptionPane.INFORMATION_MESSAGE);
-            return;
-        }
-        
-        HttpToolCommand toolCommand = tableModel.getToolCommandAt(selectedRow);
-        HttpTool tool = toolCommand.getParentTool();
-        ToolEditDialog dialog = new ToolEditDialog(SwingUtilities.getWindowAncestor(this), tool);
-        dialog.setVisible(true);
-        
-        if (dialog.isConfirmed()) {
-            HttpTool updatedTool = dialog.getTool();
-            String newCategory = dialog.getSelectedCategory();
-            
-            if (ToolController.getInstance().updateTool(tool, updatedTool, newCategory)) {
-                // 重新加载数据以显示更新后的工具命令
-                loadData();
-                updateStatus("已更新工具: " + updatedTool.getToolName() + " (分类: " + newCategory + ")");
-            } else {
-                updateStatus("更新工具失败");
-            }
-        }
-    }
-    
-    /**
-     * 删除选中工具
-     */
-    private void deleteSelectedTool() {
-        int selectedRow = toolTable.getSelectedRow();
-        if (selectedRow == -1) {
-            JOptionPane.showMessageDialog(this, "请先选择要删除的工具", "提示", JOptionPane.INFORMATION_MESSAGE);
-            return;
-        }
-        
-        HttpToolCommand toolCommand = tableModel.getToolCommandAt(selectedRow);
-        HttpTool tool = toolCommand.getParentTool();
-        int result = JOptionPane.showConfirmDialog(this,
-            "确定要删除工具 \"" + tool.getToolName() + "\" 吗？\n注意：这将删除该工具的所有命令。",
-            "确认删除",
-            JOptionPane.YES_NO_OPTION,
-            JOptionPane.WARNING_MESSAGE);
-            
-        if (result == JOptionPane.YES_OPTION) {
-            if (ToolController.getInstance().removeTool(tool)) {
-                // 重新加载数据以反映删除操作
-                loadData();
-                updateStatus("已删除工具: " + tool.getToolName());
-            } else {
-                updateStatus("删除工具失败");
-            }
-        }
-    }
-    
-    /**
-     * 切换收藏状态
-     */
-    private void toggleFavorite() {
-        int selectedRow = toolTable.getSelectedRow();
-        if (selectedRow == -1) {
-            JOptionPane.showMessageDialog(this, "请先选择工具", "提示", JOptionPane.INFORMATION_MESSAGE);
-            return;
-        }
-        
-        HttpToolCommand toolCommand = tableModel.getToolCommandAt(selectedRow);
-        HttpTool tool = toolCommand.getParentTool();
-        boolean newFavoriteState = !tool.isFavor();
-        
-        if (ToolController.getInstance().updateToolFavorite(tool, newFavoriteState)) {
-            tool.setFavor(newFavoriteState);
-            toolCommand.setFavor(newFavoriteState);
-            tableModel.fireTableDataChanged();
-            
-            String status = tool.isFavor() ? "已收藏" : "已取消收藏";
-            updateStatus(status + ": " + tool.getToolName());
-        } else {
-            updateStatus("更新收藏状态失败");
-        }
-    }
-    
-    /**
-     * 过滤表格
-     */
-    private void filterTable() {
+    private void performFilter() {
         String searchText = searchField.getText().toLowerCase().trim();
-        String selectedSearchColumn = (String) searchColumnFilter.getSelectedItem();
+        int searchColumnIndex = searchColumnFilter.getSelectedIndex();
         String selectedCategory = (String) categoryFilter.getSelectedItem();
         
-        // 获取原始数据
-        List<HttpToolCommand> allToolCommands = ToolController.getInstance().getAllToolCommands();
-        List<HttpToolCommand> filteredCommands = new ArrayList<>();
-        
-        for (HttpToolCommand toolCommand : allToolCommands) {
-            boolean matchesSearch = false;
-            boolean matchesCategory = false;
-            
-            // 检查搜索条件
-            if (searchText.isEmpty()) {
-                matchesSearch = true;
-            } else {
-                // 使用索引而不是字符串比较，避免国际化问题
-                int searchColumnIndex = searchColumnFilter.getSelectedIndex();
-                switch (searchColumnIndex) {
-                    case 0: // 全部
-                        matchesSearch = toolCommand.getDisplayName().toLowerCase().contains(searchText) ||
-                                       toolCommand.getCommand().toLowerCase().contains(searchText) ||
-                                       toolCommand.getCategory().toLowerCase().contains(searchText);
-                        break;
-                    case 1: // 工具名称
-                        matchesSearch = toolCommand.getDisplayName().toLowerCase().contains(searchText);
-                        break;
-                    case 2: // 命令
-                        matchesSearch = toolCommand.getCommand().toLowerCase().contains(searchText);
-                        break;
-                    case 3: // 分类
-                        matchesSearch = toolCommand.getCategory().toLowerCase().contains(searchText);
-                        break;
-                    default:
-                        matchesSearch = true;
-                        break;
-                }
-            }
-            
-            // 检查分类过滤条件
-            I18nManager i18n = I18nManager.getInstance();
-            if (selectedCategory.equals(i18n.getText("filter.all"))) {
-                matchesCategory = true;
-            } else {
-                matchesCategory = toolCommand.getCategory().equals(selectedCategory);
-            }
-            
-            // 同时满足搜索和分类条件的记录才会被显示
-            if (matchesSearch && matchesCategory) {
-                filteredCommands.add(toolCommand);
-            }
-        }
-        
-        // 更新表格数据
-        tableModel.setToolCommands(filteredCommands);
-        
-        // 更新状态信息
-        String statusMsg = String.format("显示 %d/%d 条记录", 
-                                        filteredCommands.size(), 
-                                        allToolCommands.size());
-        if (!searchText.isEmpty()) {
-            String searchScope = searchColumnFilter.getSelectedItem() != null ? 
-                (String) searchColumnFilter.getSelectedItem() : selectedSearchColumn;
-            statusMsg += " | 搜索: " + searchText + " (范围: " + searchScope + ")";
-        }
-        I18nManager i18nForStatus = I18nManager.getInstance();
-        if (!selectedCategory.equals(i18nForStatus.getText("filter.all"))) {
-            statusMsg += " | 分类: " + selectedCategory;
-        }
-        updateStatus(statusMsg);
-    }
-    
-    /**
-     * 更新按钮状态
-     */
-    private void updateButtonStates() {
-        boolean hasSelection = toolTable.getSelectedRow() != -1;
-        editButton.setEnabled(hasSelection);
-        deleteButton.setEnabled(hasSelection);
-        favoriteButton.setEnabled(hasSelection);
+        controller.filterTable(searchText, searchColumnIndex, selectedCategory);
     }
     
     /**
      * 显示右键菜单
-     * @param e 鼠标事件
      */
     private void showContextMenu(MouseEvent e) {
         int row = toolTable.rowAtPoint(e.getPoint());
@@ -486,47 +312,80 @@ public class ToolPanel extends JPanel implements I18nManager.LanguageChangeListe
             
             // 执行工具命令
             JMenuItem executeItem = new JMenuItem("执行命令");
-            executeItem.addActionListener(event -> {
-                HttpToolCommand toolCommand = tableModel.getToolCommandAt(toolTable.getSelectedRow());
-                // TODO: 实现命令执行功能
-                updateStatus("执行命令: " + toolCommand.getDisplayName());
-            });
+            executeItem.addActionListener(event -> 
+                controller.executeToolCommand(toolTable.getSelectedRow(), tableModel.getToolCommands()));
             contextMenu.add(executeItem);
             
             contextMenu.addSeparator();
             
             // 编辑
             JMenuItem editItem = new JMenuItem("编辑工具");
-            editItem.addActionListener(event -> editSelectedTool());
+            editItem.addActionListener(event -> 
+                controller.editSelectedTool(toolTable.getSelectedRow(), tableModel.getToolCommands()));
             contextMenu.add(editItem);
             
             // 收藏/取消收藏
             HttpToolCommand toolCommand = tableModel.getToolCommandAt(row);
-            String favoriteText = toolCommand.isFavor() ? "取消收藏" : "收藏工具";
-            JMenuItem favoriteItem = new JMenuItem(favoriteText);
-            favoriteItem.addActionListener(event -> toggleFavorite());
-            contextMenu.add(favoriteItem);
+            if (toolCommand != null) {
+                String favoriteText = toolCommand.isFavor() ? "取消收藏" : "收藏工具";
+                JMenuItem favoriteItem = new JMenuItem(favoriteText);
+                favoriteItem.addActionListener(event -> 
+                    controller.toggleFavorite(toolTable.getSelectedRow(), tableModel.getToolCommands()));
+                contextMenu.add(favoriteItem);
+            }
             
             contextMenu.addSeparator();
             
             // 复制命令
             JMenuItem copyItem = new JMenuItem("复制命令");
-            copyItem.addActionListener(event -> {
-                HttpToolCommand cmd = tableModel.getToolCommandAt(toolTable.getSelectedRow());
-                java.awt.datatransfer.StringSelection stringSelection = 
-                    new java.awt.datatransfer.StringSelection(cmd.getCommand());
-                java.awt.Toolkit.getDefaultToolkit().getSystemClipboard()
-                    .setContents(stringSelection, null);
-                updateStatus("已复制命令到剪贴板: " + cmd.getDisplayName());
-            });
+            copyItem.addActionListener(event -> 
+                controller.copyCommandToClipboard(toolTable.getSelectedRow(), tableModel.getToolCommands()));
             contextMenu.add(copyItem);
             
             // 删除
             JMenuItem deleteItem = new JMenuItem("删除工具");
-            deleteItem.addActionListener(event -> deleteSelectedTool());
+            deleteItem.addActionListener(event -> 
+                controller.deleteSelectedTool(toolTable.getSelectedRow(), tableModel.getToolCommands()));
             contextMenu.add(deleteItem);
             
             contextMenu.show(toolTable, e.getX(), e.getY());
+        }
+    }
+    
+    /**
+     * 初始化搜索范围下拉框选项
+     */
+    private void initializeSearchColumnFilter() {
+        if (searchColumnFilter != null) {
+            I18nManager i18n = I18nManager.getInstance();
+            
+            searchColumnFilter.addItem(i18n.getText("filter.all"));
+            searchColumnFilter.addItem(i18n.getText("tools.tool.name"));
+            searchColumnFilter.addItem(i18n.getText("tools.command"));
+            searchColumnFilter.addItem(i18n.getText("label.category"));
+            
+            searchColumnFilter.setSelectedIndex(0);
+        }
+    }
+    
+    /**
+     * 更新搜索范围下拉框选项
+     */
+    private void updateSearchColumnFilter() {
+        if (searchColumnFilter != null) {
+            I18nManager i18n = I18nManager.getInstance();
+            
+            int selectedIndex = searchColumnFilter.getSelectedIndex();
+            
+            searchColumnFilter.removeAllItems();
+            searchColumnFilter.addItem(i18n.getText("filter.all"));
+            searchColumnFilter.addItem(i18n.getText("tools.tool.name"));
+            searchColumnFilter.addItem(i18n.getText("tools.command"));
+            searchColumnFilter.addItem(i18n.getText("label.category"));
+            
+            if (selectedIndex >= 0 && selectedIndex < searchColumnFilter.getItemCount()) {
+                searchColumnFilter.setSelectedIndex(selectedIndex);
+            }
         }
     }
     
@@ -535,49 +394,129 @@ public class ToolPanel extends JPanel implements I18nManager.LanguageChangeListe
      */
     private void loadCategoryOptions() {
         try {
-            List<String> categories = ToolController.getInstance().getAllHttpToolCategories();
+            List<String> categories = controller.getAllCategories();
             categoryFilter.removeAllItems();
             for (String category : categories) {
                 categoryFilter.addItem(category);
             }
-            categoryFilter.setSelectedIndex(0); // 默认选中"全部"
+            categoryFilter.setSelectedIndex(0);
         } catch (Exception e) {
-            // 如果加载失败，使用默认选项
-            I18nManager i18n = I18nManager.getInstance();
-            categoryFilter.removeAllItems();
-            categoryFilter.addItem(i18n.getText("filter.all"));
-            categoryFilter.addItem(i18n.getText("tools.category.sql.injection"));
-            categoryFilter.addItem(i18n.getText("tools.category.xss"));
-            categoryFilter.addItem(i18n.getText("tools.category.directory.scan"));
-            categoryFilter.addItem(i18n.getText("tools.category.vulnerability.scan"));
-            categoryFilter.addItem(i18n.getText("tools.category.brute.force"));
-            logError("加载分类选项失败: " + e.getMessage());
+            System.err.println("ToolPanel: 加载分类选项失败: " + e.getMessage());
         }
     }
     
-
+    // ================== ToolPanelView接口实现 ==================
     
-    /**
-     * 更新状态
-     * @param message 状态消息
-     */
-    private void updateStatus(String message) {
-        statusLabel.setText(message);
+    @Override
+    public void updateData(List<HttpToolCommand> data) {
+        SwingUtilities.invokeLater(() -> {
+            tableModel.setToolCommands(data);
+        });
     }
     
-    /**
-     * 记录错误日志
-     * @param message 错误消息
-     */
-    private void logError(String message) {
-        // 委托给控制器处理日志
-        System.err.println("ToolPanel: " + message);
+    @Override
+    public void updateStatus(String message) {
+        SwingUtilities.invokeLater(() -> {
+            statusLabel.setText(message);
+        });
     }
     
-    /**
-     * 语言变更监听器实现
-     * @param newLanguage 新的语言
-     */
+    @Override
+    public void showAddDialog() {
+        SwingUtilities.invokeLater(() -> {
+            ToolEditDialog dialog = new ToolEditDialog(SwingUtilities.getWindowAncestor(this), null);
+            dialog.setVisible(true);
+            
+            if (dialog.isConfirmed()) {
+                HttpTool newTool = dialog.getTool();
+                String category = dialog.getSelectedCategory();
+                controller.handleToolAdded(newTool, category);
+            }
+        });
+    }
+    
+    @Override
+    public void showEditDialog(HttpTool tool) {
+        SwingUtilities.invokeLater(() -> {
+            ToolEditDialog dialog = new ToolEditDialog(SwingUtilities.getWindowAncestor(this), tool);
+            dialog.setVisible(true);
+            
+            if (dialog.isConfirmed()) {
+                HttpTool updatedTool = dialog.getTool();
+                String newCategory = dialog.getSelectedCategory();
+                controller.handleToolEdited(tool, updatedTool, newCategory);
+            }
+        });
+    }
+    
+    @Override
+    public void showDeleteConfirmDialog(HttpTool tool) {
+        SwingUtilities.invokeLater(() -> {
+            int result = JOptionPane.showConfirmDialog(this,
+                "确定要删除工具 \"" + tool.getToolName() + "\" 吗？\n注意：这将删除该工具的所有命令。",
+                "确认删除",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE);
+                
+            if (result == JOptionPane.YES_OPTION) {
+                controller.handleToolDeleted(tool);
+            }
+        });
+    }
+    
+    @Override
+    public void showMessage(String message, String title, int messageType) {
+        SwingUtilities.invokeLater(() -> {
+            JOptionPane.showMessageDialog(this, message, title, messageType);
+        });
+    }
+    
+    // ================== ToolPanelListener接口实现 ==================
+    
+    @Override
+    public void onDataLoaded(List<HttpToolCommand> data) {
+        updateData(data);
+    }
+    
+    @Override
+    public void onDataFiltered(List<HttpToolCommand> filteredData, int totalSize) {
+        updateData(filteredData);
+    }
+    
+    @Override
+    public void onDataChanged() {
+        SwingUtilities.invokeLater(() -> {
+            tableModel.fireTableDataChanged();
+        });
+    }
+    
+    @Override
+    public void onStatusUpdate(String message) {
+        updateStatus(message);
+    }
+    
+    @Override
+    public void onShowAddDialog() {
+        showAddDialog();
+    }
+    
+    @Override
+    public void onShowEditDialog(HttpTool tool) {
+        showEditDialog(tool);
+    }
+    
+    @Override
+    public void onShowDeleteConfirmDialog(HttpTool tool) {
+        showDeleteConfirmDialog(tool);
+    }
+    
+    @Override
+    public void onShowMessage(String message, String title, int messageType) {
+        showMessage(message, title, messageType);
+    }
+    
+    // ================== 语言变更监听器实现 ==================
+    
     @Override
     public void onLanguageChanged(I18nManager.SupportedLanguage newLanguage) {
         SwingUtilities.invokeLater(() -> {
@@ -622,247 +561,20 @@ public class ToolPanel extends JPanel implements I18nManager.LanguageChangeListe
             tableModel.fireTableStructureChanged();
             
             // 重新设置渲染器（因为fireTableStructureChanged会重置所有列）
-            if (toolTable != null) {
-                TableColumnModel columnModel = toolTable.getColumnModel();
-                // 重新设置收藏列渲染器
-                columnModel.getColumn(2).setCellRenderer(new FavoriteRenderer());
-                // 重新设置命令列渲染器
-                columnModel.getColumn(1).setCellRenderer(new PlainTextRenderer());
-            }
+            TableRendererFactory.configureTableRenderers(toolTable, FAVORITE_COLUMN_INDEX, COMMAND_COLUMN_INDEX);
         }
         
         // 更新搜索范围下拉框选项
         updateSearchColumnFilter();
         
-        // 重新加载分类选项（可能包含国际化的默认分类）
+        // 重新加载分类选项
         loadCategoryOptions();
     }
     
     /**
-     * 初始化搜索范围下拉框选项
+     * 公共方法：刷新数据
      */
-    private void initializeSearchColumnFilter() {
-        if (searchColumnFilter != null) {
-            I18nManager i18n = I18nManager.getInstance();
-            
-            // 添加国际化项目
-            searchColumnFilter.addItem(i18n.getText("filter.all"));
-            searchColumnFilter.addItem(i18n.getText("tools.tool.name"));
-            searchColumnFilter.addItem(i18n.getText("tools.command"));
-            searchColumnFilter.addItem(i18n.getText("label.category"));
-            
-            // 默认选中第一项
-            searchColumnFilter.setSelectedIndex(0);
-        }
-    }
-    
-    /**
-     * 更新搜索范围下拉框选项
-     */
-    private void updateSearchColumnFilter() {
-        if (searchColumnFilter != null) {
-            I18nManager i18n = I18nManager.getInstance();
-            
-            // 保存当前选中的索引
-            int selectedIndex = searchColumnFilter.getSelectedIndex();
-            
-            // 移除所有项目
-            searchColumnFilter.removeAllItems();
-            
-            // 添加新的国际化项目
-            searchColumnFilter.addItem(i18n.getText("filter.all"));
-            searchColumnFilter.addItem(i18n.getText("tools.tool.name"));
-            searchColumnFilter.addItem(i18n.getText("tools.command"));
-            searchColumnFilter.addItem(i18n.getText("label.category"));
-            
-            // 恢复选中状态
-            if (selectedIndex >= 0 && selectedIndex < searchColumnFilter.getItemCount()) {
-                searchColumnFilter.setSelectedIndex(selectedIndex);
-            }
-        }
-    }
-
-}
-
-/**
- * 工具表格模型
- */
-class ToolTableModel extends AbstractTableModel {
-    private String[] columnNames;
-    private List<HttpToolCommand> toolCommands = new ArrayList<>();
-    
-    public ToolTableModel() {
-        updateColumnNames();
-    }
-    
-    public void updateColumnNames() {
-        I18nManager i18n = I18nManager.getInstance();
-        columnNames = new String[]{
-            i18n.getText("tools.tool.name"), 
-            i18n.getText("tools.command"), 
-            i18n.getText("column.favorite"), 
-            i18n.getText("label.category")
-        };
-    }
-    
-    @Override
-    public int getRowCount() {
-        return toolCommands.size();
-    }
-    
-    @Override
-    public int getColumnCount() {
-        return columnNames.length;
-    }
-    
-    @Override
-    public String getColumnName(int column) {
-        return columnNames[column];
-    }
-    
-    @Override
-    public Object getValueAt(int rowIndex, int columnIndex) {
-        HttpToolCommand toolCommand = toolCommands.get(rowIndex);
-        switch (columnIndex) {
-            case 0: return toolCommand.getDisplayName();
-            case 1: return toolCommand.getCommand();
-            case 2: return toolCommand.isFavor();
-            case 3: return toolCommand.getCategory();
-            default: return null;
-        }
-    }
-    
-    @Override
-    public Class<?> getColumnClass(int columnIndex) {
-        if (columnIndex == 2) return Boolean.class;
-        return String.class;
-    }
-    
-    @Override
-    public boolean isCellEditable(int rowIndex, int columnIndex) {
-        return columnIndex == 2; // 只有收藏列可以直接编辑
-    }
-    
-    @Override
-    public void setValueAt(Object value, int rowIndex, int columnIndex) {
-        if (columnIndex == 2) {
-            toolCommands.get(rowIndex).setFavor((Boolean) value);
-            fireTableCellUpdated(rowIndex, columnIndex);
-        }
-    }
-    
-    public void setToolCommands(List<HttpToolCommand> toolCommands) {
-        this.toolCommands = new ArrayList<>(toolCommands);
-        fireTableDataChanged();
-    }
-    
-    public void addToolCommand(HttpToolCommand toolCommand) {
-        toolCommands.add(toolCommand);
-        fireTableRowsInserted(toolCommands.size() - 1, toolCommands.size() - 1);
-    }
-    
-    public void updateToolCommand(int index, HttpToolCommand toolCommand) {
-        toolCommands.set(index, toolCommand);
-        fireTableRowsUpdated(index, index);
-    }
-    
-    public void removeToolCommand(int index) {
-        toolCommands.remove(index);
-        fireTableRowsDeleted(index, index);
-    }
-    
-    public HttpToolCommand getToolCommandAt(int index) {
-        return toolCommands.get(index);
-    }
-    
-    public List<HttpToolCommand> getToolCommands() {
-        return new ArrayList<>(toolCommands);
-    }
-
-}
-
-/**
- * 收藏状态渲染器
- */
-class FavoriteRenderer extends DefaultTableCellRenderer {
-    @Override
-    public Component getTableCellRendererComponent(JTable table, Object value, 
-            boolean isSelected, boolean hasFocus, int row, int column) {
-        
-                JLabel label = new JLabel();
-
-                label.setHorizontalAlignment(JLabel.CENTER);
-         //        label.setOpaque(true);
-         
-                if (isSelected) {
-                    label.setBackground(table.getSelectionBackground());
-                    label.setForeground(table.getSelectionForeground());
-                } else {
-                    label.setBackground(table.getBackground());
-                    label.setForeground(table.getForeground());
-                }
-         
-                if (value instanceof Boolean) {
-                    label.setText(((Boolean) value) ? "★" : "☆");
-                    label.setForeground(((Boolean) value) ? new Color(255, 152, 0) : new Color(158, 158, 158));
-                }
-         
-                return label;
-    }
-}
-
-/**
- * 纯文本渲染器 - 命令列专用
- */
-class PlainTextRenderer extends DefaultTableCellRenderer {
-    @Override
-    public Component getTableCellRendererComponent(JTable table, Object value, 
-            boolean isSelected, boolean hasFocus, int row, int column) {
-        
-        Component comp = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
-        
-        if (value != null) {
-            String command = value.toString();
-            
-            // 设置为等宽字体，更适合显示命令
-//            setFont(new Font("Consolas", Font.PLAIN, 10));
-            
-            // 显示完整命令作为提示
-            setToolTipText(command);
-            
-            // 如果命令太长，截断显示
-            if (command.length() > 130) {
-                setText(command.substring(0, 87) + "...");
-            } else {
-                setText(command);
-            }
-            
-            // 设置文本对齐
-            setHorizontalAlignment(JLabel.LEFT);
-        }
-        
-        return comp;
-    }
-}
-
-/**
- * 交替行颜色渲染器
- */
-class AlternateRowRenderer extends DefaultTableCellRenderer {
-    @Override
-    public Component getTableCellRendererComponent(JTable table, Object value, 
-            boolean isSelected, boolean hasFocus, int row, int column) {
-        
-        Component comp = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
-        
-        if (!isSelected) {
-            if (row % 2 == 0) {
-                comp.setBackground(Color.WHITE);
-            } else {
-                comp.setBackground(new Color(248, 248, 248));
-            }
-        }
-        
-        return comp;
+    public void loadData() {
+        controller.loadData();
     }
 } 

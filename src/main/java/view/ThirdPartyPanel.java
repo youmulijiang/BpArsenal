@@ -679,9 +679,11 @@ public class ThirdPartyPanel extends JPanel implements I18nManager.LanguageChang
         if (toolTable != null) {
             TableColumnModel columnModel = toolTable.getColumnModel();
             // 重新设置收藏列渲染器
-            columnModel.getColumn(2).setCellRenderer(new FavoriteRenderer());
+            columnModel.getColumn(2).setCellRenderer(new ThirdPartyFavoriteRenderer());
+            // 重新设置自启动列渲染器
+            columnModel.getColumn(4).setCellRenderer(new ThirdPartyAutoStartRenderer());
             // 重新设置命令列渲染器
-            columnModel.getColumn(1).setCellRenderer(new PlainTextRenderer());
+            columnModel.getColumn(1).setCellRenderer(new ThirdPartyCommandRenderer());
         }
         // 更新搜索范围下拉框选项
         updateSearchColumnFilter();
