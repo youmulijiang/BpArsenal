@@ -157,7 +157,7 @@ public class ArsenalContextMenuProvider implements ContextMenuItemsProvider {
                             dialog.setLocationRelativeTo(null);
                             // 显示对话框后立即取消置顶，避免影响用户操作其他应用
                             SwingUtilities.invokeLater(() -> {
-                                dialog.setAlwaysOnTop(true);
+//                                dialog.setAlwaysOnTop(true);
                                 dialog.toFront();
                                 dialog.requestFocus();
                             });
@@ -277,8 +277,8 @@ public class ArsenalContextMenuProvider implements ContextMenuItemsProvider {
                 return;
             }
             
-            // 执行命令
-            executeCommandViaScript(renderedCommand, toolName);
+            // 执行命令（使用工作目录支持）
+            executeToolCommandWithWorkDir(toolCommand, renderedCommand, toolName);
             
         } catch (Exception e) {
             String errorMsg = "执行工具命令失败: " + e.getMessage();
@@ -331,8 +331,22 @@ public class ArsenalContextMenuProvider implements ContextMenuItemsProvider {
      */
     private void executeCommandViaScript(String command, String toolName) {
         try {
-            // 使用ToolExecutor的命令执行功能
-            ToolExecutor.getInstance().executeCommandSync(command, toolName, null);
+            // 使用ToolExecutor的命令执行功能，不传递工作目录（使用全局设置）
+            ToolExecutor.getInstance().executeCommandSync(command, toolName, (String)null);
+        } catch (Exception e) {
+            ApiManager.getInstance().getApi().logging().logToError("命令执行失败: " + e.getMessage());
+            throw new RuntimeException("命令执行失败: " + e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * 通过ToolExecutor执行工具命令（带工作目录支持）
+     */
+    private void executeToolCommandWithWorkDir(HttpToolCommand toolCommand, String command, String toolName) {
+        try {
+            // 获取工作目录并执行命令
+            String workDir = toolCommand.getWorkDir();
+            ToolExecutor.getInstance().executeCommandSync(command, toolName, workDir);
         } catch (Exception e) {
             ApiManager.getInstance().getApi().logging().logToError("命令执行失败: " + e.getMessage());
             throw new RuntimeException("命令执行失败: " + e.getMessage(), e);

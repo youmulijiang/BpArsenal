@@ -1,7 +1,9 @@
 package executor;
 
 import model.HttpTool;
+import model.HttpToolCommand;
 import model.ThirdPartyTool;
+import model.SettingModel;
 import manager.ApiManager;
 import burp.api.montoya.http.message.requests.HttpRequest;
 import burp.api.montoya.http.message.responses.HttpResponse;
@@ -26,6 +28,7 @@ public class ToolExecutor {
     private static ToolExecutor instance;
     private final HttpVariableReplacer variableReplacer;
     private HttpMessageParser currentParser;
+    private SettingModel settingModel;
     
     // 操作系统相关常量
     private static final String OS_NAME = System.getProperty("os.name").toLowerCase();
@@ -42,6 +45,7 @@ public class ToolExecutor {
         // 默认使用高级解析器
         this.currentParser = new AdvancedHttpParser();
         this.variableReplacer = new HttpVariableReplacer(currentParser);
+        this.settingModel = new SettingModel();
         
         // 初始化脚本目录
         initializeScriptDirectory();
@@ -56,6 +60,65 @@ public class ToolExecutor {
             instance = new ToolExecutor();
         }
         return instance;
+    }
+    
+    /**
+     * 确定工作目录
+     * 优先级：工具配置的工作目录 > 全局设置的工具目录 > 当前目录
+     * @param toolWorkDir 工具配置的工作目录
+     * @return 最终使用的工作目录
+     */
+    private String determineWorkingDirectory(String toolWorkDir) {
+        // 1. 首先检查工具配置的工作目录
+        if (toolWorkDir != null && !toolWorkDir.trim().isEmpty()) {
+            String trimmedToolWorkDir = toolWorkDir.trim();
+            File toolDir = new File(trimmedToolWorkDir);
+            if (toolDir.exists() && toolDir.isDirectory()) {
+                if (ApiManager.getInstance().isInitialized()) {
+                    ApiManager.getInstance().getApi().logging().logToOutput(
+                        "BpArsenal: 使用工具配置的工作目录 - " + trimmedToolWorkDir
+                    );
+                }
+                return trimmedToolWorkDir;
+            } else {
+                if (ApiManager.getInstance().isInitialized()) {
+                    ApiManager.getInstance().getApi().logging().logToError(
+                        "BpArsenal: 工具配置的工作目录无效 - " + trimmedToolWorkDir
+                    );
+                }
+            }
+        }
+        
+        // 2. 检查全局设置的工具目录
+        if (settingModel != null) {
+            String globalToolDir = settingModel.getToolDirectory();
+            if (globalToolDir != null && !globalToolDir.trim().isEmpty()) {
+                String trimmedGlobalDir = globalToolDir.trim();
+                File globalDir = new File(trimmedGlobalDir);
+                if (globalDir.exists() && globalDir.isDirectory()) {
+                    if (ApiManager.getInstance().isInitialized()) {
+                        ApiManager.getInstance().getApi().logging().logToOutput(
+                            "BpArsenal: 使用全局设置的工具目录 - " + trimmedGlobalDir
+                        );
+                    }
+                    return trimmedGlobalDir;
+                } else {
+                    if (ApiManager.getInstance().isInitialized()) {
+                        ApiManager.getInstance().getApi().logging().logToError(
+                            "BpArsenal: 全局设置的工具目录无效 - " + trimmedGlobalDir
+                        );
+                    }
+                }
+            }
+        }
+        
+        // 3. 都不可用时，返回null表示使用当前目录
+        if (ApiManager.getInstance().isInitialized()) {
+            ApiManager.getInstance().getApi().logging().logToOutput(
+                "BpArsenal: 使用当前目录执行命令"
+            );
+        }
+        return null;
     }
     
     /**
@@ -141,10 +204,56 @@ public class ToolExecutor {
                     command = variableReplacer.replaceRequestVariables(tool.getCommand(), httpRequest);
                 }
                 
-                executeCommandViaScript(command, tool.getToolName());
+                // HttpTool本身没有workDir，使用全局设置
+                String workDir = determineWorkingDirectory(null);
+                executeCommandViaScript(command, tool.getToolName(), workDir);
                 
             } catch (Exception e) {
                 handleError("HTTP工具执行失败", tool.getToolName(), e);
+            }
+        });
+    }
+    
+    /**
+     * 执行HTTP工具命令
+     * @param toolCommand 工具命令配置
+     * @param httpRequest HTTP请求对象
+     */
+    public void executeHttpToolCommand(HttpToolCommand toolCommand, HttpRequest httpRequest) {
+        executeHttpToolCommand(toolCommand, httpRequest, null);
+    }
+    
+    /**
+     * 执行HTTP工具命令（支持请求和响应）
+     * @param toolCommand 工具命令配置
+     * @param httpRequest HTTP请求对象
+     * @param httpResponse HTTP响应对象（可选）
+     */
+    public void executeHttpToolCommand(HttpToolCommand toolCommand, HttpRequest httpRequest, HttpResponse httpResponse) {
+        CompletableFuture.runAsync(() -> {
+            try {
+                // 验证命令中的变量
+                HttpVariableReplacer.VariableValidationResult validation = 
+                    variableReplacer.validateVariables(toolCommand.getCommand(), httpRequest, httpResponse);
+                
+                if (!validation.isValid()) {
+                    logVariableValidationWarning(toolCommand.getToolName(), validation);
+                }
+                
+                // 替换变量并执行命令
+                String command;
+                if (httpResponse != null) {
+                    command = variableReplacer.replaceAllVariables(toolCommand.getCommand(), httpRequest, httpResponse);
+                } else {
+                    command = variableReplacer.replaceRequestVariables(toolCommand.getCommand(), httpRequest);
+                }
+                
+                // 获取工作目录
+                String workDir = determineWorkingDirectory(toolCommand.getWorkDir());
+                executeCommandViaScript(command, toolCommand.getToolName(), workDir);
+                
+            } catch (Exception e) {
+                handleError("HTTP工具执行失败", toolCommand.getToolName(), e);
             }
         });
     }
@@ -156,7 +265,9 @@ public class ToolExecutor {
     public void executeThirdPartyTool(ThirdPartyTool tool) {
         CompletableFuture.runAsync(() -> {
             try {
-                executeCommandViaScript(tool.getStartCommand(), tool.getToolName());
+                // 第三方工具没有独立的工作目录配置，使用全局设置
+                String workDir = determineWorkingDirectory(null);
+                executeCommandViaScript(tool.getStartCommand(), tool.getToolName(), workDir);
             } catch (Exception e) {
                 handleError("第三方工具启动失败", tool.getToolName(), e);
             }
@@ -170,18 +281,30 @@ public class ToolExecutor {
      * @throws IOException 执行异常
      */
     private void executeCommandViaScript(String command, String toolName) throws IOException {
+        executeCommandViaScript(command, toolName, null);
+    }
+    
+    /**
+     * 通过脚本文件执行命令（统一入口，支持工作目录）
+     * @param command 命令字符串
+     * @param toolName 工具名称
+     * @param workDir 工作目录（可为null）
+     * @throws IOException 执行异常
+     */
+    private void executeCommandViaScript(String command, String toolName, String workDir) throws IOException {
         File scriptFile = null;
         try {
-            // 生成临时脚本文件
-            scriptFile = createTemporaryScript(command, toolName);
+            // 生成临时脚本文件（包含工作目录切换）
+            scriptFile = createTemporaryScript(command, toolName, workDir);
             
             // 执行脚本文件
             executeScriptFile(scriptFile, toolName);
             
             if (ApiManager.getInstance().isInitialized()) {
-                ApiManager.getInstance().getApi().logging().logToOutput(
-                    "执行工具: " + toolName + " - " + command
-                );
+                String logMsg = workDir != null ? 
+                    String.format("执行工具: %s (工作目录: %s) - %s", toolName, workDir, command) :
+                    String.format("执行工具: %s - %s", toolName, command);
+                ApiManager.getInstance().getApi().logging().logToOutput(logMsg);
             }
             
         } finally {
@@ -200,17 +323,29 @@ public class ToolExecutor {
      * @throws IOException 文件创建异常
      */
     private File createTemporaryScript(String command, String toolName) throws IOException {
+        return createTemporaryScript(command, toolName, null);
+    }
+    
+    /**
+     * 创建临时脚本文件（支持工作目录）
+     * @param command 要执行的命令
+     * @param toolName 工具名称
+     * @param workDir 工作目录（可为null）
+     * @return 创建的脚本文件
+     * @throws IOException 文件创建异常
+     */
+    private File createTemporaryScript(String command, String toolName, String workDir) throws IOException {
         String scriptFileName;
         String scriptContent;
         
         if (isWindows()) {
             // Windows: 创建 .bat 文件
             scriptFileName = "bparsenal_" + sanitizeFileName(toolName) + "_" + UUID.randomUUID().toString().substring(0, 8) + ".bat";
-            scriptContent = generateWindowsBatchScript(command, toolName);
+            scriptContent = generateWindowsBatchScript(command, toolName, workDir);
         } else {
             // Linux/Unix: 创建 .sh 文件
             scriptFileName = "bparsenal_" + sanitizeFileName(toolName) + "_" + UUID.randomUUID().toString().substring(0, 8) + ".sh";
-            scriptContent = generateLinuxShellScript(command, toolName);
+            scriptContent = generateLinuxShellScript(command, toolName, workDir);
         }
         
         File scriptFile = new File(tempScriptDir, scriptFileName);
@@ -241,6 +376,17 @@ public class ToolExecutor {
      * @return 脚本内容
      */
     private String generateWindowsBatchScript(String command, String toolName) {
+        return generateWindowsBatchScript(command, toolName, null);
+    }
+    
+    /**
+     * 生成Windows批处理脚本内容（支持工作目录）
+     * @param command 要执行的命令
+     * @param toolName 工具名称
+     * @param workDir 工作目录（可为null）
+     * @return 脚本内容
+     */
+    private String generateWindowsBatchScript(String command, String toolName, String workDir) {
         StringBuilder script = new StringBuilder();
         script.append("@echo off\r\n");
         // 移除chcp 65001设置，使用系统默认编码
@@ -252,6 +398,20 @@ public class ToolExecutor {
         script.append("echo Time: %date% %time%\r\n");
         script.append("echo ================================================\r\n");
         script.append("echo.\r\n");
+        
+        // 切换工作目录（如果指定）
+        if (workDir != null && !workDir.trim().isEmpty()) {
+            script.append("echo Changing to work directory: ").append(workDir).append("\r\n");
+            script.append("cd /d \"").append(workDir).append("\"\r\n");
+            script.append("if errorlevel 1 (\r\n");
+            script.append("    echo ERROR: Failed to change to work directory\r\n");
+            script.append("    pause\r\n");
+            script.append("    exit /b 1\r\n");
+            script.append(")\r\n");
+            script.append("echo Current directory: %cd%\r\n");
+            script.append("echo.\r\n");
+        }
+        
         script.append("echo Executing command:\r\n");
         script.append("echo ").append(command).append("\r\n");
         script.append("echo.\r\n");
@@ -280,6 +440,17 @@ public class ToolExecutor {
      * @return 脚本内容
      */
     private String generateLinuxShellScript(String command, String toolName) {
+        return generateLinuxShellScript(command, toolName, null);
+    }
+    
+    /**
+     * 生成Linux Shell脚本内容（支持工作目录）
+     * @param command 要执行的命令
+     * @param toolName 工具名称
+     * @param workDir 工作目录（可为null）
+     * @return 脚本内容
+     */
+    private String generateLinuxShellScript(String command, String toolName, String workDir) {
         StringBuilder script = new StringBuilder();
         script.append("#!/bin/bash\n");
         script.append("\n");
@@ -293,6 +464,21 @@ public class ToolExecutor {
         script.append("echo \"执行时间: $(date)\"\n");
         script.append("echo \"================================================\"\n");
         script.append("echo\n");
+        
+        // 切换工作目录（如果指定）
+        if (workDir != null && !workDir.trim().isEmpty()) {
+            script.append("echo \"切换到工作目录: ").append(workDir).append("\"\n");
+            script.append("cd \"").append(workDir).append("\"\n");
+            script.append("if [ $? -ne 0 ]; then\n");
+            script.append("    echo \"错误: 无法切换到工作目录\"\n");
+            script.append("    echo \"按 Enter 键继续...\"\n");
+            script.append("    read\n");
+            script.append("    exit 1\n");
+            script.append("fi\n");
+            script.append("echo \"当前目录: $(pwd)\"\n");
+            script.append("echo\n");
+        }
+        
         script.append("echo \"执行命令: ").append(command).append("\"\n");
         script.append("echo\n");
         script.append("echo \"开始执行...\"\n");
@@ -470,14 +656,38 @@ public class ToolExecutor {
      * @param callback 执行结果回调
      */
     public void executeCommandSync(String command, String toolName, CommandExecutionCallback callback) {
+        executeCommandSync(command, toolName, null, callback);
+    }
+    
+    /**
+     * 执行系统命令（同步版本，简化版本）
+     * @param command 命令字符串
+     * @param toolName 工具名称
+     * @param workDir 工作目录（可为null）
+     */
+    public void executeCommandSync(String command, String toolName, String workDir) {
+        executeCommandSync(command, toolName, workDir, null);
+    }
+    
+    /**
+     * 执行系统命令（同步版本，支持工作目录）
+     * @param command 命令字符串
+     * @param toolName 工具名称
+     * @param workDir 工作目录（可为null）
+     * @param callback 执行结果回调
+     */
+    public void executeCommandSync(String command, String toolName, String workDir, CommandExecutionCallback callback) {
         CompletableFuture.runAsync(() -> {
             try {
                 if (callback != null) {
                     callback.onCommandStart(toolName, command);
                 }
                 
-                // 使用脚本执行
-                executeCommandViaScript(command, toolName);
+                // 确定最终工作目录
+                String finalWorkDir = determineWorkingDirectory(workDir);
+                
+                // 使用脚本执行（支持工作目录）
+                executeCommandViaScript(command, toolName, finalWorkDir);
                 
                 // 构建输出信息
                 StringBuilder output = new StringBuilder();
