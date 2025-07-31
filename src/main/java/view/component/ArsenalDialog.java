@@ -128,7 +128,7 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
     private void initializeDialog() {
         I18nManager i18n = I18nManager.getInstance();
         setTitle(i18n.getText("dialog.arsenal.title"));
-        setSize(950, 800);  // 增加高度以适应选项卡
+        setSize(1200, 800);  // 增加宽度以适应新增的列
         // 不在这里设置位置，由调用方决定位置
         setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
         setModal(false); // 非模态对话框
@@ -186,6 +186,8 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
         String[] columnNames = {
             i18n.getText("arsenal.dialog.table.column.tool.name"),
             i18n.getText("arsenal.dialog.table.column.command"), 
+            i18n.getText("arsenal.dialog.table.column.note"),
+            i18n.getText("arsenal.dialog.table.column.work.dir"),
             i18n.getText("arsenal.dialog.table.column.category")
         };
         tableModel = new DefaultTableModel(columnNames, 0) {
@@ -204,9 +206,11 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
         toolTable.setRowHeight(25);
         
         // 设置列宽
-        toolTable.getColumnModel().getColumn(0).setPreferredWidth(120);
-        toolTable.getColumnModel().getColumn(1).setPreferredWidth(400);
-        toolTable.getColumnModel().getColumn(2).setPreferredWidth(100);
+        toolTable.getColumnModel().getColumn(0).setPreferredWidth(120);  // 工具名称
+        toolTable.getColumnModel().getColumn(1).setPreferredWidth(300);  // 命令
+        toolTable.getColumnModel().getColumn(2).setPreferredWidth(150);  // 备注
+        toolTable.getColumnModel().getColumn(3).setPreferredWidth(120);  // 工作目录
+        toolTable.getColumnModel().getColumn(4).setPreferredWidth(100);  // 分类
         
         // 创建表格排序器
         tableSorter = new TableRowSorter<>(tableModel);
@@ -335,7 +339,7 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
         
         // 中部：工具表格
         JScrollPane tableScrollPane = new JScrollPane(toolTable);
-        tableScrollPane.setPreferredSize(new Dimension(930, 200));
+        tableScrollPane.setPreferredSize(new Dimension(1180, 200));
         I18nManager layoutI18n = I18nManager.getInstance();
         tableScrollPane.setBorder(BorderFactory.createTitledBorder(layoutI18n.getText("arsenal.dialog.border.tool.list")));
         
@@ -343,7 +347,7 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
         JPanel middlePanel = new JPanel(new BorderLayout());
         
         // 选项卡面板
-        commandTabbedPane.setPreferredSize(new Dimension(930, 150));
+        commandTabbedPane.setPreferredSize(new Dimension(1180, 150));
         middlePanel.add(commandTabbedPane, BorderLayout.CENTER);
         
         // 按钮面板
@@ -358,7 +362,7 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
         centerPanel.add(middlePanel, BorderLayout.CENTER);
         
         // 底部：执行历史
-        resultScrollPane.setPreferredSize(new Dimension(930, 180));
+        resultScrollPane.setPreferredSize(new Dimension(1180, 180));
         
         // 添加到主面板
         add(centerPanel, BorderLayout.CENTER);
@@ -373,7 +377,7 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
         JPanel filterPanel = new JPanel(new GridBagLayout());
         I18nManager panelI18n = I18nManager.getInstance();
         filterPanel.setBorder(BorderFactory.createTitledBorder(panelI18n.getText("arsenal.dialog.border.filter.conditions")));
-        filterPanel.setPreferredSize(new Dimension(930, 80));
+        filterPanel.setPreferredSize(new Dimension(1180, 80));
         
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(5, 5, 5, 5);
@@ -698,14 +702,24 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
             String toolName = toolCommand.getDisplayName() != null ? toolCommand.getDisplayName() : 
                 loadDataI18n.getText("arsenal.dialog.unknown.tool");
             String command = toolCommand.getCommand() != null ? toolCommand.getCommand() : "";
+            String note = toolCommand.getNote() != null ? toolCommand.getNote() : "";
+            String workDir = toolCommand.getWorkDir() != null ? toolCommand.getWorkDir() : "";
             String category = toolCommand.getCategory() != null ? toolCommand.getCategory() : 
                 loadDataI18n.getText("arsenal.dialog.uncategorized");
             
             // 截断过长的命令显示
-            String displayCommand = command.length() > 50 ? 
-                command.substring(0, 50) + "..." : command;
+            String displayCommand = command.length() > 40 ? 
+                command.substring(0, 40) + "..." : command;
             
-            tableModel.addRow(new Object[]{toolName, displayCommand, category});
+            // 截断过长的备注显示
+            String displayNote = note.length() > 20 ? 
+                note.substring(0, 20) + "..." : note;
+                
+            // 截断过长的工作目录显示
+            String displayWorkDir = workDir.length() > 15 ? 
+                "..." + workDir.substring(workDir.length() - 15) : workDir;
+            
+            tableModel.addRow(new Object[]{toolName, displayCommand, displayNote, displayWorkDir, category});
         }
         
         // 自动调整列宽和重绘表格
@@ -1603,6 +1617,8 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
                 tableModel.setColumnIdentifiers(new String[]{
                     i18n.getText("arsenal.dialog.table.column.tool.name"),
                     i18n.getText("arsenal.dialog.table.column.command"),
+                    i18n.getText("arsenal.dialog.table.column.note"),
+                    i18n.getText("arsenal.dialog.table.column.work.dir"),
                     i18n.getText("arsenal.dialog.table.column.category")
                 });
             } catch (Exception e) {
