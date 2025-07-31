@@ -1,241 +1,322 @@
 {
   "httpTool": [
-   {
-    "type":"SQL注入",
-    "content":[
-      {
-        "toolName":"sqlmap",
-        "command":[
-          "python D:\\tools\\sqlmap\\sqlmap.py -u \"%http.request.url%\" --user-agent=\"%http.request.headers.user-agent%\" --cookie=\"%http.request.headers.cookie%\" --dbs",
-          "python D:\\tools\\sqlmap\\sqlmap.py -u \"%http.request.url%\" --data=\"%http.request.body%\" --method=%http.request.method% --dbs",
-          "python D:\\tools\\sqlmap\\sqlmap.py -u \"%http.request.protocol%://%http.request.host%:%http.request.port%%http.request.path%\" --forms --batch --crawl=2",
-          "python D:\\tools\\sqlmap\\sqlmap.py -u \"%http.request.url%\" --cookie=\"%http.request.headers.cookie%\" --current-db --tamper=space2comment",
-          "python D:\\tools\\sqlmap\\sqlmap.py -u \"%http.request.url%\" --data=\"%http.request.body%\" --headers=\"Content-Type: %http.request.headers.content-type%\" --risk=3 --level=5"
-        ],
-        "favor":true
-      },{
-        "toolName":"python",
-        "command":[
-          "python"
-        ],
-        "favor":true
-      },
-      {
-        "toolName":"NoSQLMap",
-        "command":[
-          "python D:\\tools\\nosqlmap\\nosqlmap.py -u \"%http.request.url%\" --scan",
-          "python D:\\tools\\nosqlmap\\nosqlmap.py -u \"%http.request.url%\" --attack --verb=%http.request.method%",
-          "python D:\\tools\\nosqlmap\\nosqlmap.py -u \"%http.request.url%\" --data=\"%http.request.body%\" --attack"
-        ],
-        "favor":false
-      }
-    ]
-   },
-   {
-    "type":"XSS检测",
-    "content":[
-      {
-        "toolName":"XSStrike",
-        "command":[
-          "python D:\\tools\\XSStrike\\xsstrike.py -u \"%http.request.url%\" --headers",
-          "python D:\\tools\\XSStrike\\xsstrike.py -u \"%http.request.url%\" --crawl --level=3",
-          "python D:\\tools\\XSStrike\\xsstrike.py -u \"%http.request.url%\" --fuzzer --params",
-          "python D:\\tools\\XSStrike\\xsstrike.py -u \"%http.request.url%\" --data=\"%http.request.body%\" --encode"
-        ],
-        "favor":true
-      },
-      {
-        "toolName":"dalfox",
-        "command":[
-          "dalfox url \"%http.request.url%\" --user-agent \"%http.request.headers.user-agent%\"",
-          "dalfox url \"%http.request.url%\" --deep-domxss --cookie \"%http.request.headers.cookie%\"",
-          "dalfox url \"%http.request.url%\" --data \"%http.request.body%\" --method %http.request.method%",
-          "dalfox url \"%http.request.url%\" --header \"Referer: %http.request.headers.referer%\" --mass-worker 50"
-        ],
-        "favor":false
-      }
-    ]
-   },
-   {
-    "type":"目录扫描",
-    "content":[
-      {
-        "toolName":"dirsearch",
-        "command":[
-          "python D:\\tools\\dirsearch\\dirsearch.py -u \"%http.request.protocol%://%http.request.host%:%http.request.port%\" -e %file.extension%,php,asp,aspx,jsp,html",
-          "python D:\\tools\\dirsearch\\dirsearch.py -u \"%http.request.protocol%://%http.request.host%:%http.request.port%%path.directory%\" --recursive --random-agent",
-          "python D:\\tools\\dirsearch\\dirsearch.py -u \"%http.request.protocol%://%http.request.host%:%http.request.port%\" -w /usr/share/wordlists/dirb/big.txt --cookie=\"%http.request.headers.cookie%\"",
-          "python D:\\tools\\dirsearch\\dirsearch.py -u \"%http.request.protocol%://%http.request.host%:%http.request.port%\" --extensions-list --exclude-status=400,401,403,404,500",
-          "python D:\\tools\\dirsearch\\dirsearch.py -l %httpList.requests.urls% -e php,asp,aspx,jsp,html --batch"
-        ],
-        "favor":true
-      },
-      {
-        "toolName":"gobuster",
-        "command":[
-          "gobuster dir -u \"%http.request.protocol%://%http.request.host%:%http.request.port%\" -w /usr/share/wordlists/dirb/common.txt -U \"%http.request.headers.user-agent%\"",
-          "gobuster dir -u \"%http.request.protocol%://%http.request.host%:%http.request.port%%path.directory%\" -w /usr/share/wordlists/dirb/big.txt -x %file.extension%,php,asp,aspx,jsp",
-          "gobuster dir -u \"%http.request.protocol%://%http.request.host%:%http.request.port%\" -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -c \"%http.request.headers.cookie%\"",
-          "gobuster dir -u \"%http.request.protocol%://%http.request.host%:%http.request.port%\" -w /usr/share/wordlists/dirb/common.txt -s \"200,204,301,302,307,401,403\""
-        ],
-        "favor":false
-      },
-      {
-        "toolName":"ffuf",
-        "command":[
-          "ffuf -w /usr/share/wordlists/dirb/common.txt -u \"%http.request.protocol%://%http.request.host%:%http.request.port%/FUZZ\" -H \"User-Agent: %http.request.headers.user-agent%\"",
-          "ffuf -w /usr/share/wordlists/dirb/big.txt -u \"%http.request.protocol%://%http.request.host%:%http.request.port%/FUZZ\" -e .%file.extension%,.php,.asp,.aspx,.jsp",
-          "ffuf -w /usr/share/wordlists/parameters.txt -u \"%http.request.url%\" -X %http.request.method% -d \"FUZZ=test\" -H \"Content-Type: %http.request.headers.content-type%\"",
-          "ffuf -w /usr/share/wordlists/dirb/common.txt -u \"%http.request.protocol%://%http.request.host%:%http.request.port%%path.directory%/FUZZ\" -b \"%http.request.headers.cookie%\"",
-          "ffuf -w /usr/share/wordlists/dirb/common.txt -u FUZZ/FUZZ -input-file %httpList.requests.urls% -mc 200,301,302,403"
-        ],
-        "favor":true
-      }
-    ]
-   },
-   {
-    "type":"漏洞扫描",
-    "content":[
-      {
-        "toolName":"nikto",
-        "command":[
-          "nikto -h \"%http.request.protocol%://%http.request.host%:%http.request.port%\" -useragent \"%http.request.headers.user-agent%\"",
-          "nikto -h \"%http.request.protocol%://%http.request.host%:%http.request.port%%path.directory%\" -Plugins @@ALL -Format htm",
-          "nikto -h \"%http.request.protocol%://%http.request.host%:%http.request.port%\" -C all -timeout 10",
-          "nikto -h \"%http.request.protocol%://%http.request.host%:%http.request.port%\" -root \"%path.directory%\" -ssl"
-        ],
-        "favor":true
-      },
-      {
-        "toolName":"nuclei",
-        "command":[
-          "nuclei -u \"%http.request.url%\" -H \"User-Agent: %http.request.headers.user-agent%\" -H \"Cookie: %http.request.headers.cookie%\"",
-          "nuclei -u \"%http.request.protocol%://%http.request.host%:%http.request.port%\" -t cves/ -severity high,critical",
-          "nuclei -u \"%http.request.url%\" -t vulnerabilities/ -H \"Referer: %http.request.headers.referer%\"",
-          "nuclei -u \"%http.request.protocol%://%http.request.host%:%http.request.port%\" -t technologies/ -t exposures/ -rate-limit 10",
-          "nuclei -u \"%http.request.url%\" -t fuzzing/ -var target=%http.request.host% -var port=%http.request.port%",
-          "nuclei -l %httpList.requests.urls% -t cves/ -severity high,critical -o nuclei_results.txt",
-          "nuclei -l %httpList.requests.urls% -t vulnerabilities/ -rate-limit 20 -c 50"
-        ],
-        "favor":true
-      },
-      {
-        "toolName":"whatweb",
-        "command":[
-          "whatweb \"%http.request.url%\" --user-agent=\"%http.request.headers.user-agent%\"",
-          "whatweb \"%http.request.protocol%://%http.request.host%:%http.request.port%\" --aggression=3 --no-errors",
-          "whatweb \"%http.request.url%\" --cookie=\"%http.request.headers.cookie%\" --log-verbose=whatweb.log"
-        ],
-        "favor":false
-      }
-    ]
-   },
-   {
-    "type":"爆破工具",
-    "content":[
-      {
-        "toolName":"hydra",
-        "command":[
-          "hydra -L /usr/share/wordlists/usernames.txt -P /usr/share/wordlists/passwords.txt %http.request.host% -s %http.request.port% http-get \"%http.request.path%\"",
-          "hydra -L /usr/share/wordlists/usernames.txt -P /usr/share/wordlists/passwords.txt %http.request.host% -s %http.request.port% http-post-form \"%http.request.path%:username=^USER^&password=^PASS^:Invalid\"",
-          "hydra -L /usr/share/wordlists/usernames.txt -P /usr/share/wordlists/passwords.txt %http.request.host% -s %http.request.port% http-get \"%http.request.path%\" -I -f",
-          "hydra -l admin -P /usr/share/wordlists/passwords.txt %http.request.host% -s %http.request.port% https-post-form \"%http.request.path%:username=^USER^&password=^PASS^:Invalid\""
-        ],
-        "favor":false
-      },
-      {
-        "toolName":"wpscan",
-        "command":[
-          "wpscan --url \"%http.request.protocol%://%http.request.host%:%http.request.port%%path.directory%\" --user-agent \"%http.request.headers.user-agent%\"",
-          "wpscan --url \"%http.request.protocol%://%http.request.host%:%http.request.port%%path.directory%\" --enumerate u,p,t,tt --random-user-agent",
-          "wpscan --url \"%http.request.protocol%://%http.request.host%:%http.request.port%%path.directory%\" --passwords /usr/share/wordlists/rockyou.txt --usernames admin",
-          "wpscan --url \"%http.request.protocol%://%http.request.host%:%http.request.port%%path.directory%\" --cookie-string \"%http.request.headers.cookie%\" --disable-tls-checks"
-        ],
-        "favor":true
-      }
-    ]
-   },
-   {
-    "type":"编码分析",
-    "content":[
-      {
-        "toolName":"参数模糊测试",
-        "command":[
-          "python -c \"import urllib.parse; print('URL编码:', urllib.parse.quote('%http.request.url%'))\"",
-          "python -c \"import urllib.parse; print('URL解码:', urllib.parse.unquote('%http.url.encoded%'))\"",
-          "echo '%http.request.body%' | base64 -d",
-          "echo '%http.request.query%' | sed 's/&/\\n/g' | sort"
-        ],
-        "favor":false
-      },
-      {
-        "toolName":"请求分析",
-        "command":[
-          "curl -X %http.request.method% \"%http.request.url%\" -H \"User-Agent: %http.request.headers.user-agent%\" -H \"Cookie: %http.request.headers.cookie%\" -v",
-          "curl -X %http.request.method% \"%http.request.url%\" -d \"%http.request.body%\" -H \"Content-Type: %http.request.headers.content-type%\" -i",
-          "curl -X %http.request.method% \"%http.request.protocol%://%http.request.host%:%http.request.port%%http.request.path%\" --data-urlencode \"param=%http.query.param.names%\" -s",
-          "wget --spider --server-response \"%http.request.url%\" --user-agent=\"%http.request.headers.user-agent%\" 2>&1"
-        ],
-        "favor":false
-      }
-    ]
-   },
-   {
-    "type":"批量扫描",
-    "content":[
-      {
-        "toolName":"批量目录扫描",
-        "command":[
-          "dirsearch -l %httpList.requests.urls% -e php,asp,aspx,jsp,html --batch --output batch_dirsearch_results.txt",
-          "gobuster dir -U %httpList.requests.urls% -w /usr/share/wordlists/dirb/common.txt -o batch_gobuster_results.txt",
-          "ffuf -w /usr/share/wordlists/dirb/common.txt -u FUZZ -input-file %httpList.requests.urls% -o batch_ffuf_results.json"
-        ],
-        "favor":true
-      },
-      {
-        "toolName":"批量漏洞扫描",
-        "command":[
-          "nuclei -l %httpList.requests.urls% -t cves/ -severity high,critical -o batch_nuclei_cves.txt",
-          "nuclei -l %httpList.requests.urls% -t vulnerabilities/ -rate-limit 20 -c 50 -o batch_nuclei_vulns.txt",
-          "nuclei -l %httpList.requests.urls% -t technologies/ -t exposures/ -o batch_nuclei_tech.txt"
-        ],
-        "favor":true
-      },
-      {
-        "toolName":"批量信息收集",
-        "command":[
-          "whatweb -i %httpList.requests.urls% --log-verbose batch_whatweb.log",
-          "httpx -l %httpList.requests.urls% -title -tech-detect -status-code -o batch_httpx_results.txt",
-          "cat %httpList.requests.hosts% | nmap -iL - -sV -oN batch_nmap_results.txt"
-        ],
-        "favor":false
-      },
-      {
-        "toolName":"批量内容发现",
-        "command":[
-          "python D:\\tools\\dirsearch\\dirsearch.py -l %httpList.requests.urls% --extensions php,asp,aspx,jsp,html,js,css,txt --batch",
-          "gobuster dir -U %httpList.requests.urls% -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -x php,asp,aspx,jsp",
-          "ffuf -w /usr/share/wordlists/dirb/big.txt -u FUZZ -input-file %httpList.requests.urls% -mc 200,301,302,403,500"
-        ],
-        "favor":false
-      }
-    ]
-   },
-   {
-    "type":"认证测试",
-    "content":[
-      {
-        "toolName":"认证绕过",
-        "command":[
-          "python -c \"import base64; print('Basic Auth:', base64.b64decode('%auth.token%' if '%auth.type%' == 'bearer' else '').decode() if '%auth.type%' else 'No Auth')\"",
-          "curl -X %http.request.method% \"%http.request.url%\" -H \"Authorization: %http.request.headers.authorization%\" -v",
-          "curl -X %http.request.method% \"%http.request.url%\" -u \"%auth.username%:%auth.password%\" -v",
-          "curl -X %http.request.method% \"%http.request.url%\" -H \"Authorization: Bearer %auth.token%\" -v"
-        ],
-        "favor":false
-      }
-    ]
-   }
+    {
+      "type": "SQL注入",
+      "content": [
+        {
+          "toolName": "sqlmap",
+          "commandList": [
+            {
+              "command": "sqlmap -u \"%http.request.url%\" --user-agent=\"%http.request.headers.user.agent%\" --cookie=\"%http.request.headers.cookies%\" --dbs",
+              "favor": true,
+              "note": "基础SQL注入测试",
+              "workDir": ""
+            },
+            {
+              "command": "sqlmap -u \"%http.request.url%\" --data=\"%http.request.body%\" --user-agent=\"%http.request.headers.user.agent%\" --cookie=\"%http.request.headers.cookies%\" --batch --risk=3 --level=5",
+              "favor": true,
+              "note": "高风险SQL注入测试",
+              "workDir": ""
+            },
+            {
+              "command": "sqlmap -u \"%http.request.url%\" --headers=\"Authorization: %http.request.headers.authorization%\" --tamper=space2comment,charencode --threads=10",
+              "favor": false,
+              "note": "带认证头的绕过测试",
+              "workDir": ""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "目录扫描",
+      "content": [
+        {
+          "toolName": "dirsearch",
+          "commandList": [
+            {
+              "command": "dirsearch -u \"%http.request.url%\" -e php,html,js,txt -t 50",
+              "favor": true,
+              "note": "基础目录扫描",
+              "workDir": ""
+            },
+            {
+              "command": "dirsearch -u \"%http.request.protocol%://%http.request.host%:%http.request.port%\" -e php,asp,aspx,jsp -r -R 3",
+              "favor": true,
+              "note": "递归目录扫描",
+              "workDir": ""
+            }
+          ]
+        },
+        {
+          "toolName": "gobuster",
+          "commandList": [
+            {
+              "command": "gobuster dir -u \"%http.request.protocol%://%http.request.host%:%http.request.port%\" -w /usr/share/wordlists/dirb/common.txt -t 50",
+              "favor": true,
+              "note": "Gobuster目录爆破",
+              "workDir": ""
+            },
+            {
+              "command": "gobuster dir -u \"%http.request.url%\" -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -x php,html,txt -k",
+              "favor": false,
+              "note": "大字典目录扫描",
+              "workDir": ""
+            }
+          ]
+        },
+        {
+          "toolName": "dirb",
+          "commandList": [
+            {
+              "command": "dirb \"%http.request.protocol%://%http.request.host%:%http.request.port%\" /usr/share/dirb/wordlists/common.txt",
+              "favor": true,
+              "note": "Dirb基础扫描",
+              "workDir": ""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "漏洞扫描",
+      "content": [
+        {
+          "toolName": "nuclei",
+          "commandList": [
+            {
+              "command": "nuclei -u \"%http.request.url%\" -t cves/ -severity high,critical",
+              "favor": true,
+              "note": "高危CVE扫描",
+              "workDir": ""
+            },
+            {
+              "command": "nuclei -u \"%http.request.url%\" -t vulnerabilities/ -H \"User-Agent: %http.request.headers.user.agent%\" -H \"Cookie: %http.request.headers.cookies%\"",
+              "favor": true,
+              "note": "漏洞模板扫描",
+              "workDir": ""
+            },
+            {
+              "command": "nuclei -u \"%http.request.url%\" -t exposures/ -t misconfiguration/ -c 50",
+              "favor": false,
+              "note": "配置错误和信息泄露扫描",
+              "workDir": ""
+            },
+            {
+              "command": "nuclei -l %httpList.requests.urls% -t technologies/ -silent",
+              "favor": false,
+              "note": "批量技术栈识别",
+              "workDir": ""
+            }
+          ]
+        },
+        {
+          "toolName": "nikto",
+          "commandList": [
+            {
+              "command": "nikto -h \"%http.request.host%\" -p %http.request.port% -useragent \"%http.request.headers.user.agent%\"",
+              "favor": true,
+              "note": "Nikto Web服务器扫描",
+              "workDir": ""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "模糊测试",
+      "content": [
+        {
+          "toolName": "ffuf",
+          "commandList": [
+            {
+              "command": "ffuf -u \"%http.request.url%/FUZZ\" -w /usr/share/wordlists/dirb/common.txt -fc 404",
+              "favor": true,
+              "note": "FFUF目录模糊测试",
+              "workDir": ""
+            },
+            {
+              "command": "ffuf -u \"%http.request.url%\" -X %http.request.method% -d \"%http.request.body%\" -H \"Content-Type: %http.request.headers.content.type%\" -w payloads.txt:FUZZ -fw 1",
+              "favor": false,
+              "note": "参数模糊测试",
+              "workDir": ""
+            }
+          ]
+        },
+        {
+          "toolName": "wfuzz",
+          "commandList": [
+            {
+              "command": "wfuzz -c -z file,/usr/share/wordlists/dirb/common.txt --hc 404 \"%http.request.url%/FUZZ\"",
+              "favor": true,
+              "note": "Wfuzz目录爆破",
+              "workDir": ""
+            },
+            {
+              "command": "wfuzz -c -z file,payloads.txt -d \"%http.request.body%\" -H \"Cookie: %http.request.headers.cookies%\" --hc 404 \"%http.request.url%\"",
+              "favor": false,
+              "note": "POST参数模糊测试",
+              "workDir": ""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "端口扫描",
+      "content": [
+        {
+          "toolName": "nmap",
+          "commandList": [
+            {
+              "command": "nmap -sS -sV \"%http.request.host%\" -p 1-10000",
+              "favor": true,
+              "note": "基础端口扫描",
+              "workDir": ""
+            },
+            {
+              "command": "nmap -sC -sV \"%http.request.host%\" -p %http.request.port% --script vuln",
+              "favor": true,
+              "note": "漏洞脚本扫描",
+              "workDir": ""
+            },
+            {
+              "command": "nmap -sU -sV \"%http.request.host%\" --top-ports 1000",
+              "favor": false,
+              "note": "UDP端口扫描",
+              "workDir": ""
+            }
+          ]
+        },
+        {
+          "toolName": "masscan",
+          "commandList": [
+            {
+              "command": "masscan \"%http.request.host%\" -p1-65535 --rate=1000",
+              "favor": true,
+              "note": "Masscan快速扫描",
+              "workDir": ""
+            },
+            {
+              "command": "masscan -l %httpList.requests.hosts% -p80,443,8080,8443 --rate=10000",
+              "favor": false,
+              "note": "批量主机常用端口扫描",
+              "workDir": ""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "Web应用测试",
+      "content": [
+        {
+          "toolName": "httpx",
+          "commandList": [
+            {
+              "command": "echo \"%http.request.url%\" | httpx -title -tech-detect -status-code",
+              "favor": true,
+              "note": "HTTP探测和技术识别",
+              "workDir": ""
+            },
+            {
+              "command": "httpx -l %httpList.requests.urls% -title -tech-detect -status-code -silent",
+              "favor": false,
+              "note": "批量HTTP探测",
+              "workDir": ""
+            }
+          ]
+        },
+        {
+          "toolName": "curl",
+          "commandList": [
+            {
+              "command": "curl -X %http.request.method% -H \"User-Agent: %http.request.headers.user.agent%\" -H \"Cookie: %http.request.headers.cookies%\" -H \"Authorization: %http.request.headers.authorization%\" --data \"%http.request.body%\" \"%http.request.url%\" -v",
+              "favor": true,
+              "note": "完整请求重放",
+              "workDir": ""
+            },
+            {
+              "command": "curl -I \"%http.request.url%\" -H \"User-Agent: %http.request.headers.user.agent%\"",
+              "favor": true,
+              "note": "获取响应头信息",
+              "workDir": ""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "XSS测试",
+      "content": [
+        {
+          "toolName": "xsser",
+          "commandList": [
+            {
+              "command": "xsser --url=\"%http.request.url%\" --user-agent=\"%http.request.headers.user.agent%\" --cookie=\"%http.request.headers.cookies%\"",
+              "favor": true,
+              "note": "XSSer自动化XSS测试",
+              "workDir": ""
+            }
+          ]
+        },
+        {
+          "toolName": "dalfox",
+          "commandList": [
+            {
+              "command": "dalfox url \"%http.request.url%\" --user-agent \"%http.request.headers.user.agent%\" --cookie \"%http.request.headers.cookies%\"",
+              "favor": true,
+              "note": "Dalfox XSS扫描",
+              "workDir": ""
+            },
+            {
+              "command": "dalfox file %httpList.requests.urls% --silence --no-color",
+              "favor": false,
+              "note": "批量XSS测试",
+              "workDir": ""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "信息收集",
+      "content": [
+        {
+          "toolName": "whatweb",
+          "commandList": [
+            {
+              "command": "whatweb \"%http.request.url%\" -v -a 3",
+              "favor": true,
+              "note": "Web技术栈识别",
+              "workDir": ""
+            }
+          ]
+        },
+        {
+          "toolName": "wafw00f",
+          "commandList": [
+            {
+              "command": "wafw00f \"%http.request.url%\"",
+              "favor": true,
+              "note": "WAF识别",
+              "workDir": ""
+            }
+          ]
+        },
+        {
+          "toolName": "sublist3r",
+          "commandList": [
+            {
+              "command": "sublist3r -d \"%http.request.host%\" -t 50",
+              "favor": true,
+              "note": "子域名枚举",
+              "workDir": ""
+            }
+          ]
+        }
+      ]
+    }
   ],
   "thirtyPart": [
     {

@@ -34,10 +34,6 @@
       <version>2.10.1</version>
     </dependency>
     <!-- https://mvnrepository.com/artifact/org.freemarker/freemarker -->
-    <dependency>
-      <groupId>org.freemarker</groupId>
-      <artifactId>freemarker</artifactId>
-      <version>2.3.34</version>
-    </dependency>
+
   </dependencies>
 </project>

@@ -9,6 +9,8 @@ public class HttpToolCommand {
     private String command;
     private String category;
     private boolean favor;
+    private String note;        // 备注信息
+    private String workDir;     // 工作目录
     private int commandIndex; // 在原工具命令列表中的索引
     private HttpTool parentTool; // 父工具对象
     
@@ -19,6 +21,17 @@ public class HttpToolCommand {
         this.command = command;
         this.category = category;
         this.favor = favor;
+        this.commandIndex = commandIndex;
+        this.parentTool = parentTool;
+    }
+    
+    public HttpToolCommand(String toolName, String command, String category, boolean favor, String note, String workDir, int commandIndex, HttpTool parentTool) {
+        this.toolName = toolName;
+        this.command = command;
+        this.category = category;
+        this.favor = favor;
+        this.note = note;
+        this.workDir = workDir;
         this.commandIndex = commandIndex;
         this.parentTool = parentTool;
     }
@@ -71,6 +84,22 @@ public class HttpToolCommand {
         this.parentTool = parentTool;
     }
     
+    public String getNote() {
+        return note;
+    }
+    
+    public void setNote(String note) {
+        this.note = note;
+    }
+    
+    public String getWorkDir() {
+        return workDir;
+    }
+    
+    public void setWorkDir(String workDir) {
+        this.workDir = workDir;
+    }
+    
     /**
      * 获取显示用的工具名称（包含命令索引）
      * @return 显示名称
@@ -104,6 +133,8 @@ public class HttpToolCommand {
                 ", command='" + command + '\'' +
                 ", category='" + category + '\'' +
                 ", favor=" + favor +
+                ", note='" + note + '\'' +
+                ", workDir='" + workDir + '\'' +
                 ", commandIndex=" + commandIndex +
                 '}';
     }

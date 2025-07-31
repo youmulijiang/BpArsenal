@@ -113,3 +113,8 @@ gradle-app.setting
 # Editor temporary files
 *.tmp
 *#
+
+### cursor ###
+.cursor/
+
+apiDoc/

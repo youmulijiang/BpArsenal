@@ -44,6 +44,8 @@ public class ToolPanel extends JPanel implements
     // 常量定义
     private static final int FAVORITE_COLUMN_INDEX = 2;
     private static final int COMMAND_COLUMN_INDEX = 1;
+    private static final int NOTE_COLUMN_INDEX = 3;
+    private static final int WORK_DIR_COLUMN_INDEX = 4;
     
     public ToolPanel() {
         // 初始化Controller
@@ -249,9 +251,11 @@ public class ToolPanel extends JPanel implements
     private void setupColumnWidths() {
         TableColumnModel columnModel = toolTable.getColumnModel();
         columnModel.getColumn(0).setPreferredWidth(120);  // 工具名称
-        columnModel.getColumn(1).setPreferredWidth(400);  // 命令
+        columnModel.getColumn(1).setPreferredWidth(300);  // 命令
         columnModel.getColumn(2).setPreferredWidth(60);   // 收藏
-        columnModel.getColumn(3).setPreferredWidth(80);   // 分类
+        columnModel.getColumn(3).setPreferredWidth(150);  // 备注
+        columnModel.getColumn(4).setPreferredWidth(120);  // 工作目录
+        columnModel.getColumn(5).setPreferredWidth(80);   // 分类
     }
     
     /**
@@ -381,6 +385,8 @@ public class ToolPanel extends JPanel implements
             searchColumnFilter.addItem(i18n.getText("filter.all"));
             searchColumnFilter.addItem(i18n.getText("tools.tool.name"));
             searchColumnFilter.addItem(i18n.getText("tools.command"));
+            searchColumnFilter.addItem(i18n.getText("tools.note"));
+            searchColumnFilter.addItem(i18n.getText("tools.work.dir"));
             searchColumnFilter.addItem(i18n.getText("label.category"));
             
             if (selectedIndex >= 0 && selectedIndex < searchColumnFilter.getItemCount()) {
@@ -450,6 +456,24 @@ public class ToolPanel extends JPanel implements
     }
     
     @Override
+    public void showEditDialogWithCommand(HttpTool tool, HttpToolCommand toolCommand) {
+        SwingUtilities.invokeLater(() -> {
+            ToolEditDialog dialog = new ToolEditDialog(SwingUtilities.getWindowAncestor(this), tool, toolCommand);
+            dialog.setVisible(true);
+            
+            if (dialog.isConfirmed()) {
+                HttpTool updatedTool = dialog.getTool();
+                String newCategory = dialog.getSelectedCategory();
+                String note = dialog.getNote();
+                String workDir = dialog.getWorkDir();
+                
+                // 处理包含note和workDir的工具编辑结果
+                controller.handleToolEditedWithCommand(tool, updatedTool, newCategory, toolCommand, note, workDir);
+            }
+        });
+    }
+    
+    @Override
     public void showDeleteConfirmDialog(HttpTool tool) {
         SwingUtilities.invokeLater(() -> {
             int result = JOptionPane.showConfirmDialog(this,
@@ -503,6 +527,11 @@ public class ToolPanel extends JPanel implements
     @Override
     public void onShowEditDialog(HttpTool tool) {
         showEditDialog(tool);
+    }
+    
+    @Override
+    public void onShowEditDialogWithCommand(HttpTool tool, HttpToolCommand toolCommand) {
+        showEditDialogWithCommand(tool, toolCommand);
     }
     
     @Override

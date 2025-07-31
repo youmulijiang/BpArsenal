@@ -69,17 +69,40 @@ public class ToolController {
                 for (Config.HttpToolCategory category : config.getHttpTool()) {
                     if (category.getContent() != null) {
                         for (HttpTool tool : category.getContent()) {
-                            List<String> commands = tool.getCommands();
-                            for (int i = 0; i < commands.size(); i++) {
-                                HttpToolCommand toolCommand = new HttpToolCommand(
-                                    tool.getToolName(),
-                                    commands.get(i),
-                                    category.getType(),
-                                    tool.isFavor(),
-                                    i,
-                                    tool
-                                );
-                                toolCommands.add(toolCommand);
+                            // 优先处理新的commandList格式
+                            List<HttpTool.HttpToolCommandData> commandDataList = tool.getCommandDataList();
+                            if (!commandDataList.isEmpty()) {
+                                // 使用新格式的数据
+                                for (int i = 0; i < commandDataList.size(); i++) {
+                                    HttpTool.HttpToolCommandData cmdData = commandDataList.get(i);
+                                    HttpToolCommand toolCommand = new HttpToolCommand(
+                                        tool.getToolName(),
+                                        cmdData.getCommand(),
+                                        category.getType(),
+                                        cmdData.isFavor(),
+                                        cmdData.getNote(),
+                                        cmdData.getWorkDir(),
+                                        i,
+                                        tool
+                                    );
+                                    toolCommands.add(toolCommand);
+                                }
+                            } else {
+                                // 回退到旧格式
+                                List<String> commands = tool.getCommands();
+                                for (int i = 0; i < commands.size(); i++) {
+                                    HttpToolCommand toolCommand = new HttpToolCommand(
+                                        tool.getToolName(),
+                                        commands.get(i),
+                                        category.getType(),
+                                        tool.isFavor(),
+                                        "",  // 默认note为空
+                                        "",  // 默认workDir为空
+                                        i,
+                                        tool
+                                    );
+                                    toolCommands.add(toolCommand);
+                                }
                             }
                         }
                     }

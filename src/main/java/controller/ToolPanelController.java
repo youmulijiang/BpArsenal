@@ -96,8 +96,8 @@ public class ToolPanelController {
         HttpToolCommand toolCommand = currentData.get(selectedRow);
         HttpTool tool = toolCommand.getParentTool();
         
-        // 通知视图显示编辑对话框
-        notifyShowEditDialog(tool);
+        // 通知视图显示编辑对话框，传递具体的命令对象
+        notifyShowEditDialogWithCommand(tool, toolCommand);
     }
     
     /**
@@ -107,6 +107,22 @@ public class ToolPanelController {
         if (ToolController.getInstance().updateTool(originalTool, updatedTool, newCategory)) {
             loadData(); // 重新加载数据
             String statusMsg = "已更新工具: " + updatedTool.getToolName() + " (分类: " + newCategory + ")";
+            notifyStatusUpdate(statusMsg);
+        } else {
+            notifyStatusUpdate("更新工具失败");
+        }
+    }
+    
+    /**
+     * 处理包含命令详细信息的工具编辑结果
+     */
+    public void handleToolEditedWithCommand(HttpTool originalTool, HttpTool updatedTool, String newCategory, 
+                                          HttpToolCommand originalCommand, String note, String workDir) {
+        // TODO: 实现包含note和workDir的工具更新逻辑
+        // 目前先使用现有的更新方法，后续可以扩展
+        if (ToolController.getInstance().updateTool(originalTool, updatedTool, newCategory)) {
+            loadData(); // 重新加载数据
+            String statusMsg = "已更新工具: " + updatedTool.getToolName() + " (分类: " + newCategory + ", 备注: " + note + ")";
             notifyStatusUpdate(statusMsg);
         } else {
             notifyStatusUpdate("更新工具失败");
@@ -338,6 +354,12 @@ public class ToolPanelController {
         }
     }
     
+    private void notifyShowEditDialogWithCommand(HttpTool tool, HttpToolCommand toolCommand) {
+        for (ToolPanelListener listener : listeners) {
+            listener.onShowEditDialogWithCommand(tool, toolCommand);
+        }
+    }
+    
     private void notifyShowDeleteConfirmDialog(HttpTool tool) {
         for (ToolPanelListener listener : listeners) {
             listener.onShowDeleteConfirmDialog(tool);
@@ -365,6 +387,7 @@ public class ToolPanelController {
         void updateStatus(String message);
         void showAddDialog();
         void showEditDialog(HttpTool tool);
+        void showEditDialogWithCommand(HttpTool tool, HttpToolCommand toolCommand);
         void showDeleteConfirmDialog(HttpTool tool);
         void showMessage(String message, String title, int messageType);
     }
@@ -379,6 +402,7 @@ public class ToolPanelController {
         void onStatusUpdate(String message);
         void onShowAddDialog();
         void onShowEditDialog(HttpTool tool);
+        void onShowEditDialogWithCommand(HttpTool tool, HttpToolCommand toolCommand);
         void onShowDeleteConfirmDialog(HttpTool tool);
         void onShowMessage(String message, String title, int messageType);
     }

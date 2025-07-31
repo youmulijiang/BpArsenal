@@ -1,6 +1,7 @@
 package view.component;
 
 import model.HttpTool;
+import model.HttpToolCommand;
 import util.I18nManager;
 import util.PlaceholderDocumentation;
 
@@ -18,10 +19,13 @@ import java.awt.event.MouseEvent;
 public class ToolEditDialog extends JDialog implements I18nManager.LanguageChangeListener {
     
     private HttpTool tool;
+    private HttpToolCommand toolCommand;  // 当前编辑的具体命令
     private boolean confirmed = false;
     
     private JTextField nameField;
     private JTextArea commandArea;
+    private JTextField noteField;
+    private JTextField workDirField;
     private JCheckBox favorCheckBox;
     private JComboBox<String> categoryComboBox;
     private JButton okButton;
@@ -31,8 +35,13 @@ public class ToolEditDialog extends JDialog implements I18nManager.LanguageChang
     private JTextArea fullDoc;
     
     public ToolEditDialog(Window parent, HttpTool tool) {
+        this(parent, tool, null);
+    }
+    
+    public ToolEditDialog(Window parent, HttpTool tool, HttpToolCommand toolCommand) {
         super(parent);
         this.tool = tool;
+        this.toolCommand = toolCommand;
         
         // 注册语言变更监听器
         I18nManager.getInstance().addLanguageChangeListener(this);
@@ -94,8 +103,38 @@ public class ToolEditDialog extends JDialog implements I18nManager.LanguageChang
         nameField.setFont(new Font("微软雅黑", Font.PLAIN, 12));
         formPanel.add(nameField, gbc);
         
-        // 分类选择
+        // 备注
         gbc.gridx = 0; gbc.gridy = 1;
+        gbc.gridwidth = 1;
+        gbc.anchor = GridBagConstraints.WEST;
+        gbc.fill = GridBagConstraints.NONE;
+        gbc.weightx = 0; gbc.weighty = 0;
+        gbc.insets = new Insets(5, 5, 5, 10);
+        formPanel.add(new JLabel(formI18n.getText("tool.edit.dialog.label.note")), gbc);
+        
+        gbc.gridx = 1; gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.weightx = 1.0;
+        noteField = new JTextField(20);
+        noteField.setFont(new Font("微软雅黑", Font.PLAIN, 12));
+        formPanel.add(noteField, gbc);
+        
+        // 工作目录
+        gbc.gridx = 0; gbc.gridy = 2;
+        gbc.gridwidth = 1;
+        gbc.anchor = GridBagConstraints.WEST;
+        gbc.fill = GridBagConstraints.NONE;
+        gbc.weightx = 0; gbc.weighty = 0;
+        gbc.insets = new Insets(5, 5, 5, 10);
+        formPanel.add(new JLabel(formI18n.getText("tool.edit.dialog.label.work.dir")), gbc);
+        
+        gbc.gridx = 1; gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.weightx = 1.0;
+        workDirField = new JTextField(20);
+        workDirField.setFont(new Font("微软雅黑", Font.PLAIN, 12));
+        formPanel.add(workDirField, gbc);
+        
+        // 分类选择
+        gbc.gridx = 0; gbc.gridy = 3;
         gbc.gridwidth = 1;
         gbc.anchor = GridBagConstraints.WEST;
         gbc.fill = GridBagConstraints.NONE;
@@ -117,7 +156,7 @@ public class ToolEditDialog extends JDialog implements I18nManager.LanguageChang
         formPanel.add(categoryComboBox, gbc);
         
         // 命令
-        gbc.gridx = 0; gbc.gridy = 2;
+        gbc.gridx = 0; gbc.gridy = 4;
         gbc.anchor = GridBagConstraints.NORTHWEST;
         gbc.fill = GridBagConstraints.NONE;
         gbc.weightx = 0;
@@ -138,7 +177,7 @@ public class ToolEditDialog extends JDialog implements I18nManager.LanguageChang
         formPanel.add(scrollPane, gbc);
         
         // 收藏
-        gbc.gridx = 0; gbc.gridy = 3;
+        gbc.gridx = 0; gbc.gridy = 5;
         gbc.gridwidth = 2;
         gbc.fill = GridBagConstraints.NONE;
         gbc.weightx = 0; gbc.weighty = 0;
@@ -387,8 +426,20 @@ public class ToolEditDialog extends JDialog implements I18nManager.LanguageChang
     private void loadData() {
         if (tool != null) {
             nameField.setText(tool.getToolName());
-            commandArea.setText(tool.getCommand());
-            favorCheckBox.setSelected(tool.isFavor());
+            
+            // 如果有具体的命令对象，使用命令对象的数据
+            if (toolCommand != null) {
+                commandArea.setText(toolCommand.getCommand());
+                favorCheckBox.setSelected(toolCommand.isFavor());
+                noteField.setText(toolCommand.getNote() != null ? toolCommand.getNote() : "");
+                workDirField.setText(toolCommand.getWorkDir() != null ? toolCommand.getWorkDir() : "");
+            } else {
+                // 否则使用工具的默认数据
+                commandArea.setText(tool.getCommand());
+                favorCheckBox.setSelected(tool.isFavor());
+                noteField.setText("");
+                workDirField.setText("");
+            }
             
             // 如果工具已有分类，使用现有分类；否则根据工具名称推断分类
             String category;
@@ -403,6 +454,8 @@ public class ToolEditDialog extends JDialog implements I18nManager.LanguageChang
             // 设置默认值
             favorCheckBox.setSelected(true);
             categoryComboBox.setSelectedIndex(0);
+            noteField.setText("");
+            workDirField.setText("");
             
             // 设置默认模板
 //            I18nManager loadI18n = I18nManager.getInstance();
@@ -511,6 +564,9 @@ public class ToolEditDialog extends JDialog implements I18nManager.LanguageChang
         tool.setToolName(nameField.getText().trim());
         tool.setCommand(commandArea.getText().trim());
         tool.setFavor(favorCheckBox.isSelected());
+        
+        // 保存note和workDir - 注意：这里可能需要调整数据模型
+        // 目前HttpTool没有这些字段，需要另外处理
     }
     
     /**
@@ -545,6 +601,22 @@ public class ToolEditDialog extends JDialog implements I18nManager.LanguageChang
     public String getSelectedCategory() {
         String localizedCategory = (String) categoryComboBox.getSelectedItem();
         return getCategoryCode(localizedCategory);
+    }
+    
+    /**
+     * 获取备注
+     * @return 备注字符串
+     */
+    public String getNote() {
+        return noteField.getText().trim();
+    }
+    
+    /**
+     * 获取工作目录
+     * @return 工作目录字符串
+     */
+    public String getWorkDir() {
+        return workDirField.getText().trim();
     }
 
     @Override

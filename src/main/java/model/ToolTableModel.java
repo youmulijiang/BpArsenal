@@ -28,6 +28,8 @@ public class ToolTableModel extends AbstractTableModel {
             i18n.getText("tools.tool.name"), 
             i18n.getText("tools.command"), 
             i18n.getText("column.favorite"), 
+            i18n.getText("tools.note"), 
+            i18n.getText("tools.work.dir"), 
             i18n.getText("label.category")
         };
     }
@@ -58,7 +60,9 @@ public class ToolTableModel extends AbstractTableModel {
             case 0: return toolCommand.getDisplayName();
             case 1: return toolCommand.getCommand();
             case 2: return toolCommand.isFavor();
-            case 3: return toolCommand.getCategory();
+            case 3: return toolCommand.getNote() != null ? toolCommand.getNote() : "";
+            case 4: return toolCommand.getWorkDir() != null ? toolCommand.getWorkDir() : "";
+            case 5: return toolCommand.getCategory();
             default: return null;
         }
     }
@@ -80,10 +84,26 @@ public class ToolTableModel extends AbstractTableModel {
             return;
         }
         
-        if (columnIndex == 2 && value instanceof Boolean) {
-            HttpToolCommand toolCommand = toolCommands.get(rowIndex);
-            toolCommand.setFavor((Boolean) value);
-            fireTableCellUpdated(rowIndex, columnIndex);
+        HttpToolCommand toolCommand = toolCommands.get(rowIndex);
+        switch (columnIndex) {
+            case 2: // 收藏列
+                if (value instanceof Boolean) {
+                    toolCommand.setFavor((Boolean) value);
+                    fireTableCellUpdated(rowIndex, columnIndex);
+                }
+                break;
+            case 3: // 备注列
+                if (value instanceof String) {
+                    toolCommand.setNote((String) value);
+                    fireTableCellUpdated(rowIndex, columnIndex);
+                }
+                break;
+            case 4: // 工作目录列
+                if (value instanceof String) {
+                    toolCommand.setWorkDir((String) value);
+                    fireTableCellUpdated(rowIndex, columnIndex);
+                }
+                break;
         }
     }
     
