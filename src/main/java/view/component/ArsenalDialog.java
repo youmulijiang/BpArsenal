@@ -11,6 +11,7 @@ import manager.ConfigManager;
 import model.Config;
 import model.HttpTool;
 import model.HttpToolCommand;
+import model.SettingModel;
 import util.I18nManager;
 
 import javax.swing.*;
@@ -985,8 +986,8 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
                     execI18n.getText("arsenal.dialog.execution.tool.workdir"), toolWorkDir);
             }
             
-            // 使用ToolExecutor执行命令，支持工作目录
-            ToolExecutor.getInstance().executeCommandWithWorkDirAsync(finalCommand, toolName, toolWorkDir);
+            // 使用脚本方式执行命令，支持工作目录
+            executeCommandViaScript(finalCommand, toolName, toolWorkDir);
             
             // 立即恢复按钮状态（因为是异步执行）
             SwingUtilities.invokeLater(() -> {
@@ -1010,12 +1011,16 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
     }
     
     /**
-     * 通过临时脚本执行命令
+     * 通过临时脚本执行命令（支持工作目录）
      * @param command 要执行的命令
      * @param toolName 工具名称
+     * @param toolWorkDir 工具配置的工作目录（可为null）
      */
-    private void executeCommandViaScript(String command, String toolName) {
+    private void executeCommandViaScript(String command, String toolName, String toolWorkDir) {
         try {
+            // 确定最终工作目录
+            String finalWorkDir = determineWorkingDirectory(toolWorkDir);
+            
             // 获取插件路径
             String extensionPath = getExtensionPath();
             if (extensionPath == null) {
@@ -1023,14 +1028,20 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
                 throw new Exception(pathErrorI18n.getText("arsenal.dialog.error.no.plugin.path"));
             }
             
-            // 生成临时脚本文件
-            java.io.File scriptFile = createTemporaryScript(command, extensionPath);
+            // 生成临时脚本文件（包含工作目录切换）
+            java.io.File scriptFile = createTemporaryScript(command, extensionPath, finalWorkDir);
             I18nManager scriptI18n = I18nManager.getInstance();
             addExecutionLogEntry(scriptI18n.getText("arsenal.dialog.execution.script.generated"), toolName, 
                 scriptI18n.getText("arsenal.dialog.execution.script.path"), scriptFile.getAbsolutePath());
             
-            // 执行脚本
-            executeScript(scriptFile, toolName);
+            // 记录工作目录信息
+            if (finalWorkDir != null) {
+                addExecutionLogEntry(scriptI18n.getText("arsenal.dialog.execution.workdir"), toolName, 
+                    scriptI18n.getText("arsenal.dialog.execution.final.workdir"), finalWorkDir);
+            }
+            
+            // 执行脚本（传递工作目录给ProcessBuilder）
+            executeScript(scriptFile, toolName, finalWorkDir);
             
         } catch (Exception e) {
             I18nManager scriptExecI18n = I18nManager.getInstance();
@@ -1073,24 +1084,25 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
     }
     
     /**
-     * 创建临时脚本文件
+     * 创建临时脚本文件（支持工作目录）
      * @param command 要执行的命令
      * @param extensionPath 插件路径
+     * @param workDir 工作目录（可为null）
      * @return 脚本文件
      * @throws Exception 创建异常
      */
-    private java.io.File createTemporaryScript(String command, String extensionPath) throws Exception {
+    private java.io.File createTemporaryScript(String command, String extensionPath, String workDir) throws Exception {
         java.io.File scriptFile;
         String scriptContent;
         
         if (ToolExecutor.isWindows()) {
             // Windows: 创建批处理文件
             scriptFile = new java.io.File(extensionPath, "bparsenal_temp_" + System.currentTimeMillis() + ".bat");
-            scriptContent = generateBatchScript(command);
+            scriptContent = generateBatchScript(command, workDir);
         } else {
             // Linux/Unix: 创建shell脚本
             scriptFile = new java.io.File(extensionPath, "bparsenal_temp_" + System.currentTimeMillis() + ".sh");
-            scriptContent = generateShellScript(command);
+            scriptContent = generateShellScript(command, workDir);
         }
         
         // 写入脚本内容，Windows使用系统默认编码(GBK)，Linux使用UTF-8
@@ -1117,11 +1129,12 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
     }
     
     /**
-     * 生成Windows批处理脚本
+     * 生成Windows批处理脚本（支持工作目录）
      * @param command 要执行的命令
+     * @param workDir 工作目录（可为null）
      * @return 脚本内容
      */
-    private String generateBatchScript(String command) {
+    private String generateBatchScript(String command, String workDir) {
         StringBuilder script = new StringBuilder();
         script.append("@echo off\r\n");
         script.append("title BpArsenal Tool Execution\r\n");
@@ -1133,6 +1146,20 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
         script.append("echo Time: %date% %time%\r\n");
         script.append("echo ========================================\r\n");
         script.append("echo.\r\n");
+        
+        // 切换工作目录（如果指定）
+        if (workDir != null && !workDir.trim().isEmpty()) {
+            script.append("echo Changing to work directory: ").append(workDir).append("\r\n");
+            script.append("cd /d \"").append(workDir).append("\"\r\n");
+            script.append("if errorlevel 1 (\r\n");
+            script.append("    echo ERROR: Failed to change to work directory\r\n");
+            script.append("    pause\r\n");
+            script.append("    exit /b 1\r\n");
+            script.append(")\r\n");
+            script.append("echo Current directory: %cd%\r\n");
+            script.append("echo.\r\n");
+        }
+        
         script.append("echo Executing command:\r\n");
         
         // 显示命令但转义特殊字符
@@ -1158,11 +1185,12 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
     }
     
     /**
-     * 生成Linux Shell脚本
+     * 生成Linux Shell脚本（支持工作目录）
      * @param command 要执行的命令
+     * @param workDir 工作目录（可为null）
      * @return 脚本内容
      */
-    private String generateShellScript(String command) {
+    private String generateShellScript(String command, String workDir) {
         I18nManager shellI18n = I18nManager.getInstance();
         StringBuilder script = new StringBuilder();
         script.append("#!/bin/bash\n");
@@ -1174,6 +1202,21 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
         script.append("echo \"").append(shellI18n.getText("arsenal.dialog.shell.time")).append("\"\n");
         script.append("echo \"========================================\"\n");
         script.append("echo\n");
+        
+        // 切换工作目录（如果指定）
+        if (workDir != null && !workDir.trim().isEmpty()) {
+            script.append("echo \"切换到工作目录: ").append(workDir).append("\"\n");
+            script.append("cd \"").append(workDir).append("\"\n");
+            script.append("if [ $? -ne 0 ]; then\n");
+            script.append("    echo \"错误: 无法切换到工作目录\"\n");
+            script.append("    echo \"按 Enter 键继续...\"\n");
+            script.append("    read\n");
+            script.append("    exit 1\n");
+            script.append("fi\n");
+            script.append("echo \"当前目录: $(pwd)\"\n");
+            script.append("echo\n");
+        }
+        
         script.append("echo \"").append(shellI18n.getText("arsenal.dialog.shell.executing.command")).append("\"\n");
         script.append("echo \"").append(command.replace("\"", "\\\"")).append("\"\n"); // 转义双引号
         script.append("echo\n");
@@ -1195,11 +1238,12 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
     }
     
     /**
-     * 执行脚本文件
+     * 执行脚本文件（支持工作目录）
      * @param scriptFile 脚本文件
      * @param toolName 工具名称
+     * @param workDir 工作目录（可为null）
      */
-    private void executeScript(java.io.File scriptFile, String toolName) {
+    private void executeScript(java.io.File scriptFile, String toolName, String workDir) {
         try {
             ProcessBuilder processBuilder = null;
             
@@ -1235,8 +1279,27 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
                 }
             }
             
-            // 设置工作目录
-            processBuilder.directory(scriptFile.getParentFile());
+            // 设置工作目录（优先使用传入的工作目录，否则使用脚本文件所在目录）
+            if (workDir != null && !workDir.trim().isEmpty()) {
+                File workDirectory = new File(workDir.trim());
+                if (workDirectory.exists() && workDirectory.isDirectory()) {
+                    processBuilder.directory(workDirectory);
+                    if (ApiManager.getInstance().isInitialized()) {
+                        ApiManager.getInstance().getApi().logging().logToOutput(
+                            "BpArsenal: 脚本ProcessBuilder设置工作目录 - " + workDir
+                        );
+                    }
+                } else {
+                    processBuilder.directory(scriptFile.getParentFile());
+                    if (ApiManager.getInstance().isInitialized()) {
+                        ApiManager.getInstance().getApi().logging().logToError(
+                            "BpArsenal: 脚本指定工作目录无效，使用脚本目录 - " + workDir
+                        );
+                    }
+                }
+            } else {
+                processBuilder.directory(scriptFile.getParentFile());
+            }
             
             // 启动进程
             Process process = processBuilder.start();
@@ -1573,6 +1636,72 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
         } catch (Exception e) {
             throw new IOException("创建临时文件失败: " + e.getMessage(), e);
         }
+    }
+    
+    /**
+     * 确定工作目录
+     * 优先级：工具配置的工作目录 > 全局设置的工具目录 > 当前目录
+     * @param toolWorkDir 工具配置的工作目录
+     * @return 最终使用的工作目录
+     */
+    private String determineWorkingDirectory(String toolWorkDir) {
+        // 1. 首先检查工具配置的工作目录
+        if (toolWorkDir != null && !toolWorkDir.trim().isEmpty()) {
+            String trimmedToolWorkDir = toolWorkDir.trim();
+            File toolDir = new File(trimmedToolWorkDir);
+            if (toolDir.exists() && toolDir.isDirectory()) {
+                if (ApiManager.getInstance().isInitialized()) {
+                    ApiManager.getInstance().getApi().logging().logToOutput(
+                        "BpArsenal: 使用工具配置的工作目录 - " + trimmedToolWorkDir
+                    );
+                }
+                return trimmedToolWorkDir;
+            } else {
+                if (ApiManager.getInstance().isInitialized()) {
+                    ApiManager.getInstance().getApi().logging().logToError(
+                        "BpArsenal: 工具配置的工作目录无效 - " + trimmedToolWorkDir
+                    );
+                }
+            }
+        }
+        
+        // 2. 检查全局设置的工具目录
+        try {
+            SettingModel settingModel = new SettingModel();
+            String globalToolDir = settingModel.getToolDirectory();
+            if (globalToolDir != null && !globalToolDir.trim().isEmpty()) {
+                String trimmedGlobalDir = globalToolDir.trim();
+                File globalDir = new File(trimmedGlobalDir);
+                if (globalDir.exists() && globalDir.isDirectory()) {
+                    if (ApiManager.getInstance().isInitialized()) {
+                        ApiManager.getInstance().getApi().logging().logToOutput(
+                            "BpArsenal: 使用全局设置的工具目录 - " + trimmedGlobalDir
+                        );
+                    }
+                    return trimmedGlobalDir;
+                } else {
+                    if (ApiManager.getInstance().isInitialized()) {
+                        ApiManager.getInstance().getApi().logging().logToError(
+                            "BpArsenal: 全局设置的工具目录无效 - " + trimmedGlobalDir
+                        );
+                    }
+                }
+            }
+        } catch (Exception e) {
+            if (ApiManager.getInstance().isInitialized()) {
+                ApiManager.getInstance().getApi().logging().logToError(
+                    "BpArsenal: 获取全局设置失败 - " + e.getMessage()
+                );
+            }
+        }
+        
+        // 3. 都不可用时，返回null表示使用当前目录
+        if (ApiManager.getInstance().isInitialized()) {
+            ApiManager.getInstance().getApi().logging().logToOutput(
+                "BpArsenal: 使用当前目录执行命令"
+            );
+        }
+        return null;
     }
     
     /**
