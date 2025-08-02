@@ -63,6 +63,21 @@ public class ToolExecutor {
     }
     
     /**
+     * 刷新设置模型，重新加载用户配置
+     * 当用户在设置面板修改配置后调用
+     */
+    public void refreshSettings() {
+        if (settingModel != null) {
+            settingModel.loadToolSettings();
+            if (ApiManager.getInstance().isInitialized()) {
+                ApiManager.getInstance().getApi().logging().logToOutput(
+                    "BpArsenal: ToolExecutor设置已刷新"
+                );
+            }
+        }
+    }
+    
+    /**
      * 确定工作目录
      * 优先级：工具配置的工作目录 > 全局设置的工具目录 > 当前目录
      * @param toolWorkDir 工具配置的工作目录

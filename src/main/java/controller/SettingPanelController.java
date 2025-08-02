@@ -4,6 +4,7 @@ import manager.ConfigManager;
 import model.Config;
 import model.SettingModel;
 import util.I18nManager;
+import executor.ToolExecutor;
 
 import javax.swing.JOptionPane;
 import java.awt.Component;
@@ -295,6 +296,12 @@ public class SettingPanelController {
             settingModel.setToolDirectory(directoryPath);
             settingModel.saveToolSettings();
             
+            // 刷新ToolExecutor中的设置
+            refreshToolExecutorSettings();
+            
+            // 更新目录状态显示
+            updateDirectoryStatus("工具目录: " + directoryPath, StatusType.SUCCESS);
+            
             updateStatus("工具目录设置成功: " + directoryPath, StatusType.SUCCESS);
             logInfo("工具目录设置成功: " + directoryPath);
             
@@ -327,12 +334,21 @@ public class SettingPanelController {
             settingModel.setCommandPrefix(prefix);
             settingModel.saveToolSettings();
             
+            // 刷新ToolExecutor中的设置
+            refreshToolExecutorSettings();
+            
             String statusMsg;
+            String prefixStatusMsg;
             if (prefix == null || prefix.trim().isEmpty()) {
                 statusMsg = "已重置为系统默认前缀";
+                prefixStatusMsg = "使用系统默认: " + settingModel.getDefaultCommandPrefix();
             } else {
                 statusMsg = "自定义前缀设置成功: " + prefix;
+                prefixStatusMsg = "自定义前缀: " + prefix;
             }
+            
+            // 更新前缀状态显示
+            updatePrefixStatus(prefixStatusMsg, StatusType.SUCCESS);
             
             updateStatus(statusMsg, StatusType.SUCCESS);
             logInfo("命令前缀设置成功: " + (prefix == null || prefix.trim().isEmpty() ? "系统默认" : prefix));
@@ -540,6 +556,19 @@ public class SettingPanelController {
     private void updateLanguageStatus(String message, StatusType type) {
         if (view != null) {
             view.updateLanguageStatus(message, type);
+        }
+    }
+    
+    /**
+     * 刷新ToolExecutor中的设置
+     * 确保ToolExecutor使用最新的用户配置
+     */
+    private void refreshToolExecutorSettings() {
+        try {
+            ToolExecutor.getInstance().refreshSettings();
+            logInfo("已刷新ToolExecutor设置");
+        } catch (Exception e) {
+            logError("刷新ToolExecutor设置失败: " + e.getMessage());
         }
     }
     
