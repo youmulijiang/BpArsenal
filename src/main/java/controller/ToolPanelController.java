@@ -118,11 +118,19 @@ public class ToolPanelController {
      */
     public void handleToolEditedWithCommand(HttpTool originalTool, HttpTool updatedTool, String newCategory, 
                                           HttpToolCommand originalCommand, String note, String workDir) {
-        // TODO: 实现包含note和workDir的工具更新逻辑
-        // 目前先使用现有的更新方法，后续可以扩展
-        if (ToolController.getInstance().updateTool(originalTool, updatedTool, newCategory)) {
+        // 使用新的updateToolCommand方法来处理命令级别的更新
+        if (ToolController.getInstance().updateToolCommand(
+                originalCommand, 
+                updatedTool.getCommand(), 
+                note, 
+                workDir, 
+                updatedTool.isFavor(), 
+                newCategory)) {
             loadData(); // 重新加载数据
-            String statusMsg = "已更新工具: " + updatedTool.getToolName() + " (分类: " + newCategory + ", 备注: " + note + ")";
+            String statusMsg = "已更新工具: " + updatedTool.getToolName() + 
+                             " (分类: " + newCategory + 
+                             (note != null && !note.trim().isEmpty() ? ", 备注: " + note : "") +
+                             (workDir != null && !workDir.trim().isEmpty() ? ", 工作目录: " + workDir : "") + ")";
             notifyStatusUpdate(statusMsg);
         } else {
             notifyStatusUpdate("更新工具失败");
@@ -219,12 +227,18 @@ public class ToolPanelController {
             case 0: // 全部
                 return toolCommand.getDisplayName().toLowerCase().contains(lowerSearchText) ||
                        toolCommand.getCommand().toLowerCase().contains(lowerSearchText) ||
+                       (toolCommand.getNote() != null && toolCommand.getNote().toLowerCase().contains(lowerSearchText)) ||
+                       (toolCommand.getWorkDir() != null && toolCommand.getWorkDir().toLowerCase().contains(lowerSearchText)) ||
                        toolCommand.getCategory().toLowerCase().contains(lowerSearchText);
             case 1: // 工具名称
                 return toolCommand.getDisplayName().toLowerCase().contains(lowerSearchText);
             case 2: // 命令
                 return toolCommand.getCommand().toLowerCase().contains(lowerSearchText);
-            case 3: // 分类
+            case 3: // 备注
+                return toolCommand.getNote() != null && toolCommand.getNote().toLowerCase().contains(lowerSearchText);
+            case 4: // 工作目录
+                return toolCommand.getWorkDir() != null && toolCommand.getWorkDir().toLowerCase().contains(lowerSearchText);
+            case 5: // 分类
                 return toolCommand.getCategory().toLowerCase().contains(lowerSearchText);
             default:
                 return true;
@@ -256,6 +270,8 @@ public class ToolPanelController {
                 i18n.getText("filter.all"),
                 i18n.getText("tools.tool.name"),
                 i18n.getText("tools.command"),
+                i18n.getText("tools.note"),
+                i18n.getText("tools.work.dir"),
                 i18n.getText("label.category")
             };
             String searchScope = searchColumnIndex < searchScopes.length ? 

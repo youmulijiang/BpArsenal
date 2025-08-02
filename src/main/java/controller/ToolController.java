@@ -211,6 +211,97 @@ public class ToolController {
     }
     
     /**
+     * 更新工具命令的详细信息（包括note和workDir）
+     * @param toolCommand 要更新的工具命令
+     * @param newCommand 新的命令字符串
+     * @param newNote 新的备注
+     * @param newWorkDir 新的工作目录
+     * @param newFavor 新的收藏状态
+     * @param newCategory 新的分类
+     * @return 是否成功
+     */
+    public boolean updateToolCommand(HttpToolCommand toolCommand, String newCommand, String newNote, 
+                                   String newWorkDir, boolean newFavor, String newCategory) {
+        try {
+            HttpTool parentTool = toolCommand.getParentTool();
+            if (parentTool == null) {
+                logError("无法更新工具命令：父工具为空");
+                return false;
+            }
+            
+            // 查找工具在配置中的位置
+            Config config = ConfigManager.getInstance().getConfig();
+            if (config.getHttpTool() == null) return false;
+            
+            HttpTool configTool = null;
+            Config.HttpToolCategory currentCategory = null;
+            
+            // 找到工具所在的分类和工具对象
+            for (Config.HttpToolCategory category : config.getHttpTool()) {
+                if (category.getContent() != null) {
+                    for (HttpTool tool : category.getContent()) {
+                        if (tool.getToolName().equals(parentTool.getToolName())) {
+                            configTool = tool;
+                            currentCategory = category;
+                            break;
+                        }
+                    }
+                    if (configTool != null) break;
+                }
+            }
+            
+            if (configTool == null) {
+                logError("在配置中找不到工具: " + parentTool.getToolName());
+                return false;
+            }
+            
+            // 更新命令数据
+            List<HttpTool.HttpToolCommandData> commandDataList = configTool.getCommandDataList();
+            int commandIndex = toolCommand.getCommandIndex();
+            
+            if (commandIndex >= 0 && commandIndex < commandDataList.size()) {
+                HttpTool.HttpToolCommandData cmdData = commandDataList.get(commandIndex);
+                cmdData.setCommand(newCommand);
+                cmdData.setNote(newNote);
+                cmdData.setWorkDir(newWorkDir);
+                cmdData.setFavor(newFavor);
+                
+                // 同时更新工具的基本信息
+                configTool.setToolName(toolCommand.getToolName());
+                configTool.setCommand(newCommand); // 保持向后兼容
+                configTool.setFavor(newFavor);
+                
+                // 如果分类发生变化，需要移动工具
+                if (!currentCategory.getType().equals(newCategory)) {
+                    // 从当前分类中移除
+                    currentCategory.getContent().remove(configTool);
+                    
+                    // 添加到新分类
+                    Config.HttpToolCategory targetCategory = findOrCreateCategory(config, newCategory);
+                    if (targetCategory.getContent() == null) {
+                        targetCategory.setContent(new ArrayList<>());
+                    }
+                    targetCategory.getContent().add(configTool);
+                }
+                
+                // 保存配置
+                saveConfiguration();
+                
+                logInfo("成功更新工具命令: " + toolCommand.getToolName() + 
+                       " (备注: " + newNote + ", 工作目录: " + newWorkDir + ")");
+                return true;
+            } else {
+                logError("命令索引超出范围: " + commandIndex);
+                return false;
+            }
+            
+        } catch (Exception e) {
+            logError("更新工具命令失败: " + e.getMessage());
+            return false;
+        }
+    }
+    
+    /**
      * 更新工具收藏状态
      * @param tool 工具对象
      * @param favorite 收藏状态
