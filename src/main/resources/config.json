@@ -10,7 +10,7 @@
               "command": "sqlmap -u \"%http.request.url%\" --user-agent=\"%http.request.headers.user.agent%\" --cookie=\"%http.request.headers.cookies%\" --dbs",
               "favor": true,
               "note": "基础SQL注入测试",
-              "workDir": "D:\\tools\\sqlmap"
+              "workDir": ""
             },
             {
               "command": "sqlmap -u \"%http.request.url%\" --data=\"%http.request.body%\" --user-agent=\"%http.request.headers.user.agent%\" --cookie=\"%http.request.headers.cookies%\" --batch --risk=3 --level=5",
@@ -38,7 +38,7 @@
               "command": "dirsearch -u \"%http.request.url%\" -e php,html,js,txt -t 50",
               "favor": true,
               "note": "基础目录扫描",
-              "workDir": "D:\\tools\\dirsearch"
+              "workDir": ""
             },
             {
               "command": "dirsearch -u \"%http.request.protocol%://%http.request.host%:%http.request.port%\" -e php,asp,aspx,jsp -r -R 3",
@@ -202,16 +202,6 @@
               "favor": false,
               "note": "批量主机常用端口扫描",
               "workDir": ""
-            }
-          ]
-        }, {
-          "toolName": "qscan.exe",
-          "commandList": [
-            {
-              "command": "qscan.exe -h",
-              "favor": true,
-              "note": "qscan快速扫描",
-              "workDir": "D:\\security\\sectool\\scan\\qscan"
             }
           ]
         }

@@ -1,153 +1,71 @@
-# BpArsenal - Burp Suite 扩展工具集
+# BpArsenal - Burp Suite 武器库插件
 
-![Java](https://img.shields.io/badge/Java-11+-orange.svg)
-![Burp Suite](https://img.shields.io/badge/Burp%20Suite-Extension-red.svg)
-![Maven](https://img.shields.io/badge/Maven-3.6+-blue.svg)
-![License](https://img.shields.io/badge/License-MIT-green.svg)
+![Version](https://img.shields.io/badge/version-v1.0.0-blue.svg)
+![Platform](https://img.shields.io/badge/platform-Burp%20Suite-orange.svg)
+![Language](https://img.shields.io/badge/language-Java-red.svg)
+![API](https://img.shields.io/badge/API-Montoya-green.svg)
 
-## 📋 项目简介
+**中文 | [English](README_EN.md)**
 
-BpArsenal 是一个功能强大的 Burp Suite 扩展工具集，旨在提升渗透测试和安全研究的效率。该扩展提供了丰富的HTTP工具、第三方工具集成、网站管理等功能，支持中英文双语界面，采用模块化设计，易于扩展和维护。
+BpArsenal 是一个基于 Montoya API 开发的 Burp Suite 插件，旨在快速将 HTTP 请求转化为命令行工具执行、启动第三方工具和打开相关网站，提高渗透测试效率。
 
-## ✨ 主要特性
+## 🚀 主要功能
 
-- 🛠️ **工具管理**: 集成多种HTTP测试工具，支持自定义命令和参数
-- 🌐 **网站管理**: 统一管理测试目标网站信息
-- 🔧 **第三方工具**: 集成外部安全工具，扩展测试能力
-- 🌍 **国际化支持**: 完整的中英文双语界面
-- 📋 **上下文菜单**: 右键菜单快速调用工具
-- ⚙️ **配置管理**: 灵活的配置系统，支持导入导出
-- 🎨 **现代UI**: 基于Swing的现代化用户界面
+### 1. HTTP 工具集成
+- **一键转换**: 将 Burp Suite 中的 HTTP 请求快速转换为各种安全工具的命令行
+- **变量替换**: 支持动态变量替换，自动提取请求中的 URL、参数、头部等信息
+- **批量处理**: 支持多个请求同时处理，生成批量命令
+- **工作目录**: 支持为每个工具配置独立的工作目录
 
-## 🏗️ 项目架构
+### 2. 第三方工具管理
+- **快速启动**: 一键启动常用的渗透测试工具
+- **自动启动**: 支持插件加载时自动启动指定工具
+- **收藏管理**: 可将常用工具标记为收藏，快速访问
 
-```mermaid
-graph TB
-    subgraph "Burp Suite"
-        B[Burp Suite API]
-    end
-  
-    subgraph "BpArsenal Extension"
-        E[BpArsenal.java<br/>主入口]
-    
-        subgraph "Manager Layer"
-            AM[ApiManager<br/>API管理器]
-            CM[ConfigManager<br/>配置管理器]
-        end
-    
-        subgraph "Controller Layer"
-            SPC[SettingPanelController]
-            TPC[ToolPanelController]
-            WPC[WebSitePanelController]
-            TPPC[ThirdPartyPanelController]
-            TC[ToolController]
-        end
-    
-        subgraph "View Layer"
-            MP[MainPanel<br/>主面板]
-            SP[SettingPanel<br/>设置面板]
-            TP[ToolPanel<br/>工具面板]
-            WP[WebsitePanel<br/>网站面板]
-            TPP[ThirdPartyPanel<br/>第三方工具面板]
-        
-            subgraph "Components"
-                D1[ArsenalDialog]
-                D2[ToolEditDialog]
-                D3[WebSiteEditDialog]
-                D4[CommandExecutionDialog]
-            end
-        
-            subgraph "Context Menu"
-                CMP[ArsenalContextMenuProvider]
-                EH[ContextMenuEventHandler]
-            end
-        end
-    
-        subgraph "Model Layer"
-            HT[HttpTool<br/>HTTP工具模型]
-            WS[WebSite<br/>网站模型]
-            TT[ThirdPartyTool<br/>第三方工具模型]
-            CF[Config<br/>配置模型]
-            SM[SettingModel<br/>设置模型]
-        end
-    
-        subgraph "Executor Layer"
-            TE[ToolExecutor<br/>工具执行器]
-            HMP[HttpMessageParser<br/>HTTP消息解析器]
-            HVR[HttpVariableReplacer<br/>变量替换器]
-            CRS[CommandRenderingStrategy<br/>命令渲染策略]
-        end
-    
-        subgraph "Util Layer"
-            I18N[I18nManager<br/>国际化管理器]
-            JU[JsonUtil<br/>JSON工具]
-            OU[OsUtils<br/>系统工具]
-            TFM[TempFileManager<br/>临时文件管理]
-            MU[MenuUtils<br/>菜单工具]
-        end
-    end
-  
-    B --> E
-    E --> AM
-    E --> CM
-    AM --> B
-  
-    AM --> SPC
-    AM --> TPC
-    AM --> WPC
-    AM --> TPPC
-    AM --> TC
-  
-    SPC --> SP
-    TPC --> TP
-    WPC --> WP
-    TPPC --> TPP
-    TC --> TE
-  
-    MP --> SP
-    MP --> TP
-    MP --> WP
-    MP --> TPP
-  
-    TP --> D1
-    TP --> D2
-    WP --> D3
-    TE --> D4
-  
-    CMP --> EH
-    CMP --> B
-  
-    Controllers --> Models
-    Views --> Models
-    TE --> HMP
-    TE --> HVR
-    TE --> CRS
-  
-    All_Components --> I18N
-    All_Components --> JU
-    TE --> OU
-    TE --> TFM
-    Views --> MU
-```
+### 3. 网站收藏夹
+- **快速访问**: 收藏常用的安全相关网站和工具
+- **分类管理**: 按功能分类组织网站链接
+- **一键打开**: 在默认浏览器中快速打开网站
 
-## ⚙️ 配置文件说明
+### 4. 设置管理
+- **工具目录**: 配置全局工具根目录，简化路径管理
+- **命令前缀**: 自定义命令执行前缀，适配不同操作系统
+- **多语言**: 支持中文和英文界面
+- **配置导入导出**: 支持配置文件的备份和共享
 
-插件配置存储在 `src/main/resources/config.json` 中，采用JSON格式，主要包含三部分配置：
+## 📦 安装方法
 
-### 1. HTTP工具配置
+1. 下载最新版本的 JAR 文件
+2. 在 Burp Suite 中进入 "Extensions" -> "Installed"
+3. 点击 "Add" -> "Java" -> 选择 JAR 文件
+4. 插件加载完成后会在 Burp Suite 中出现 "BpArsenal" 标签页
+
+## 🛠️ 配置指南
+
+### config.json 配置文件结构
+
+插件的核心配置文件为 `src/main/resources/config.json`，包含三个主要部分：
+
+#### 1. HTTP 工具配置 (httpTool)
+
+HTTP 工具支持将 Burp Suite 中的请求转换为命令行工具执行：
 
 ```json
 {
   "httpTool": [
     {
-      "type": "SQL注入",
+      "type": "工具分类名称",
       "content": [
         {
-          "toolName": "sqlmap",
-          "command": [
-            "python D:\\tools\\sqlmap\\sqlmap.py -u \"%http.request.url%\" --user-agent=\"%http.request.headers.user-agent%\" --cookie=\"%http.request.headers.cookie%\" --dbs"
-          ],
-          "favor": true
+          "toolName": "工具名称",
+          "commandList": [
+            {
+              "command": "命令模板",
+              "favor": true/false,
+              "note": "命令说明",
+              "workDir": "工作目录路径"
+            }
+          ]
         }
       ]
     }
@@ -155,38 +73,131 @@ graph TB
 }
 ```
 
-### 2. 第三方工具配置
+**字段说明:**
+- `type`: 工具分类，如 "SQL注入"、"目录扫描" 等
+- `toolName`: 具体工具名称，如 "sqlmap"、"dirsearch" 等
+- `command`: 命令模板，支持变量替换
+- `favor`: 是否为收藏命令
+- `note`: 命令的详细说明
+- `workDir`: 命令执行的工作目录（可选）
+
+**支持的变量:**
+
+| 变量名 | 说明 | 示例 |
+|--------|------|------|
+| `%http.request.url%` | 完整请求URL | `https://example.com/api/login` |
+| `%http.request.protocol%` | 协议 | `https` |
+| `%http.request.host%` | 主机名 | `example.com` |
+| `%http.request.port%` | 端口号 | `443` |
+| `%http.request.path%` | 路径 | `/api/login` |
+| `%http.request.method%` | HTTP方法 | `POST` |
+| `%http.request.body%` | 请求体 | `{"user":"admin"}` |
+| `%http.request.headers.user.agent%` | User-Agent头 | `Mozilla/5.0...` |
+| `%http.request.headers.cookies%` | Cookie头 | `session=abc123` |
+| `%http.request.headers.authorization%` | Authorization头 | `Bearer token123` |
+| `%http.request.headers.content.type%` | Content-Type头 | `application/json` |
+| `%http.response.status%` | 响应状态码 | `200` |
+| `%http.response.body%` | 响应体内容 | `{"status":"ok"}` |
+> 不止这些
+
+**批量处理变量:**
+
+| 变量名 | 说明 |
+|--------|------|
+| `%httpList.requests.urls%` | 所有选中请求的URL列表 |
+| `%httpList.requests.hosts%` | 所有选中请求的主机列表 |
+
+**配置示例:**
+
+```json
+    {
+      "type": "SQL注入",
+      "content": [
+        {
+          "toolName": "sqlmap",
+      "commandList": [
+        {
+          "command": "sqlmap -u \"%http.request.url%\" --user-agent=\"%http.request.headers.user.agent%\" --cookie=\"%http.request.headers.cookies%\" --dbs",
+          "favor": true,
+          "note": "基础SQL注入测试",
+          "workDir": "D:\\tools\\sqlmap"
+        },
+        {
+          "command": "sqlmap -u \"%http.request.url%\" --data=\"%http.request.body%\" --batch --risk=3 --level=5",
+          "favor": true,
+          "note": "高风险SQL注入测试",
+          "workDir": ""
+        }
+      ]
+    }
+  ]
+}
+```
+
+#### 2. 第三方工具配置 (thirtyPart)
+
+第三方工具用于快速启动常用的渗透测试工具：
 
 ```json
 {
   "thirtyPart": [
     {
+      "type": "工具分类",
+      "content": [
+        {
+          "toolName": "工具名称",
+          "startCommand": "启动命令",
+          "favor": true/false,
+          "autoStart": true/false
+        }
+      ]
+    }
+  ]
+}
+```
+
+**字段说明:**
+- `toolName`: 工具显示名称
+- `startCommand`: 工具启动命令（完整路径或系统命令）
+- `favor`: 是否为收藏工具
+- `autoStart`: 插件加载时是否自动启动
+
+**配置示例:**
+
+```json
+    {
       "type": "exploit",
       "content": [
+    {
+      "toolName": "dirsearch",
+      "startCommand": "D:\\tools\\dirsearch\\dirsearch.exe",
+      "favor": true,
+      "autoStart": false
+    },
         {
           "toolName": "burpsuite",
           "startCommand": "java -jar D:\\tools\\burpsuite\\burpsuite_pro.jar",
           "favor": true,
           "autoStart": false
-        }
-      ]
     }
   ]
 }
 ```
 
-### 3. 网站资源配置
+#### 3. 网站收藏配置 (webSite)
+
+网站收藏用于快速访问常用的安全相关网站：
 
 ```json
 {
   "webSite": [
     {
-      "type": "OSINT",
+      "type": "网站分类",
       "content": [
         {
-          "url": "https://www.google.com",
-          "desc": "谷歌搜索",
-          "favor": true
+          "url": "网站URL",
+          "desc": "网站描述",
+          "favor": true/false
         }
       ]
     }
@@ -194,224 +205,147 @@ graph TB
 }
 ```
 
-配置字段说明：
+**配置示例:**
 
-- `type`: 工具/资源分类
-- `toolName`: 工具名称
-- `command`: 工具命令模板（支持变量替换）
-- `favor`: 是否标记为常用
-- `autoStart`: 是否自动启动
-- `url`: 网站地址
-- `desc`: 网站描述
-
-## 🚀 主要功能
-
-### 1. HTTP工具管理
-
-- 预置多种常用HTTP测试工具
-- 支持自定义工具命令和参数
-- 变量替换功能，动态生成命令
-- 工具执行结果展示
-
-### 2. 网站信息管理
-
-- 统一管理测试目标网站
-- 支持URL、描述、标签等信息
-- 快速访问和组织测试目标
-
-### 3. 第三方工具集成
-
-- 集成外部安全测试工具
-- 支持命令行工具调用
-- 自定义工具配置
-
-### 4. 上下文菜单集成
-
-- 右键菜单快速调用功能
-- 与Burp Suite原生功能无缝集成
-- 支持多种请求/响应处理
-
-### 5. 配置管理
-
-- JSON格式配置文件
-- 支持配置导入导出
-- 实时配置保存
-
-### 6. 国际化支持
-
-- 完整的中英文双语界面
-- 动态语言切换
-- 扩展性国际化框架
-
-## 📦 项目结构
-
-```
-src/main/java/
-├── BpArsenal.java              # 主入口类
-├── controller/                 # 控制器层
-│   ├── SettingPanelController.java
-│   ├── ToolPanelController.java
-│   ├── WebSitePanelController.java
-│   ├── ThirdPartyPanelController.java
-│   └── ToolController.java
-├── manager/                    # 管理器层
-│   ├── ApiManager.java         # API管理器
-│   └── ConfigManager.java      # 配置管理器
-├── model/                      # 数据模型层
-│   ├── Config.java
-│   ├── HttpTool.java
-│   ├── WebSite.java
-│   ├── ThirdPartyTool.java
-│   └── SettingModel.java
-├── view/                       # 视图层
-│   ├── MainPanel.java          # 主面板
-│   ├── ToolPanel.java          # 工具面板
-│   ├── WebsitePanel.java       # 网站面板
-│   ├── ThirdPartyPanel.java    # 第三方工具面板
-│   ├── SettingPanel.java       # 设置面板
-│   ├── component/              # UI组件
-│   ├── contextmenu/            # 上下文菜单
-│   └── menu/                   # 菜单组件
-├── executor/                   # 执行器层
-│   ├── ToolExecutor.java       # 工具执行器
-│   ├── HttpMessageParser.java  # HTTP消息解析
-│   └── HttpVariableReplacer.java # 变量替换
-└── util/                       # 工具类
-    ├── I18nManager.java        # 国际化管理
-    ├── JsonUtil.java           # JSON工具
-    ├── OsUtils.java            # 系统工具
-    └── TempFileManager.java    # 临时文件管理
+```json
+{
+  "type": "OSINT",
+  "content": [
+    {
+      "url": "https://shodan.io",
+      "desc": "Shodan搜索引擎",
+      "favor": true
+    },
+    {
+      "url": "https://www.fofa.com",
+      "desc": "FOFA网络空间搜索",
+      "favor": true
+    }
+  ]
+}
 ```
 
-## 🛠️ 技术栈
+## 📋 使用方法
 
-- **Java 11+**: 核心开发语言
-- **Maven**: 项目构建和依赖管理
-- **Burp Suite API**: Burp Suite扩展开发接口
-- **Swing**: 用户界面框架
-- **Gson**: JSON处理
+### 1. 通过右键菜单使用
 
-## 📋 系统要求
+1. 在 Burp Suite 的 HTTP 历史记录、代理拦截或重发器中选择请求
+2. 右键点击选择 "Arsenal" 或 "Favorite"
+3. 在弹出的对话框中选择要使用的工具和命令
+4. 点击 "运行" 执行命令
 
-- Java 11 或更高版本
-- Burp Suite Professional/Community
-- Maven 3.6+ (用于构建)
+### 2. 通过主界面使用
 
-## 🔧 构建和安装
+#### HTTP 工具面板
+- 浏览所有配置的 HTTP 工具
+- 使用搜索功能快速定位工具
+- 双击工具行打开编辑对话框
+- 右键菜单进行添加、编辑、删除操作
 
-### 构建项目
+#### 第三方工具面板
+- 查看所有配置的第三方工具
+- 点击工具名称快速启动
+- 管理工具的收藏状态
 
+#### 网站面板
+- 浏览收藏的网站
+- 点击网站描述在浏览器中打开
+- 管理网站收藏和分类
+
+#### 设置面板
+- **工具目录设置**: 配置全局工具根目录，简化命令中的路径配置
+- **命令前缀设置**: 自定义命令执行前缀（默认自动检测系统）
+- **语言设置**: 选择界面语言（中文/英文）
+- **配置管理**: 导入、导出、重置配置文件
+
+### 3. 工作目录优先级
+
+系统按以下优先级确定命令执行的工作目录：
+
+1. **工具配置的工作目录** - `config.json` 中 `workDir` 字段
+2. **全局设置的工具目录** - 设置面板中配置的工具根目录  
+3. **当前目录** - 如果以上都未设置，使用当前工作目录
+
+### 4. 变量替换功能
+
+插件会自动将命令模板中的变量替换为实际的 HTTP 请求数据：
+
+**原始命令模板:**
 ```bash
-# 克隆项目
-git clone <repository-url>
-cd BpArsenal
-
-# 使用Maven构建
-mvn clean compile package
-
-# 生成的JAR文件位于 target/ 目录
+sqlmap -u "%http.request.url%" --cookie="%http.request.headers.cookies%" --dbs
 ```
 
-### 安装到Burp Suite
-
-1. 打开Burp Suite
-2. 进入 "Extensions" 选项卡
-3. 点击 "Add" 按钮
-4. 选择 "Java" 作为扩展类型
-5. 选择构建生成的JAR文件
-6. 点击 "Next" 完成安装
-
-## 📖 使用指南
-
-### 基本使用
-
-1. **安装扩展后**，在Burp Suite的Extensions选项卡中可以看到BpArsenal扩展
-2. **主界面**会显示在Burp Suite的主选项卡中
-3. **右键菜单**会在HTTP请求/响应区域提供快速工具调用
-
-### 工具配置
-
-1. 进入设置面板配置基本参数
-2. 在工具面板中添加或编辑HTTP工具
-3. 在网站面板中管理测试目标
-4. 在第三方工具面板中集成外部工具
-
-### 变量系统
-
-支持以下标准变量替换（使用 `%变量%` 格式）：
-
-#### 请求基础变量
-
-- `%http.request.url%`: 完整请求URL
-- `%http.request.method%`: HTTP方法 (GET/POST等)
-- `%http.request.path%`: 请求路径
-- `%http.request.host%`: 目标主机
-- `%http.request.port%`: 目标端口
-
-#### 请求头部变量
-
-- `%http.request.headers.user.agent%`: User-Agent头
-- `%http.request.headers.cookies%`: Cookie字符串
-- `%http.request.headers.content.type%`: 内容类型
-
-#### 请求参数变量
-
-- `%http.request.params.url.{name}%`: URL参数值
-- `%http.request.params.body.{name}%`: POST参数值
-
-#### 响应变量
-
-- `%http.response.status%`: 响应状态码
-- `%http.response.body%`: 完整响应体
-
-完整变量列表请参考 `PlaceholderDocumentation` 类。
-
-示例用法:
-
+**替换后的命令:**
 ```bash
-# 使用curl重放请求
-curl -X %http.request.method% "%http.request.url%"
-
-# 根据响应状态处理
-if [ "%http.response.status%" = "200" ]; then
-    echo "请求成功"
-fi
+sqlmap -u "https://example.com/login" --cookie="sessionid=abc123; csrftoken=xyz789" --dbs
 ```
+
+## 🎯 最佳实践
+
+### 1. 工具路径配置
+- 使用全局工具目录设置，避免每个命令都写完整路径
+- 为需要特定环境的工具单独设置 `workDir`
+- 使用相对路径提高配置的可移植性
+
+### 2. 命令模板设计
+- 为不同场景设计多个命令模板
+- 使用有意义的 `note` 字段说明命令用途
+- 合理使用 `favor` 标记常用命令
+
+### 3. 分类管理
+- 按工具类型或测试阶段进行分类
+- 使用一致的命名规范
+- 定期整理和更新配置
+
+### 4. 安全注意事项
+- 谨慎使用高风险的测试命令
+- 确保在授权环境中进行测试
+- 注意命令中的敏感信息处理
+
+## 🔧 技术架构
+
+- **开发语言**: Java
+- **API框架**: Burp Suite Montoya API
+- **架构模式**: MVC (Model-View-Controller)
+- **设计模式**: 单例模式、策略模式
+- **UI框架**: Java Swing
+- **国际化**: 支持多语言切换
+- **配置格式**: JSON
+
+## 📝 更新日志
+
+### v1.0.0
+- 初始版本发布
+- 支持 HTTP 工具、第三方工具、网站管理
+- 完整的变量替换系统
+- 多语言界面支持
+- 配置导入导出功能
 
 ## 🤝 贡献指南
 
-欢迎提交Issue和Pull Request来改进项目！
+欢迎提交 Issue 和 Pull Request 来完善此插件。
 
-### 开发规范
+### 开发环境搭建
+1. 克隆项目：`git clone [repository-url]`
+2. 导入 IDE（推荐 IntelliJ IDEA）
+3. 安装 Maven 依赖
+4. 配置 Burp Suite 开发环境
 
-1. 遵循项目现有的代码风格
-2. 所有UI文本必须使用国际化系统
-3. 添加适当的单元测试
-4. 更新相关文档
+### 提交规范
+- `feat`: 新功能
+- `fix`: 修复问题
+- `docs`: 文档更新
+- `style`: 代码格式调整
+- `refactor`: 代码重构
 
-### 国际化规范
+## 📄 许可证
 
-- 所有用户可见文本都必须通过 `I18nManager`进行国际化
-- 在 `messages_zh_CN.properties`和 `messages_en_US.properties`中添加对应的文本
-- UI组件必须实现语言切换监听器
+本项目采用 MIT 许可证 - 查看 [LICENSE](LICENSE) 文件了解详情。
 
-## 📝 许可证
+## 👨‍💻 作者
 
-本项目采用 MIT 许可证。详情请参见 [LICENSE](LICENSE) 文件。
-
-## 🔗 相关链接
-
-- [Burp Suite](https://portswigger.net/burp)
-- [Burp Extender API](https://portswigger.net/burp/extender)
-- [项目文档](./doc/)
-
-## 📧 联系方式
-
-如有问题或建议，请通过以下方式联系：
-
-- 提交 [GitHub Issue](../../issues)
-- 发送邮件到: [你的邮箱]
+**youmulijiang** - 初始开发
 
 ---
 
-*BpArsenal - 让渗透测试更高效* 🚀
+**⚠️ 免责声明**: 本工具仅用于授权的安全测试，使用者需对自己的行为负责。作者不承担因误用、滥用或违法使用本工具造成的任何损失或损害。
