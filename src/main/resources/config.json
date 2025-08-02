@@ -204,6 +204,16 @@
               "workDir": ""
             }
           ]
+        }, {
+          "toolName": "qscan.exe",
+          "commandList": [
+            {
+              "command": "qscan.exe -h",
+              "favor": true,
+              "note": "qscan快速扫描",
+              "workDir": "D:\\security\\sectool\\scan\\qscan"
+            }
+          ]
         }
       ]
     },

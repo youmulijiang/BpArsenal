@@ -285,34 +285,108 @@ public class ToolExecutor {
     }
     
     /**
-     * 通过脚本文件执行命令（统一入口，支持工作目录）
+     * 直接执行命令（不使用临时脚本文件）
      * @param command 命令字符串
      * @param toolName 工具名称
      * @param workDir 工作目录（可为null）
      * @throws IOException 执行异常
      */
     private void executeCommandViaScript(String command, String toolName, String workDir) throws IOException {
-        File scriptFile = null;
-        try {
-            // 生成临时脚本文件（包含工作目录切换）
-            scriptFile = createTemporaryScript(command, toolName, workDir);
-            
-            // 执行脚本文件
-            executeScriptFile(scriptFile, toolName);
-            
-            if (ApiManager.getInstance().isInitialized()) {
-                String logMsg = workDir != null ? 
-                    String.format("执行工具: %s (工作目录: %s) - %s", toolName, workDir, command) :
-                    String.format("执行工具: %s - %s", toolName, command);
-                ApiManager.getInstance().getApi().logging().logToOutput(logMsg);
-            }
-            
-        } finally {
-            // 延迟清理脚本文件
-            if (scriptFile != null) {
-                scheduleScriptCleanup(scriptFile);
+        executeCommandDirectly(command, toolName, workDir);
+    }
+    
+    /**
+     * 直接使用ProcessBuilder执行命令
+     * @param command 命令字符串
+     * @param toolName 工具名称
+     * @param workDir 工作目录（可为null）
+     * @throws IOException 执行异常
+     */
+    private void executeCommandDirectly(String command, String toolName, String workDir) throws IOException {
+        ProcessBuilder processBuilder;
+        
+        // 根据操作系统选择合适的命令执行方式
+        if (isWindows()) {
+            // Windows: 在新的命令窗口中执行
+            processBuilder = new ProcessBuilder("cmd", "/c", "start", "\"" + toolName + "\"", "cmd", "/k", command + " & pause");
+        } else {
+            // Linux/Unix: 在终端中执行
+            if (isMac()) {
+                // macOS: 使用Terminal.app
+                String applescript = String.format(
+                    "tell application \"Terminal\" to do script \"%s; echo 'Press Enter to continue...'; read\"",
+                    command.replace("\"", "\\\"")
+                );
+                processBuilder = new ProcessBuilder("osascript", "-e", applescript);
+            } else {
+                // Linux: 使用x-terminal-emulator
+                processBuilder = new ProcessBuilder("x-terminal-emulator", "-e", "bash", "-c", 
+                    command + "; echo 'Press Enter to continue...'; read");
             }
         }
+        
+        // 设置工作目录（如果指定）
+        if (workDir != null && !workDir.trim().isEmpty()) {
+            File workDirectory = new File(workDir.trim());
+            if (workDirectory.exists() && workDirectory.isDirectory()) {
+                processBuilder.directory(workDirectory);
+                if (ApiManager.getInstance().isInitialized()) {
+                    ApiManager.getInstance().getApi().logging().logToOutput(
+                        "BpArsenal: 设置ProcessBuilder工作目录 - " + workDir
+                    );
+                }
+            } else {
+                if (ApiManager.getInstance().isInitialized()) {
+                    ApiManager.getInstance().getApi().logging().logToError(
+                        "BpArsenal: 工作目录无效，将使用默认目录 - " + workDir
+                    );
+                }
+            }
+        }
+        
+        // 设置环境变量
+        Map<String, String> env = processBuilder.environment();
+        env.put("PATH", System.getenv("PATH"));
+        if (isWindows()) {
+            // Windows环境下设置编码
+            env.put("CHCP", "65001"); // UTF-8编码
+        }
+        
+        // 启动进程
+        Process process = processBuilder.start();
+        
+        // 记录执行日志
+        if (ApiManager.getInstance().isInitialized()) {
+            String logMsg = workDir != null ? 
+                String.format("直接执行工具: %s (工作目录: %s) - %s", toolName, workDir, command) :
+                String.format("直接执行工具: %s - %s", toolName, command);
+            ApiManager.getInstance().getApi().logging().logToOutput(logMsg);
+        }
+        
+        // 异步等待进程完成
+        CompletableFuture.runAsync(() -> {
+            try {
+                int exitCode = process.waitFor();
+                if (ApiManager.getInstance().isInitialized()) {
+                    if (exitCode == 0) {
+                        ApiManager.getInstance().getApi().logging().logToOutput(
+                            toolName + " 命令执行完成，退出码: " + exitCode
+                        );
+                    } else {
+                        ApiManager.getInstance().getApi().logging().logToError(
+                            toolName + " 命令执行完成，退出码: " + exitCode
+                        );
+                    }
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                if (ApiManager.getInstance().isInitialized()) {
+                    ApiManager.getInstance().getApi().logging().logToError(
+                        toolName + " 命令执行被中断: " + e.getMessage()
+                    );
+                }
+            }
+        });
     }
     
     /**
@@ -507,6 +581,17 @@ public class ToolExecutor {
      * @throws IOException 执行异常
      */
     private void executeScriptFile(File scriptFile, String toolName) throws IOException {
+        executeScriptFile(scriptFile, toolName, null);
+    }
+    
+    /**
+     * 执行脚本文件（支持工作目录设置）
+     * @param scriptFile 脚本文件
+     * @param toolName 工具名称
+     * @param workDir 工作目录（可为null）
+     * @throws IOException 执行异常
+     */
+    private void executeScriptFile(File scriptFile, String toolName, String workDir) throws IOException {
         ProcessBuilder processBuilder;
         
         if (isWindows()) {
@@ -528,11 +613,31 @@ public class ToolExecutor {
             }
         }
         
+        // 设置工作目录（如果指定）
+        if (workDir != null && !workDir.trim().isEmpty()) {
+            File workDirectory = new File(workDir.trim());
+            if (workDirectory.exists() && workDirectory.isDirectory()) {
+                processBuilder.directory(workDirectory);
+                if (ApiManager.getInstance().isInitialized()) {
+                    ApiManager.getInstance().getApi().logging().logToOutput(
+                        "BpArsenal: ProcessBuilder 设置工作目录 - " + workDir
+                    );
+                }
+            } else {
+                if (ApiManager.getInstance().isInitialized()) {
+                    ApiManager.getInstance().getApi().logging().logToError(
+                        "BpArsenal: ProcessBuilder 工作目录无效，将使用默认目录 - " + workDir
+                    );
+                }
+            }
+        }
         
+        // 设置环境变量
         Map<String, String> env = processBuilder.environment();
-        env.put("PATH",System.getenv("PATH"));
+        env.put("PATH", System.getenv("PATH"));
+        
+        // 启动进程
         Process process = processBuilder.start();
-
         
         // 异步等待进程完成
         CompletableFuture.runAsync(() -> {
@@ -686,24 +791,31 @@ public class ToolExecutor {
                 // 确定最终工作目录
                 String finalWorkDir = determineWorkingDirectory(workDir);
                 
-                // 使用脚本执行（支持工作目录）
-                executeCommandViaScript(command, toolName, finalWorkDir);
+                // 直接执行命令（支持工作目录）
+                executeCommandDirectly(command, toolName, finalWorkDir);
                 
                 // 构建输出信息
                 StringBuilder output = new StringBuilder();
-                output.append("命令已通过脚本文件启动执行\n");
-                output.append("脚本类型: ").append(isWindows() ? "Windows Batch (.bat)" : "Shell Script (.sh)").append("\n");
-                output.append("脚本目录: ").append(tempScriptDir).append("\n");
+                output.append("命令已直接启动执行\n");
+                output.append("执行环境: ").append(isWindows() ? "Windows Command Prompt" : (isMac() ? "macOS Terminal" : "Linux Terminal")).append("\n");
+                if (finalWorkDir != null) {
+                    output.append("工作目录: ").append(finalWorkDir).append("\n");
+                }
                 
                 if (callback != null) {
-                    callback.onOutputReceived("命令已通过脚本文件启动执行");
-                    callback.onOutputReceived("脚本类型: " + (isWindows() ? "Windows Batch (.bat)" : "Shell Script (.sh)"));
+                    callback.onOutputReceived("命令已直接启动执行");
+                    callback.onOutputReceived("执行环境: " + (isWindows() ? "Windows Command Prompt" : (isMac() ? "macOS Terminal" : "Linux Terminal")));
+                    if (finalWorkDir != null) {
+                        callback.onOutputReceived("工作目录: " + finalWorkDir);
+                    }
                     callback.onCommandComplete(toolName, 0, output.toString());
                 }
                 
                 // 记录到Burp日志
                 if (ApiManager.getInstance().isInitialized()) {
-                    String logMsg = String.format("工具通过脚本执行: %s", toolName);
+                    String logMsg = finalWorkDir != null ? 
+                        String.format("工具直接执行: %s (工作目录: %s)", toolName, finalWorkDir) :
+                        String.format("工具直接执行: %s", toolName);
                     ApiManager.getInstance().getApi().logging().logToOutput(logMsg);
                 }
                 
@@ -728,6 +840,37 @@ public class ToolExecutor {
     public void executeCommandInTerminal(String command, String toolName, CommandExecutionCallback callback) {
         // 重定向到统一的脚本执行方法
         executeCommandSync(command, toolName, callback);
+    }
+    
+    /**
+     * 为ArsenalDialog提供的专用执行方法，支持传入HttpToolCommand的工作目录
+     * @param command 要执行的命令
+     * @param toolName 工具名称
+     * @param toolWorkDir 工具配置的工作目录（可为null）
+     * @throws IOException 执行异常
+     */
+    public void executeCommandWithWorkDir(String command, String toolName, String toolWorkDir) throws IOException {
+        // 确定最终工作目录
+        String finalWorkDir = determineWorkingDirectory(toolWorkDir);
+        
+        // 直接执行命令
+        executeCommandDirectly(command, toolName, finalWorkDir);
+    }
+    
+    /**
+     * 为ArsenalDialog提供的异步执行方法，支持传入HttpToolCommand的工作目录
+     * @param command 要执行的命令
+     * @param toolName 工具名称
+     * @param toolWorkDir 工具配置的工作目录（可为null）
+     */
+    public void executeCommandWithWorkDirAsync(String command, String toolName, String toolWorkDir) {
+        CompletableFuture.runAsync(() -> {
+            try {
+                executeCommandWithWorkDir(command, toolName, toolWorkDir);
+            } catch (Exception e) {
+                handleError("命令执行失败", toolName, e);
+            }
+        });
     }
     
     // ===== 集成的操作系统工具方法 =====
@@ -924,7 +1067,7 @@ public class ToolExecutor {
     }
     
     /**
-     * 获取临时脚本目录路径
+     * 获取临时脚本目录路径（现在不再使用，保留方法以兼容）
      * @return 脚本目录路径
      */
     public String getTempScriptDirectory() {
@@ -940,40 +1083,14 @@ public class ToolExecutor {
     }
     
     /**
-     * 手动清理所有临时脚本文件
+     * 手动清理所有临时脚本文件（现在不再使用临时脚本文件，保留方法以兼容）
      */
     public void cleanupAllTempScripts() {
-        CompletableFuture.runAsync(() -> {
-            try {
-                File scriptDir = new File(tempScriptDir);
-                if (scriptDir.exists() && scriptDir.isDirectory()) {
-                    File[] scriptFiles = scriptDir.listFiles((dir, name) -> 
-                        name.startsWith("bparsenal_") && (name.endsWith(".bat") || name.endsWith(".sh"))
-                    );
-                    
-                    if (scriptFiles != null) {
-                        int deletedCount = 0;
-                        for (File file : scriptFiles) {
-                            if (file.delete()) {
-                                deletedCount++;
-                            }
-                        }
-                        
-                        if (ApiManager.getInstance().isInitialized() && deletedCount > 0) {
-                            ApiManager.getInstance().getApi().logging().logToOutput(
-                                "BpArsenal: 清理了 " + deletedCount + " 个临时脚本文件"
-                            );
-                        }
-                    }
-                }
-            } catch (Exception e) {
-                if (ApiManager.getInstance().isInitialized()) {
-                    ApiManager.getInstance().getApi().logging().logToError(
-                        "BpArsenal: 清理临时脚本失败 - " + e.getMessage()
-                    );
-                }
-            }
-        });
+        if (ApiManager.getInstance().isInitialized()) {
+            ApiManager.getInstance().getApi().logging().logToOutput(
+                "BpArsenal: 现在使用直接命令执行，无需清理临时脚本文件"
+            );
+        }
     }
     
     /**

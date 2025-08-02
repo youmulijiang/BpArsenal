@@ -973,8 +973,26 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
             addExecutionLogEntry(execI18n.getText("arsenal.dialog.execution.actual"), toolName, 
                 execI18n.getText("arsenal.dialog.execution.system.command"), finalCommand);
             
-            // 生成并执行临时脚本
-            executeCommandViaScript(finalCommand, toolName);
+            // 获取工作目录（优先使用工具配置的工作目录）
+            String toolWorkDir = null;
+            if (selectedToolCommand != null) {
+                toolWorkDir = selectedToolCommand.getWorkDir();
+            }
+            
+            // 记录工作目录信息
+            if (toolWorkDir != null && !toolWorkDir.trim().isEmpty()) {
+                addExecutionLogEntry(execI18n.getText("arsenal.dialog.execution.workdir"), toolName, 
+                    execI18n.getText("arsenal.dialog.execution.tool.workdir"), toolWorkDir);
+            }
+            
+            // 使用ToolExecutor执行命令，支持工作目录
+            ToolExecutor.getInstance().executeCommandWithWorkDirAsync(finalCommand, toolName, toolWorkDir);
+            
+            // 立即恢复按钮状态（因为是异步执行）
+            SwingUtilities.invokeLater(() -> {
+                runButton.setEnabled(true);
+                runButton.setText(execI18n.getText("arsenal.dialog.button.run"));
+            });
             
         } catch (Exception e) {
             addExecutionLogEntry(execI18n.getText("arsenal.dialog.execution.script.exception"), toolName, 
