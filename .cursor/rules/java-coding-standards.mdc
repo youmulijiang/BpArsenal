@@ -1,34 +1,34 @@
+---
+title: Java编码规范
+---
+
 # Java编码规范
 
-## 基本规范
-- 使用JDK17语法特性
-- 类名使用PascalCase
-- 方法名和变量名使用camelCase
-- 常量使用UPPER_SNAKE_CASE
-
-## 异常处理
-- 必须捕获和处理所有可能的异常
-- 提供用户友好的错误信息
-- 记录详细的错误日志
+## 命名规范
+- **类名**: PascalCase（ApiManager, ToolExecutor）
+- **方法/变量**: camelCase（executeHttpTool, httpRequest）
+- **常量**: UPPER_SNAKE_CASE（VARIABLE_PATTERN）
+- **包名**: 小写（util, executor, view）
 
 ## 注释规范
 ```java
 /**
- * 配置管理器，负责配置文件的加载和管理
- * 采用单例模式确保全局唯一实例
+ * 类功能描述，采用的设计模式
  */
-public class ConfigManager {
+public class ToolExecutor {
     /**
-     * 加载配置文件
-     * @throws ConfigException 配置文件格式错误时抛出
+     * 方法功能描述
+     * @param tool 工具配置对象
+     * @param httpRequest HTTP请求对象
+     * @throws Exception 执行异常时抛出
      */
-    private void loadConfig() throws ConfigException {
+    public void executeHttpTool(HttpTool tool, HttpRequest httpRequest) {
         // 实现代码
     }
 }
 ```
 
 ## 代码组织
-- 一个类一个文件
-- 相关功能归类到同一包
-- 接口和实现分离
+- 遵循MVC分层架构：view/controller/model/executor/util
+- 单一职责原则：一个类只负责一个功能领域
+- 依赖注入：通过单例管理器获取共享实例

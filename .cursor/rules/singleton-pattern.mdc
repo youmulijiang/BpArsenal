@@ -3,33 +3,31 @@ globs: *.java
 description: "Singleton pattern implementation standards"
 ---
 
-# 单例模式实现规范
-
-## 标准单例模式
-- 使用懒汉式单例（延迟初始化）
-- 线程安全考虑（如需要）
-- 私有构造函数
-- 静态获取方法
+# 单例模式规范
 
 ## 适用场景
-- ApiManager: 管理MontoyaApi实例
-- ConfigManager: 管理配置文件
-- ToolExecutor: 工具执行器
+仅用于以下核心管理类：
+- `ApiManager` - MontoyaApi实例管理
+- `ConfigManager` - 配置文件管理
+- `ToolExecutor` - 工具执行器
+- `I18nManager` - 国际化管理（使用枚举单例）
 
-## 实现模板
+## 标准实现
 ```java
-public class SingletonClass {
-    private static SingletonClass instance;
+public class ManagerClass {
+    private static ManagerClass instance;
     
-    private SingletonClass() {
+    private ManagerClass() {
         // 初始化代码
     }
     
-    public static SingletonClass getInstance() {
+    public static ManagerClass getInstance() {
         if (instance == null) {
-            instance = new SingletonClass();
+            instance = new ManagerClass();
         }
         return instance;
     }
 }
 ```
+
+**注意**: 普通UI组件和业务类不使用单例模式

@@ -4,38 +4,47 @@ title: 外部工具集成规范
 
 # 外部工具集成规范
 
-## 工具执行器单例
-```java
-public class ToolExecutor {
-    private static ToolExecutor instance;
-    
-    public static ToolExecutor getInstance() {
-        if (instance == null) {
-            instance = new ToolExecutor();
-        }
-        return instance;
-    }
-    
-    /**
-     * 执行HTTP工具
-     * @param tool 工具配置
-     * @param httpRequest HTTP请求对象
-     */
-    public void executeHttpTool(HttpTool tool, HttpRequest httpRequest) {
-        // 实现工具执行逻辑
-    }
-}
+## 工具执行基本规则
+1. 使用`ToolExecutor.getInstance()`统一执行工具
+2. 所有外部命令通过脚本文件执行（Windows .bat / Linux .sh）
+3. 支持工作目录配置和跨平台兼容
+
+## HTTP变量替换系统
+支持的核心变量（使用 `%变量名%` 格式）:
+
+### 请求基本信息
+- `%http.request.url%` - 完整请求URL
+- `%http.request.method%` - HTTP方法（GET/POST等）
+- `%http.request.host%` - 目标主机
+- `%http.request.port%` - 目标端口
+- `%http.request.path%` - 请求路径
+- `%http.request.protocol%` - 协议（http/https）
+
+### 请求头部
+- `%http.request.headers.user.agent%` - User-Agent
+- `%http.request.headers.cookies%` - Cookie字符串
+- `%http.request.headers.authorization%` - 认证头
+- `%http.request.headers.content.type%` - 内容类型
+
+### 请求数据
+- `%http.request.body%` - 请求体内容
+
+### 响应数据
+- `%http.response.status%` - 响应状态码
+- `%http.response.body%` - 响应体内容
+
+### 批量处理变量
+- `%httpList.requests.urls%` - 所有选中请求的URL列表
+- `%httpList.requests.hosts%` - 所有选中请求的主机列表
+
+## 命令模板示例
+```bash
+# sqlmap SQL注入测试
+sqlmap -u "%http.request.url%" --cookie="%http.request.headers.cookies%" --dbs
+
+# curl重放请求
+curl -X %http.request.method% "%http.request.url%" -H "User-Agent: %http.request.headers.user.agent%"
+
+# nmap端口扫描
+nmap -sS -sV "%http.request.host%" -p 1-10000
 ```
-
-## 命令执行规范
-- 使用ProcessBuilder而非Runtime.exec()
-- 支持变量替换（%http.url%等）
-- 处理进程输出和错误流
-- 设置执行超时
-
-## 变量替换
-支持的变量:
-- `%http.url%`: 完整URL
-- `%http.host%`: 主机名
-- `%http.path%`: 路径
-- `%http.method%`: HTTP方法

@@ -1,43 +1,27 @@
+---
+alwaysApply: false
+---
+
 # 配置文件格式规范
 
-## JSON结构规范
-基于 [config.json](mdc:src/main/resources/config.json) 的标准格式:
-
+## HTTP工具配置格式
+新版commandList格式（推荐）:
 ```json
 {
   "httpTool": [
     {
-      "type": "工具类型",
+      "type": "SQL注入",
       "content": [
         {
-          "toolName": "工具名称",
-          "Command": "执行命令",
-          "favor": true/false
-        }
-      ]
-    }
-  ],
-  "thirtyPart": [
-    {
-      "type": "工具分类", 
-      "content": [
-        {
-          "toolName": "工具名称",
-          "startCommand": "启动命令",
-          "favor": true/false,
-          "autoStart": true/false
-        }
-      ]
-    }
-  ],
-  "webSite": [
-    {
-      "type": "网站分类",
-      "content": [
-        {
-          "url": "网站URL",
-          "desc": "描述",
-          "favor": true/false
+          "toolName": "sqlmap",
+          "commandList": [
+            {
+              "command": "sqlmap -u \"%http.request.url%\"",
+              "favor": true,
+              "note": "命令描述",
+              "workDir": "D:\\tools\\sqlmap"
+            }
+          ]
         }
       ]
     }
@@ -45,8 +29,39 @@
 }
 ```
 
-## 配置验证
-- JSON格式有效性检查
-- 必填字段验证
-- URL格式验证
-- 命令路径存在性检查
+## 第三方工具配置
+```json
+{
+  "thirtyPart": [
+    {
+      "type": "exploit",
+      "content": [
+        {
+          "toolName": "dirsearch",
+          "startCommand": "D:\\tools\\dirsearch\\dirsearch.exe",
+          "favor": true,
+          "autoStart": false
+        }
+      ]
+    }
+  ]
+}
+```
+
+## 网站配置
+```json
+{
+  "webSite": [
+    {
+      "type": "OSINT",
+      "content": [
+        {
+          "url": "https://www.google.com",
+          "desc": "谷歌搜索",
+          "favor": true
+        }
+      ]
+    }
+  ]
+}
+```

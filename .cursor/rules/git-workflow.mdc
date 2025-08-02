@@ -1,28 +1,30 @@
+---
+alwaysApply: true
+---
+
 # Git工作流规范
 
-## 提交规范
-每次代码完成后必须执行:
+## 提交命令格式
 ```powershell
 git add . ; git commit -m "type: 描述"
 ```
 
 ## 提交类型
-- `feat`: 新功能
-- `fix`: 修复bug
-- `refactor`: 重构代码
-- `style`: 代码格式调整
-- `docs`: 文档更新
-- `test`: 测试相关
-- `config`: 配置文件修改
-
-## 提交示例
-```powershell
-git add . ; git commit -m "feat: 添加配置文件单例管理器"
-git add . ; git commit -m "refactor: 优化MontoyaApi调用方式"
-git add . ; git commit -m "fix: 修复配置文件读取异常"
-```
+- `feat` - 新功能
+- `fix` - 修复bug  
+- `refactor` - 代码重构
+- `style` - 代码格式调整
+- `config` - 配置文件修改
+- `docs` - 文档更新
 
 ## 描述规范
 - 使用中文描述
-- 简洁明确
-- 动词开头
+- 简洁明确，50字以内
+- 动词开头（添加/修复/优化等）
+
+## 示例
+```powershell
+git add . ; git commit -m "feat: 添加HTTP变量替换功能"
+git add . ; git commit -m "fix: 修复工具执行器空指针异常"
+git add . ; git commit -m "refactor: 优化国际化管理器的单例模式"
+```

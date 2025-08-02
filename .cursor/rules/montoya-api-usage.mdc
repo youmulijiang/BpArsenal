@@ -1,36 +1,28 @@
+---
+alwaysApply: true
+---
+
 # MontoyaApi使用规范
 
-## 核心原则
-- MontoyaApi实例必须通过单例模式管理，确保全局唯一访问点
-- 所有API调用都要进行空值检查和异常处理
-- UI组件注册要在initialize()方法中完成
+## 核心要求
+1. **单例管理**: MontoyaApi必须通过ApiManager单例访问
+2. **空值检查**: 所有API调用前检查isInitialized()
+3. **异常处理**: 包装try-catch处理API调用异常
 
-## 单例模式实现
+## 标准用法
 ```java
-public class ApiManager {
-    private static ApiManager instance;
-    private MontoyaApi api;
-    
-    private ApiManager() {}
-    
-    public static ApiManager getInstance() {
-        if (instance == null) {
-            instance = new ApiManager();
-        }
-        return instance;
-    }
-    
-    public void setApi(MontoyaApi api) {
-        this.api = api;
-    }
-    
-    public MontoyaApi getApi() {
-        return this.api;
-    }
+// 获取API实例
+MontoyaApi api = ApiManager.getInstance().getApi();
+
+// 安全调用模式
+if (ApiManager.getInstance().isInitialized()) {
+    api.logging().logToOutput("消息内容");
+    api.userInterface().registerSuiteTab("标题", panel);
 }
 ```
 
-## API调用模式
-- 使用ApiManager.getInstance().getApi()获取API实例
-- 每次调用前检查API是否已初始化
-- UI组件通过api.userInterface()获取
+## 常用API
+- `api.logging().logToOutput()` - 输出日志
+- `api.logging().logToError()` - 错误日志  
+- `api.userInterface().registerSuiteTab()` - 注册主选项卡
+- `api.userInterface().registerContextMenuItemsProvider()` - 注册右键菜单
