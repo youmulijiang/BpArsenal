@@ -1,73 +1,73 @@
-# BpArsenal - Burp Suite 武器库插件
+# BpArsenal - Burp Suite Arsenal Plugin
 
 ![Version](https://img.shields.io/badge/version-v1.0.0-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-Burp%20Suite-orange.svg)
 ![Language](https://img.shields.io/badge/language-Java-red.svg)
 ![API](https://img.shields.io/badge/API-Montoya-green.svg)
 
-**中文 | [English](README_EN.md)**
+**[中文](README_CN.md) | English**
 
-BpArsenal 是一个基于 Montoya API 开发的 Burp Suite 插件，旨在快速将 HTTP 请求转化为命令行工具执行、启动第三方工具和打开相关网站，提高渗透测试效率。
+BpArsenal is a Burp Suite plugin developed based on the Montoya API, designed to quickly convert HTTP requests into command-line tool executions, launch third-party tools, and open related websites to improve penetration testing efficiency.
 
-## 🚀 主要功能
+## 🚀 Key Features
 
-### 1. HTTP 工具集成
+### 1. HTTP Tool Integration
 
-- **一键转换**: 将 Burp Suite 中的 HTTP 请求快速转换为各种安全工具的命令行
-- **变量替换**: 支持动态变量替换，自动提取请求中的 URL、参数、头部等信息
-- **批量处理**: 支持多个请求同时处理，生成批量命令
-- **工作目录**: 支持为每个工具配置独立的工作目录
+- **One-Click Conversion**: Quickly convert HTTP requests from Burp Suite into command lines for various security tools
+- **Variable Replacement**: Support dynamic variable replacement, automatically extracting URLs, parameters, headers, and other information from requests
+- **Batch Processing**: Support processing multiple requests simultaneously, generating batch commands
+- **Working Directory**: Support configuring independent working directories for each tool
 
-### 2. 第三方工具管理
+### 2. Third-Party Tool Management
 
-- **快速启动**: 一键启动常用的渗透测试工具
-- **自动启动**: 支持插件加载时自动启动指定工具
-- **收藏管理**: 可将常用工具标记为收藏，快速访问
+- **Quick Launch**: One-click launch of commonly used penetration testing tools
+- **Auto Start**: Support automatic startup of specified tools when the plugin loads
+- **Favorite Management**: Mark frequently used tools as favorites for quick access
 
-### 3. 网站收藏夹
+### 3. Website Bookmarks
 
-- **快速访问**: 收藏常用的安全相关网站和工具
-- **分类管理**: 按功能分类组织网站链接
-- **一键打开**: 在默认浏览器中快速打开网站
+- **Quick Access**: Bookmark commonly used security-related websites and tools
+- **Category Management**: Organize website links by function categories
+- **One-Click Open**: Quickly open websites in the default browser
 
-### 4. 设置管理
+### 4. Settings Management
 
-- **工具目录**: 配置全局工具根目录，简化路径管理
-- **命令前缀**: 自定义命令执行前缀，适配不同操作系统
-- **多语言**: 支持中文和英文界面
-- **配置导入导出**: 支持配置文件的备份和共享
+- **Tool Directory**: Configure global tool root directory to simplify path management
+- **Command Prefix**: Customize command execution prefix to adapt to different operating systems
+- **Multi-language**: Support Chinese and English interfaces
+- **Configuration Import/Export**: Support backup and sharing of configuration files
 
-## 📦 安装方法
+## 📦 Installation
 
-1. 下载最新版本的 JAR 文件
-2. 在 Burp Suite 中进入 "Extensions" -> "Installed"
-3. 点击 "Add" -> "Java" -> 选择 JAR 文件
-4. 插件加载完成后会在 Burp Suite 中出现 "BpArsenal" 标签页
+1. Download the latest JAR file
+2. In Burp Suite, go to "Extensions" -> "Installed"
+3. Click "Add" -> "Java" -> Select the JAR file
+4. After the plugin loads successfully, the "BpArsenal" tab will appear in Burp Suite
 
-## 🛠️ 配置指南
+## 🛠️ Configuration Guide
 
-### config.json 配置文件结构
+### config.json Configuration File Structure
 
-插件的核心配置文件为 `src/main/resources/config.json`，包含三个主要部分：
+The plugin's core configuration file is `src/main/resources/config.json`, containing three main sections:
 
-#### 1. HTTP 工具配置 (httpTool)
+#### 1. HTTP Tool Configuration (httpTool)
 
-HTTP 工具支持将 Burp Suite 中的请求转换为命令行工具执行：
+HTTP tools support converting requests from Burp Suite into command-line tool executions:
 
 ```json
 {
   "httpTool": [
     {
-      "type": "工具分类名称",
+      "type": "Tool Category Name",
       "content": [
         {
-          "toolName": "工具名称",
+          "toolName": "Tool Name",
           "commandList": [
             {
-              "command": "命令模板",
+              "command": "Command Template",
               "favor": true/false,
-              "note": "命令说明",
-              "workDir": "工作目录路径"
+              "note": "Command Description",
+              "workDir": "Working Directory Path"
             }
           ]
         }
@@ -77,61 +77,61 @@ HTTP 工具支持将 Burp Suite 中的请求转换为命令行工具执行：
 }
 ```
 
-**字段说明:**
+**Field Descriptions:**
 
-- `type`: 工具分类，如 "SQL注入"、"目录扫描" 等
-- `toolName`: 具体工具名称，如 "sqlmap"、"dirsearch" 等
-- `command`: 命令模板，支持变量替换
-- `favor`: 是否为收藏命令
-- `note`: 命令的详细说明
-- `workDir`: 命令执行的工作目录（可选）
+- `type`: Tool category, such as "SQL Injection", "Directory Scanning", etc.
+- `toolName`: Specific tool name, such as "sqlmap", "dirsearch", etc.
+- `command`: Command template supporting variable replacement
+- `favor`: Whether it's a favorite command
+- `note`: Detailed description of the command
+- `workDir`: Working directory for command execution (optional)
 
-**支持的变量:**
+**Supported Variables:**
 
-| 变量名                                   | 说明            | 示例                              |
-| ---------------------------------------- | --------------- | --------------------------------- |
-| `%http.request.url%`                   | 完整请求URL     | `https://example.com/api/login` |
-| `%http.request.protocol%`              | 协议            | `https`                         |
-| `%http.request.host%`                  | 主机名          | `example.com`                   |
-| `%http.request.port%`                  | 端口号          | `443`                           |
-| `%http.request.path%`                  | 路径            | `/api/login`                    |
-| `%http.request.method%`                | HTTP方法        | `POST`                          |
-| `%http.request.body%`                  | 请求体          | `{"user":"admin"}`              |
-| `%http.request.headers.user.agent%`    | User-Agent头    | `Mozilla/5.0...`                |
-| `%http.request.headers.cookies%`       | Cookie头        | `session=abc123`                |
-| `%http.request.headers.authorization%` | Authorization头 | `Bearer token123`               |
-| `%http.request.headers.content.type%`  | Content-Type头  | `application/json`              |
-| `%http.response.status%`               | 响应状态码      | `200`                           |
-| `%http.response.body%`                 | 响应体内容      | `{"status":"ok"}`               |
+| Variable Name                            | Description           | Example                           |
+| ---------------------------------------- | --------------------- | --------------------------------- |
+| `%http.request.url%`                   | Complete request URL  | `https://example.com/api/login` |
+| `%http.request.protocol%`              | Protocol              | `https`                         |
+| `%http.request.host%`                  | Host name             | `example.com`                   |
+| `%http.request.port%`                  | Port number           | `443`                           |
+| `%http.request.path%`                  | Path                  | `/api/login`                    |
+| `%http.request.method%`                | HTTP method           | `POST`                          |
+| `%http.request.body%`                  | Request body          | `{"user":"admin"}`              |
+| `%http.request.headers.user.agent%`    | User-Agent header     | `Mozilla/5.0...`                |
+| `%http.request.headers.cookies%`       | Cookie header         | `session=abc123`                |
+| `%http.request.headers.authorization%` | Authorization header  | `Bearer token123`               |
+| `%http.request.headers.content.type%`  | Content-Type header   | `application/json`              |
+| `%http.response.status%`               | Response status code  | `200`                           |
+| `%http.response.body%`                 | Response body content | `{"status":"ok"}`               |
 
-> 不止这些
+> And many more...
 
-**批量处理变量:**
+**Batch Processing Variables:**
 
-| 变量名                        | 说明                   |
-| ----------------------------- | ---------------------- |
-| `%httpList.requests.urls%`  | 所有选中请求的URL列表  |
-| `%httpList.requests.hosts%` | 所有选中请求的主机列表 |
+| Variable Name                 | Description                        |
+| ----------------------------- | ---------------------------------- |
+| `%httpList.requests.urls%`  | List of all selected request URLs  |
+| `%httpList.requests.hosts%` | List of all selected request hosts |
 
-**配置示例:**
+**Configuration Example:**
 
 ```json
+{
+  "type": "SQL Injection",
+  "content": [
     {
-      "type": "SQL注入",
-      "content": [
-        {
-          "toolName": "sqlmap",
+      "toolName": "sqlmap",
       "commandList": [
         {
           "command": "sqlmap -u \"%http.request.url%\" --user-agent=\"%http.request.headers.user.agent%\" --cookie=\"%http.request.headers.cookies%\" --dbs",
           "favor": true,
-          "note": "基础SQL注入测试",
+          "note": "Basic SQL injection test",
           "workDir": "D:\\tools\\sqlmap"
         },
         {
           "command": "sqlmap -u \"%http.request.url%\" --data=\"%http.request.body%\" --batch --risk=3 --level=5",
           "favor": true,
-          "note": "高风险SQL注入测试",
+          "note": "High-risk SQL injection test",
           "workDir": ""
         }
       ]
@@ -140,19 +140,19 @@ HTTP 工具支持将 Burp Suite 中的请求转换为命令行工具执行：
 }
 ```
 
-#### 2. 第三方工具配置 (thirtyPart)
+#### 2. Third-Party Tool Configuration (thirtyPart)
 
-第三方工具用于快速启动常用的渗透测试工具：
+Third-party tools are used to quickly launch commonly used penetration testing tools:
 
 ```json
 {
   "thirtyPart": [
     {
-      "type": "工具分类",
+      "type": "Tool Category",
       "content": [
         {
-          "toolName": "工具名称",
-          "startCommand": "启动命令",
+          "toolName": "Tool Name",
+          "startCommand": "Launch Command",
           "favor": true/false,
           "autoStart": true/false
         }
@@ -162,48 +162,48 @@ HTTP 工具支持将 Burp Suite 中的请求转换为命令行工具执行：
 }
 ```
 
-**字段说明:**
+**Field Descriptions:**
 
-- `toolName`: 工具显示名称
-- `startCommand`: 工具启动命令（完整路径或系统命令）
-- `favor`: 是否为收藏工具
-- `autoStart`: 插件加载时是否自动启动
+- `toolName`: Tool display name
+- `startCommand`: Tool launch command (full path or system command)
+- `favor`: Whether it's a favorite tool
+- `autoStart`: Whether to auto-start when plugin loads
 
-**配置示例:**
+**Configuration Example:**
 
 ```json
-    {
-      "type": "exploit",
-      "content": [
+{
+  "type": "exploit",
+  "content": [
     {
       "toolName": "dirsearch",
       "startCommand": "D:\\tools\\dirsearch\\dirsearch.exe",
       "favor": true,
       "autoStart": false
     },
-        {
-          "toolName": "burpsuite",
-          "startCommand": "java -jar D:\\tools\\burpsuite\\burpsuite_pro.jar",
-          "favor": true,
-          "autoStart": false
+    {
+      "toolName": "burpsuite",
+      "startCommand": "java -jar D:\\tools\\burpsuite\\burpsuite_pro.jar",
+      "favor": true,
+      "autoStart": false
     }
   ]
 }
 ```
 
-#### 3. 网站收藏配置 (webSite)
+#### 3. Website Bookmark Configuration (webSite)
 
-网站收藏用于快速访问常用的安全相关网站：
+Website bookmarks are used to quickly access commonly used security-related websites:
 
 ```json
 {
   "webSite": [
     {
-      "type": "网站分类",
+      "type": "Website Category",
       "content": [
         {
-          "url": "网站URL",
-          "desc": "网站描述",
+          "url": "Website URL",
+          "desc": "Website Description",
           "favor": true/false
         }
       ]
@@ -212,7 +212,7 @@ HTTP 工具支持将 Burp Suite 中的请求转换为命令行工具执行：
 }
 ```
 
-**配置示例:**
+**Configuration Example:**
 
 ```json
 {
@@ -220,152 +220,155 @@ HTTP 工具支持将 Burp Suite 中的请求转换为命令行工具执行：
   "content": [
     {
       "url": "https://shodan.io",
-      "desc": "Shodan搜索引擎",
+      "desc": "Shodan Search Engine",
       "favor": true
     },
     {
       "url": "https://www.fofa.com",
-      "desc": "FOFA网络空间搜索",
+      "desc": "FOFA Cyberspace Search",
       "favor": true
     }
   ]
 }
 ```
 
-## 📋 使用方法
+## 📋 Usage
 
-### 1. 通过右键菜单使用
+### 1. Using Context Menu
 
-1. 在 Burp Suite 的 HTTP 历史记录、代理拦截或重发器中选择请求
-2. 右键点击选择 "Arsenal" 或 "Favorite"
-3. 在弹出的对话框中选择要使用的工具和命令
-4. 点击 "运行" 执行命令
+1. Select a request in Burp Suite's HTTP history, proxy intercept, or repeater
+2. Right-click and select "Arsenal" or "Favorite"
+3. Choose the tool and command you want to use in the popup dialog
+4. Click "Run" to execute the command
 
-### 2. 通过主界面使用
+### 2. Using Main Interface
 
-#### HTTP 工具面板
+#### HTTP Tools Panel
 
-- 浏览所有配置的 HTTP 工具
-- 使用搜索功能快速定位工具
-- 双击工具行打开编辑对话框
-- 右键菜单进行添加、编辑、删除操作
+- Browse all configured HTTP tools
+- Use search functionality to quickly locate tools
+- Double-click tool rows to open edit dialog
+- Right-click menu for add, edit, delete operations
 
-#### 第三方工具面板
+#### Third-Party Tools Panel
 
-- 查看所有配置的第三方工具
-- 点击工具名称快速启动
-- 管理工具的收藏状态
+- View all configured third-party tools
+- Click tool names to quickly launch
+- Manage tool favorite status
 
-#### 网站面板
+#### Website Panel
 
-- 浏览收藏的网站
-- 点击网站描述在浏览器中打开
-- 管理网站收藏和分类
+- Browse bookmarked websites
+- Click website descriptions to open in browser
+- Manage website bookmarks and categories
 
-#### 设置面板
+#### Settings Panel
 
-- **工具目录设置**: 配置全局工具根目录，简化命令中的路径配置
-- **命令前缀设置**: 自定义命令执行前缀（默认自动检测系统）
-- **语言设置**: 选择界面语言（中文/英文）
-- **配置管理**: 导入、导出、重置配置文件
+- **Tool Directory Settings**: Configure global tool root directory to simplify path configuration in commands
+- **Command Prefix Settings**: Customize command execution prefix (auto-detects system by default)
+- **Language Settings**: Choose interface language (Chinese/English)
+- **Configuration Management**: Import, export, reset configuration files
 
-### 3. 工作目录优先级
+### 3. Working Directory Priority
 
-系统按以下优先级确定命令执行的工作目录：
+The system determines command execution working directory in the following priority order:
 
-1. **工具配置的工作目录** - `config.json` 中 `workDir` 字段
-2. **全局设置的工具目录** - 设置面板中配置的工具根目录
-3. **当前目录** - 如果以上都未设置，使用当前工作目录
+1. **Tool-configured working directory** - `workDir` field in `config.json`
+2. **Global tool directory setting** - Tool root directory configured in settings panel
+3. **Current directory** - If none of the above are set, use current working directory
 
-### 4. 变量替换功能
+### 4. Variable Replacement Functionality
 
-插件会自动将命令模板中的变量替换为实际的 HTTP 请求数据：
+The plugin automatically replaces variables in command templates with actual HTTP request data:
 
-**原始命令模板:**
+**Original Command Template:**
 
 ```bash
 sqlmap -u "%http.request.url%" --cookie="%http.request.headers.cookies%" --dbs
 ```
 
-**替换后的命令:**
+**Replaced Command:**
 
 ```bash
 sqlmap -u "https://example.com/login" --cookie="sessionid=abc123; csrftoken=xyz789" --dbs
 ```
 
-## 🎯 最佳实践
+## 🎯 Best Practices
 
-### 1. 工具路径配置
+### 1. Tool Path Configuration
 
-- 使用全局工具目录设置，避免每个命令都写完整路径
-- 为需要特定环境的工具单独设置 `workDir`
-- 使用相对路径提高配置的可移植性
+- Use global tool directory settings to avoid writing full paths for each command
+- Set separate `workDir` for tools requiring specific environments
+- Use relative paths to improve configuration portability
 
-### 2. 命令模板设计
+### 2. Command Template Design
 
-- 为不同场景设计多个命令模板
-- 使用有意义的 `note` 字段说明命令用途
-- 合理使用 `favor` 标记常用命令
+- Design multiple command templates for different scenarios
+- Use meaningful `note` fields to explain command purposes
+- Use `favor` appropriately to mark frequently used commands
 
-### 3. 分类管理
+### 3. Category Management
 
-- 按工具类型或测试阶段进行分类
-- 使用一致的命名规范
-- 定期整理和更新配置
+- Categorize by tool type or testing phase
+- Use consistent naming conventions
+- Regularly organize and update configurations
 
-### 4. 安全注意事项
+### 4. Security Considerations
 
-- 谨慎使用高风险的测试命令
-- 确保在授权环境中进行测试
-- 注意命令中的敏感信息处理
+- Use high-risk testing commands with caution
+- Ensure testing is performed in authorized environments
+- Pay attention to sensitive information handling in commands
 
-## 🔧 技术架构
+## 🔧 Technical Architecture
 
-- **开发语言**: Java
-- **API框架**: Burp Suite Montoya API
-- **架构模式**: MVC (Model-View-Controller)
-- **设计模式**: 单例模式、策略模式
-- **UI框架**: Java Swing
-- **国际化**: 支持多语言切换
-- **配置格式**: JSON
+- **Development Language**: Java
+- **API Framework**: Burp Suite Montoya API
+- **Architecture Pattern**: MVC (Model-View-Controller)
+- **Design Patterns**: Singleton Pattern, Strategy Pattern
+- **UI Framework**: Java Swing
+- **Internationalization**: Multi-language switching support
+- **Configuration Format**: JSON
 
-## 📝 更新日志
+## 📝 Changelog
 
 ### v1.0.0
 
-- 初始版本发布
-- 支持 HTTP 工具、第三方工具、网站管理
-- 完整的变量替换系统
-- 多语言界面支持
-- 配置导入导出功能
+- Initial release
+- Support for HTTP tools, third-party tools, website management
+- Complete variable replacement system
+- Multi-language interface support
+- Configuration import/export functionality
 
-## 🤝 贡献指南
+## 🤝 Contributing
 
-欢迎提交 Issue 和 Pull Request 来完善此插件。
+Issues and Pull Requests are welcome to improve this plugin.
 
-### 开发环境搭建
+### Development Environment Setup
 
-1. 克隆项目：`git clone [repository-url]`
-2. 导入 IDE（推荐 IntelliJ IDEA）
-3. 安装 Maven 依赖
-4. 配置 Burp Suite 开发环境
+1. Clone the project: `git clone [repository-url]`
+2. Import into IDE (IntelliJ IDEA recommended)
+3. Install Maven dependencies
+4. Configure Burp Suite development environment
 
-### 提交规范
+### Commit Guidelines
 
-- `feat`: 新功能
-- `fix`: 修复问题
-- `docs`: 文档更新
-- `style`: 代码格式调整
-- `refactor`: 代码重构
+- `feat`: New features
+- `fix`: Bug fixes
+- `docs`: Documentation updates
+- `style`: Code formatting adjustments
+- `refactor`: Code refactoring
 
-## 📄 许可证
+## 📄 License
 
-本项目采用 MIT 许可证 - 查看 [LICENSE](LICENSE) 文件了解详情。
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 👨‍💻 作者
+## 👨‍💻 Author
 
 **youmulijiang** 
 
+I'm just an ordinary security developer.If this project helps you, please click the ⭐ in the top-right corner.
+Rika-chan loves stars the most! ヾ(≧▽≦*)o*
+
 ---
 
-**⚠️ 免责声明**: 本工具仅用于授权的安全测试，使用者需对自己的行为负责。作者不承担因误用、滥用或违法使用本工具造成的任何损失或损害。
+**⚠️ Disclaimer**: This tool is intended for authorized security testing only. Users are responsible for their own actions. The author assumes no liability for any loss or damage caused by misuse, abuse, or illegal use of this tool.
