@@ -16,11 +16,7 @@ import util.MenuUtils;
 import javax.swing.*;
 import java.awt.Component;
 import java.awt.Frame;
-import java.awt.Font;
-import java.awt.Graphics;
-import java.awt.Color;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -149,28 +145,21 @@ public class ArsenalContextMenuProvider implements ContextMenuItemsProvider {
                 // 创建并显示Arsenal工具对话框
                 SwingUtilities.invokeLater(() -> {
                     try {
-                        ArsenalDialog dialog = new ArsenalDialog(httpRequest, httpResponse, allSelectedRequests);
-
-                        // 获取Burp Suite主窗口并将对话框居中显示
+                        // 获取Burp Suite主窗口作为父窗口
                         Frame burpFrame = ApiManager.getInstance().getApi().userInterface().swingUtils().suiteFrame();
-                        if (burpFrame != null) {
-                            dialog.setLocationRelativeTo(null);
-                            // 显示对话框后立即取消置顶，避免影响用户操作其他应用
-                            SwingUtilities.invokeLater(() -> {
-//                                dialog.setAlwaysOnTop(true);
-                                dialog.toFront();
-                                dialog.requestFocus();
-                            });
-                        }
-
+                        
+                        // 创建模态对话框，传入父窗口
+                        ArsenalDialog dialog = new ArsenalDialog(httpRequest, httpResponse, allSelectedRequests);
+                        
+                        // 设置对话框相对于Burp Suite主窗口居中
+                        dialog.setLocationRelativeTo(burpFrame);
+                        
+                        // 显示模态对话框
                         dialog.setVisible(true);
-
-                        // 再次确保对话框在最前面（解决某些系统的窗口管理问题）
-                        dialog.bringToFront();
 
                         if (ApiManager.getInstance().isInitialized()) {
                             ApiManager.getInstance().getApi().logging().logToOutput(
-                                "BpArsenal: Arsenal工具对话框已在Burp Suite主窗口上方居中显示"
+                                "BpArsenal: Arsenal工具对话框已成功显示"
                             );
                         }
 
@@ -181,7 +170,7 @@ public class ArsenalContextMenuProvider implements ContextMenuItemsProvider {
 
                         // 显示错误提示
                         JOptionPane.showMessageDialog(
-                            null,
+                            ApiManager.getInstance().getApi().userInterface().swingUtils().suiteFrame(),
                             "打开Arsenal对话框失败:\n" + ex.getMessage(),
                             "错误",
                             JOptionPane.ERROR_MESSAGE
@@ -326,18 +315,7 @@ public class ArsenalContextMenuProvider implements ContextMenuItemsProvider {
         return currentContextMenuEvent;
     }
     
-    /**
-     * 通过ToolExecutor执行命令
-     */
-    private void executeCommandViaScript(String command, String toolName) {
-        try {
-            // 使用ToolExecutor的命令执行功能，不传递工作目录（使用全局设置）
-            ToolExecutor.getInstance().executeCommandSync(command, toolName, (String)null);
-        } catch (Exception e) {
-            ApiManager.getInstance().getApi().logging().logToError("命令执行失败: " + e.getMessage());
-            throw new RuntimeException("命令执行失败: " + e.getMessage(), e);
-        }
-    }
+
     
     /**
      * 通过ToolExecutor执行工具命令（带工作目录支持）

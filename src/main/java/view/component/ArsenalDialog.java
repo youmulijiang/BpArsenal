@@ -130,7 +130,8 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
         setSize(1200, 800);  // 增加宽度以适应新增的列
         // 不在这里设置位置，由调用方决定位置
         setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
-        setModal(false); // 非模态对话框
+        setModal(true);
+//        setModal(false); // 非模态对话框
         
         // 设置图标
         try {
