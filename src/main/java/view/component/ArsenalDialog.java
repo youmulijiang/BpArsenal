@@ -5,11 +5,11 @@ import burp.api.montoya.http.message.responses.HttpResponse;
 import controller.ToolController;
 import executor.ToolExecutor;
 import executor.AdvancedHttpParser;
-import executor.BasicHttpParser;
+
 import manager.ApiManager;
 import manager.ConfigManager;
 import model.Config;
-import model.HttpTool;
+
 import model.HttpToolCommand;
 import model.SettingModel;
 import util.I18nManager;
@@ -22,9 +22,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.datatransfer.StringSelection;
 import java.awt.datatransfer.Clipboard;
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.io.UnsupportedEncodingException;
+
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Set;
@@ -36,7 +34,7 @@ import java.util.stream.Collectors;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.Locale;
+
 
 /**
  * Arsenal工具对话框
@@ -68,7 +66,7 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
     private List<HttpToolCommand> allToolCommands;
     private List<HttpToolCommand> filteredToolCommands;
     private HttpToolCommand selectedToolCommand;
-    private Set<String> allCategories;
+
     
     /**
      * 构造函数
@@ -84,7 +82,7 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
         }
         this.allToolCommands = loadAllToolCommands();
         this.filteredToolCommands = new ArrayList<>(allToolCommands);
-        this.allCategories = extractAllCategories();
+
         
         initializeDialog();
         initializeComponents();
@@ -111,7 +109,7 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
         }
         this.allToolCommands = loadAllToolCommands();
         this.filteredToolCommands = new ArrayList<>(allToolCommands);
-        this.allCategories = extractAllCategories();
+
         
         initializeDialog();
         initializeComponents();
@@ -285,7 +283,7 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
         // 变量预览选项卡
         variablesPreviewArea = new JTextArea(5, 50);
         variablesPreviewArea.setEditable(false);  // 只读
-        variablesPreviewArea.setFont(new Font("Consolas", Font.PLAIN, 10));
+        variablesPreviewArea.setFont(createMonospaceFont());
         variablesPreviewArea.setBackground(new Color(248, 248, 255));  // 浅蓝色背景
         variablesPreviewArea.setLineWrap(true);
         variablesPreviewArea.setWrapStyleWord(true);
@@ -484,8 +482,131 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
         
         // 选项卡切换事件（可选，用于同步编辑）
         commandTabbedPane.addChangeListener(e -> {
-            // 可以在这里添加选项卡切换时的逻辑
+            syncCommandBetweenTabs();
         });
+        
+        // 原始命令文本变更事件 - 实时同步到渲染命令
+        originalCommandArea.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+            @Override
+            public void insertUpdate(javax.swing.event.DocumentEvent e) { 
+                syncOriginalToRendered(); 
+            }
+            @Override
+            public void removeUpdate(javax.swing.event.DocumentEvent e) { 
+                syncOriginalToRendered(); 
+            }
+            @Override
+            public void changedUpdate(javax.swing.event.DocumentEvent e) { 
+                syncOriginalToRendered(); 
+            }
+        });
+    }
+    
+    /**
+     * 创建支持中文的等宽字体
+     * @return 字体对象
+     */
+    private Font createMonospaceFont() {
+        // 尝试创建支持中文的等宽字体，优先级：Consolas > 微软雅黑 > 默认等宽字体
+        Font[] preferredFonts = {
+            new Font("Consolas", Font.PLAIN, 11),
+            new Font("Microsoft YaHei", Font.PLAIN, 11),
+            new Font("微软雅黑", Font.PLAIN, 11),
+            new Font(Font.MONOSPACED, Font.PLAIN, 11)
+        };
+        
+        GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
+        String[] availableFonts = ge.getAvailableFontFamilyNames();
+        
+        for (Font font : preferredFonts) {
+            for (String availableFont : availableFonts) {
+                if (availableFont.equals(font.getFontName())) {
+                    return font;
+                }
+            }
+        }
+        
+        // 如果都不可用，返回默认字体
+        return new Font(Font.MONOSPACED, Font.PLAIN, 11);
+    }
+    
+    /**
+     * 同步原始命令到渲染命令选项卡
+     */
+    private void syncOriginalToRendered() {
+        if (httpRequest != null) {
+            SwingUtilities.invokeLater(() -> {
+                try {
+                    String originalCommand = originalCommandArea.getText();
+                    String renderedCommand = performVariableReplacement(originalCommand);
+                    
+                    // 暂时禁用文档监听器防止循环触发
+                    int caretPosition = renderedCommandArea.getCaretPosition();
+                    renderedCommandArea.setText(renderedCommand);
+                    
+                    // 保持光标位置
+                    try {
+                        renderedCommandArea.setCaretPosition(Math.min(caretPosition, renderedCommand.length()));
+                    } catch (Exception e) {
+                        renderedCommandArea.setCaretPosition(0);
+                    }
+                } catch (Exception e) {
+                    // 静默处理同步错误
+                }
+            });
+        }
+    }
+    
+    /**
+     * 在选项卡之间同步命令
+     */
+    private void syncCommandBetweenTabs() {
+        // 当用户切换到渲染命令选项卡时，确保内容是最新的
+        int selectedTab = commandTabbedPane.getSelectedIndex();
+        if (selectedTab == 1 && httpRequest != null) { // 渲染命令选项卡
+            syncOriginalToRendered();
+        }
+    }
+    
+    /**
+     * 执行变量替换（从原始命令文本进行替换）
+     * @param command 原始命令文本
+     * @return 替换后的命令
+     */
+    private String performVariableReplacement(String command) {
+        try {
+            if (command == null || command.isEmpty() || httpRequest == null) {
+                return command;
+            }
+            
+            // 使用AdvancedHttpParser解析请求，获取完整的变量映射
+            AdvancedHttpParser advancedParser = new AdvancedHttpParser();
+            Map<String, String> requestVariables = advancedParser.parseRequest(httpRequest);
+            
+            // 如果有响应数据，也进行解析
+            Map<String, String> responseVariables = new HashMap<>();
+            if (httpResponse != null) {
+                responseVariables = advancedParser.parseResponse(httpResponse);
+            }
+            
+            // 合并变量映射
+            Map<String, String> allVariables = new HashMap<>();
+            allVariables.putAll(requestVariables);
+            allVariables.putAll(responseVariables);
+            
+            // 处理httpList相关变量
+            addHttpListVariables(allVariables, allSelectedRequests);
+            
+            // 进行变量替换
+            return replaceVariables(command, allVariables);
+            
+        } catch (Exception e) {
+            // 如果替换失败，返回原始命令
+            if (ApiManager.getInstance().isInitialized()) {
+                ApiManager.getInstance().getApi().logging().logToError("变量替换失败: " + e.getMessage());
+            }
+            return command;
+        }
     }
     
     /**
@@ -742,27 +863,7 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
         setTitle(title);
     }
     
-    /**
-     * 获取工具分类
-     * @param tool HTTP工具对象
-     * @return 分类名称
-     */
-    private String getToolCategory(HttpTool tool) {
-        try {
-            Config config = ConfigManager.getInstance().getConfig();
-            if (config.getHttpTool() != null) {
-                for (Config.HttpToolCategory category : config.getHttpTool()) {
-                    if (category.getContent() != null && category.getContent().contains(tool)) {
-                        return category.getType();
-                    }
-                }
-            }
-        } catch (Exception e) {
-            ApiManager.getInstance().getApi().logging().logToError("获取工具分类失败: " + e.getMessage());
-        }
-        I18nManager categoryI18n = I18nManager.getInstance();
-        return categoryI18n.getText("arsenal.dialog.uncategorized");
-    }
+
     
     /**
      * 更新命令预览
@@ -770,12 +871,28 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
     private void updateCommandPreview() {
         if (selectedToolCommand != null) {
             try {
-                // 设置原始命令（未渲染）
+                updateOriginalCommandDisplay();
+                updateRenderedCommandDisplay();
+                updateVariablesPreview();
+        } catch (Exception e) {
+                handleCommandPreviewError(e);
+        }
+        }
+    }
+    
+    /**
+     * 更新原始命令显示
+     */
+    private void updateOriginalCommandDisplay() {
                 String originalCommand = selectedToolCommand.getCommand() != null ? selectedToolCommand.getCommand() : "";
                 originalCommandArea.setText(originalCommand);
                 originalCommandArea.setCaretPosition(0);
+    }
                 
-                // 设置渲染后的命令 - 只显示纯命令，不包含调试注释
+    /**
+     * 更新渲染命令显示
+     */
+    private void updateRenderedCommandDisplay() {
                 if (httpRequest != null) {
                     String renderedCommand = generateRenderedCommand(selectedToolCommand, httpRequest);
                     renderedCommandArea.setText(renderedCommand);
@@ -783,16 +900,20 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
                 } else {
                     I18nManager renderI18n = I18nManager.getInstance();
                     renderedCommandArea.setText(renderI18n.getText("arsenal.dialog.no.request.render"));
-                }
-                
-                // 更新变量预览
-                updateVariablesPreview();
-                
-            } catch (Exception e) {
+        }
+    }
+    
+    /**
+     * 处理命令预览错误
+     * @param e 异常对象
+     */
+    private void handleCommandPreviewError(Exception e) {
+        String errorMessage = "命令预览更新失败: " + e.getMessage();
                 originalCommandArea.setText("命令加载失败: " + e.getMessage());
                 renderedCommandArea.setText("命令渲染失败: " + e.getMessage());
-                ApiManager.getInstance().getApi().logging().logToError("命令预览更新失败: " + e.getMessage());
-            }
+        
+        if (ApiManager.getInstance().isInitialized()) {
+            ApiManager.getInstance().getApi().logging().logToError(errorMessage);
         }
     }
     
@@ -905,109 +1026,161 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
         return escaped;
     }
     
-    /**
-     * 统计已替换的变量数量
-     * @param originalCommand 原始命令
-     * @param variables 变量映射
-     * @return 替换的变量数量
-     */
-    private int countReplacedVariables(String originalCommand, Map<String, String> variables) {
-        int count = 0;
-        for (String key : variables.keySet()) {
-            String placeholder = "%" + key + "%";
-            if (originalCommand.contains(placeholder)) {
-                count++;
-            }
-        }
-        return count;
-    }
+
     
     /**
      * 执行选中的命令
      */
     private void executeSelectedCommand() {
-        // 获取当前选中的选项卡中的命令
-        int selectedTab = commandTabbedPane.getSelectedIndex();
-        String command;
-        String commandType;
+        CommandExecutionContext context = prepareCommandExecution();
+        if (context == null) {
+            return; // 准备失败，已经显示了错误信息
+        }
         
+        try {
+            prepareExecutionUI(context);
+            executeCommandInternal(context);
+            restoreExecutionUI();
+        } catch (Exception e) {
+            handleExecutionError(context, e);
+        }
+    }
+    
+    /**
+     * 准备命令执行上下文
+     * @return 命令执行上下文，失败时返回null
+     */
+    private CommandExecutionContext prepareCommandExecution() {
+        int selectedTab = commandTabbedPane.getSelectedIndex();
         I18nManager execI18n = I18nManager.getInstance();
+        
+        CommandExecutionContext context = new CommandExecutionContext();
+        context.selectedTab = selectedTab;
+        context.i18n = execI18n;
+        
         if (selectedTab == 0) { // 原始命令选项卡
-            command = originalCommandArea.getText();
-            commandType = execI18n.getText("arsenal.dialog.execution.original.command");
+            context.command = originalCommandArea.getText();
+            context.commandType = execI18n.getText("arsenal.dialog.execution.original.command");
         } else if (selectedTab == 1) { // 渲染命令选项卡
-            command = renderedCommandArea.getText();
-            commandType = execI18n.getText("arsenal.dialog.execution.rendered.command");
+            context.command = renderedCommandArea.getText();
+            context.commandType = execI18n.getText("arsenal.dialog.execution.rendered.command");
         } else {
             JOptionPane.showMessageDialog(this, execI18n.getText("arsenal.dialog.message.select.tab"), 
                 execI18n.getText("dialog.title.warning"), JOptionPane.WARNING_MESSAGE);
-            return;
+            return null;
         }
         
-        if (command == null || command.trim().isEmpty()) {
+        if (context.command == null || context.command.trim().isEmpty()) {
             JOptionPane.showMessageDialog(this, execI18n.getText("arsenal.dialog.message.command.empty"), 
                 execI18n.getText("dialog.title.error"), JOptionPane.ERROR_MESSAGE);
-            return;
+            return null;
         }
         
-        // 获取工具名称
-        String toolName = selectedToolCommand != null ? selectedToolCommand.getToolName() : 
+        context.toolName = selectedToolCommand != null ? selectedToolCommand.getToolName() : 
             execI18n.getText("arsenal.dialog.manual.command");
+        context.toolWorkDir = selectedToolCommand != null ? selectedToolCommand.getWorkDir() : null;
         
-        // 禁用运行按钮防止重复执行
+        return context;
+    }
+    
+    /**
+     * 准备执行UI状态
+     * @param context 命令执行上下文
+     */
+    private void prepareExecutionUI(CommandExecutionContext context) {
         runButton.setEnabled(false);
-        runButton.setText(execI18n.getText("arsenal.dialog.button.running"));
+        runButton.setText(context.i18n.getText("arsenal.dialog.button.running"));
+        addExecutionLogEntry(context.i18n.getText("arsenal.dialog.execution.start"), 
+            context.toolName, context.commandType, context.command.trim());
+    }
+    
+    /**
+     * 执行命令内部逻辑
+     * @param context 命令执行上下文
+     */
+    private void executeCommandInternal(CommandExecutionContext context) throws Exception {
+        // 处理命令变量替换
+        String finalCommand = processFinalCommand(context);
         
-        // 记录执行开始
-        addExecutionLogEntry(execI18n.getText("arsenal.dialog.execution.start"), toolName, commandType, command.trim());
+        // 记录最终执行的命令
+        addExecutionLogEntry(context.i18n.getText("arsenal.dialog.execution.actual"), context.toolName, 
+            context.i18n.getText("arsenal.dialog.execution.system.command"), finalCommand);
         
-        try {
-            // 对于原始命令，需要进行变量替换；对于渲染命令，直接使用
-            String finalCommand = command.trim();
-            if (selectedTab == 0 && httpRequest != null && selectedToolCommand != null) {
-                // 原始命令需要进行变量替换
-                finalCommand = generateRenderedCommand(selectedToolCommand, httpRequest);
-            }
-            // 渲染命令选项卡中的内容已经是纯命令，直接使用
-            
-            // 记录最终执行的命令
-            addExecutionLogEntry(execI18n.getText("arsenal.dialog.execution.actual"), toolName, 
-                execI18n.getText("arsenal.dialog.execution.system.command"), finalCommand);
-            
-            // 获取工作目录（优先使用工具配置的工作目录）
-            String toolWorkDir = null;
-            if (selectedToolCommand != null) {
-                toolWorkDir = selectedToolCommand.getWorkDir();
-            }
-            
-            // 记录工作目录信息
-            if (toolWorkDir != null && !toolWorkDir.trim().isEmpty()) {
-                addExecutionLogEntry(execI18n.getText("arsenal.dialog.execution.workdir"), toolName, 
-                    execI18n.getText("arsenal.dialog.execution.tool.workdir"), toolWorkDir);
-            }
-            
-            // 使用脚本方式执行命令，支持工作目录
-            executeCommandViaScript(finalCommand, toolName, toolWorkDir);
-            
-            // 立即恢复按钮状态（因为是异步执行）
+        // 记录工作目录信息
+        logWorkingDirectory(context);
+        
+        // 使用脚本方式执行命令
+        executeCommandViaScript(finalCommand, context.toolName, context.toolWorkDir);
+    }
+    
+    /**
+     * 处理最终执行的命令
+     * @param context 命令执行上下文
+     * @return 处理后的命令
+     */
+    private String processFinalCommand(CommandExecutionContext context) {
+        String finalCommand = context.command.trim();
+        
+        // 如果是原始命令选项卡且有HTTP请求，需要重新进行变量替换
+        if (context.selectedTab == 0 && httpRequest != null) {
+            finalCommand = performVariableReplacement(context.command.trim());
+        }
+        
+        return finalCommand;
+    }
+    
+    /**
+     * 记录工作目录信息
+     * @param context 命令执行上下文
+     */
+    private void logWorkingDirectory(CommandExecutionContext context) {
+        if (context.toolWorkDir != null && !context.toolWorkDir.trim().isEmpty()) {
+            addExecutionLogEntry(context.i18n.getText("arsenal.dialog.execution.workdir"), context.toolName, 
+                context.i18n.getText("arsenal.dialog.execution.tool.workdir"), context.toolWorkDir);
+        }
+    }
+    
+    /**
+     * 恢复执行UI状态
+     */
+    private void restoreExecutionUI() {
             SwingUtilities.invokeLater(() -> {
+            I18nManager i18n = I18nManager.getInstance();
                 runButton.setEnabled(true);
-                runButton.setText(execI18n.getText("arsenal.dialog.button.run"));
-            });
-            
-        } catch (Exception e) {
-            addExecutionLogEntry(execI18n.getText("arsenal.dialog.execution.script.exception"), toolName, 
-                execI18n.getText("arsenal.dialog.execution.error"), e.getMessage());
+            runButton.setText(i18n.getText("arsenal.dialog.button.run"));
+        });
+    }
+    
+    /**
+     * 处理执行错误
+     * @param context 命令执行上下文
+     * @param e 异常对象
+     */
+    private void handleExecutionError(CommandExecutionContext context, Exception e) {
+        addExecutionLogEntry(context.i18n.getText("arsenal.dialog.execution.script.exception"), context.toolName, 
+            context.i18n.getText("arsenal.dialog.execution.error"), e.getMessage());
+        
             // 恢复按钮状态
             runButton.setEnabled(true);
-            runButton.setText(execI18n.getText("arsenal.dialog.button.run"));
+        runButton.setText(context.i18n.getText("arsenal.dialog.button.run"));
             
             // 显示错误对话框
             JOptionPane.showMessageDialog(this, 
-                execI18n.getText("arsenal.dialog.copy.failed.pattern", e.getMessage()), 
-                execI18n.getText("dialog.title.error"), 
+            context.i18n.getText("arsenal.dialog.copy.failed.pattern", e.getMessage()), 
+            context.i18n.getText("dialog.title.error"), 
                 JOptionPane.ERROR_MESSAGE);
         }
+    
+    /**
+     * 命令执行上下文类
+     */
+    private static class CommandExecutionContext {
+        int selectedTab;
+        String command;
+        String commandType;
+        String toolName;
+        String toolWorkDir;
+        I18nManager i18n;
     }
     
     /**
@@ -1398,28 +1571,7 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
         return sb.toString();
     }
     
-    /**
-     * 获取命令前缀设置
-     * @return 命令前缀数组
-     */
-    private String[] getCommandPrefix() {
-        try {
-            // 尝试从设置面板获取命令前缀
-            // 这里我们直接使用工具类的方法，避免复杂的依赖关系
-            return ToolExecutor.getDefaultCommandPrefix();
-        } catch (Exception e) {
-            // 如果出错，使用系统默认
-            return ToolExecutor.getDefaultCommandPrefix();
-        }
-    }
-    
-    /**
-     * 获取系统编码
-     * @return 编码字符串
-     */
-    private String getSystemEncoding() {
-        return ToolExecutor.getSystemEncoding();
-    }
+
 
     /**
      * 复制渲染后的命令到剪贴板
