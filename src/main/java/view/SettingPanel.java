@@ -1,6 +1,7 @@
 package view;
 
 import controller.SettingPanelController;
+import manager.ConfigManager;
 import model.SettingModel;
 import util.I18nManager;
 
@@ -583,6 +584,173 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
     }
     
     /**
+     * 刷新所有设置组件显示
+     * 参考MainPanel的刷新逻辑
+     */
+    private void refreshAllSettings() {
+        try {
+            // 重新加载配置数据（类似MainPanel的refreshConfiguration）
+            ConfigManager.getInstance().reloadConfig();
+            
+            // 刷新控制器设置数据
+            controller.refreshSettings();
+            
+            // 重新加载SettingModel数据
+            settingModel = controller.getSettingModel();
+            
+            // 更新工具目录显示
+            String currentToolDirectory = settingModel.getToolDirectory();
+            if (toolDirectoryField != null) {
+                toolDirectoryField.setText(currentToolDirectory != null ? currentToolDirectory : "");
+            }
+            
+            // 更新命令前缀显示
+            String currentCommandPrefix = settingModel.getCommandPrefix();
+            if (commandPrefixField != null) {
+                commandPrefixField.setText(currentCommandPrefix != null ? currentCommandPrefix : "");
+            }
+            
+            // 更新语言设置显示
+            I18nManager i18n = I18nManager.getInstance();
+            I18nManager.SupportedLanguage currentLanguage = i18n.getCurrentLanguage();
+            if (languageComboBox != null && languageActionListener != null && currentLanguage != null) {
+                languageComboBox.removeActionListener(languageActionListener);
+                try {
+                    languageComboBox.setSelectedItem(currentLanguage);
+                } finally {
+                    languageComboBox.addActionListener(languageActionListener);
+                }
+            }
+            
+            // 更新所有状态标签
+            updateAllStatusLabels();
+            
+            // 重绘面板（类似MainPanel的处理）
+            revalidate();
+            repaint();
+            
+            // 记录成功日志（类似MainPanel的logInfo）
+            logInfo("设置面板刷新完成");
+            
+            // 可以在这里通知其他需要刷新的组件
+            notifyOtherPanelsToRefresh();
+            
+        } catch (Exception e) {
+            // 记录错误日志（类似MainPanel的logError）
+            logError("刷新设置面板失败: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * 更新所有状态标签
+     */
+    private void updateAllStatusLabels() {
+        I18nManager i18n = I18nManager.getInstance();
+        
+        // 更新配置状态
+        if (configStatusLabel != null) {
+            configStatusLabel.setText(i18n.getText("settings.config.status") + ": " + 
+                i18n.getText("settings.config.status.loaded"));
+            configStatusLabel.setForeground(getStatusColor(SettingPanelController.StatusType.SUCCESS));
+        }
+        
+        // 更新目录状态
+        if (directoryStatusLabel != null) {
+            String currentDirectory = settingModel.getToolDirectory();
+            if (currentDirectory != null && !currentDirectory.trim().isEmpty()) {
+                directoryStatusLabel.setText(i18n.getText("settings.directory.status") + ": " + 
+                    i18n.getText("settings.directory.status.set"));
+                directoryStatusLabel.setForeground(getStatusColor(SettingPanelController.StatusType.SUCCESS));
+            } else {
+                directoryStatusLabel.setText(i18n.getText("settings.directory.status") + ": " + 
+                    i18n.getText("settings.directory.status.notset"));
+                directoryStatusLabel.setForeground(getStatusColor(SettingPanelController.StatusType.INFO));
+            }
+        }
+        
+        // 更新前缀状态
+        if (prefixStatusLabel != null) {
+            String currentPrefix = settingModel.getCommandPrefix();
+            if (currentPrefix != null && !currentPrefix.trim().isEmpty()) {
+                prefixStatusLabel.setText(i18n.getText("settings.prefix.status") + ": " + 
+                    i18n.getText("settings.prefix.status.custom"));
+                prefixStatusLabel.setForeground(getStatusColor(SettingPanelController.StatusType.SUCCESS));
+            } else {
+                prefixStatusLabel.setText(i18n.getText("settings.prefix.status") + ": " + 
+                    i18n.getText("settings.prefix.status.default"));
+                prefixStatusLabel.setForeground(getStatusColor(SettingPanelController.StatusType.INFO));
+            }
+        }
+        
+        // 更新语言状态
+        if (languageStatusLabel != null) {
+            languageStatusLabel.setText(i18n.getText("settings.language.restart.required"));
+            languageStatusLabel.setForeground(getStatusColor(SettingPanelController.StatusType.INFO));
+        }
+    }
+    
+    /**
+     * 记录信息日志（参考MainPanel的logInfo方法）
+     * @param message 日志消息
+     */
+    private void logInfo(String message) {
+        if (manager.ApiManager.getInstance().isInitialized()) {
+            manager.ApiManager.getInstance().getApi().logging().logToOutput("BpArsenal Setting: " + message);
+        }
+    }
+    
+    /**
+     * 记录错误日志（参考MainPanel的logError方法）
+     * @param message 错误消息
+     */
+    private void logError(String message) {
+        if (manager.ApiManager.getInstance().isInitialized()) {
+            manager.ApiManager.getInstance().getApi().logging().logToError("BpArsenal Setting: " + message);
+        }
+    }
+    
+    /**
+     * 通知其他面板刷新
+     * 当配置重置后，可能需要通知其他面板重新加载数据
+     */
+    private void notifyOtherPanelsToRefresh() {
+        try {
+            // 获取父容器（MainPanel），通知其刷新其他面板
+            Container parent = getParent();
+            while (parent != null && !(parent instanceof JTabbedPane)) {
+                parent = parent.getParent();
+            }
+            
+            if (parent instanceof JTabbedPane) {
+                JTabbedPane tabbedPane = (JTabbedPane) parent;
+                
+                // 遍历所有选项卡，刷新其他面板的数据
+                for (int i = 0; i < tabbedPane.getTabCount(); i++) {
+                    Component component = tabbedPane.getComponentAt(i);
+                    
+                    // 如果是ToolPanel，调用其loadData方法
+                    if (component instanceof ToolPanel && component != this) {
+                        ((ToolPanel) component).loadData();
+                        logInfo("已通知工具面板刷新数据");
+                    }
+                    // 如果是ThirdPartyPanel，调用其loadData方法
+                    else if (component instanceof ThirdPartyPanel && component != this) {
+                        ((ThirdPartyPanel) component).loadData();
+                        logInfo("已通知第三方工具面板刷新数据");
+                    }
+                    // 如果是WebsitePanel，调用其loadData方法
+                    else if (component instanceof WebsitePanel && component != this) {
+                        ((WebsitePanel) component).loadData();
+                        logInfo("已通知网站面板刷新数据");
+                    }
+                }
+            }
+        } catch (Exception e) {
+            logError("通知其他面板刷新失败: " + e.getMessage());
+        }
+    }
+
+    /**
      * 获取工具目录设置
      * @return 工具目录路径
      */
@@ -815,7 +983,10 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
     
     @Override
     public void onConfigurationImported(String filePath) {
-        // 配置导入完成后的处理
+        // 配置导入完成后刷新页面
+        SwingUtilities.invokeLater(() -> {
+            refreshAllSettings();
+        });
     }
     
     @Override
@@ -825,7 +996,10 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
     
     @Override
     public void onConfigurationReset() {
-        // 配置重置完成后的处理
+        // 配置重置完成后刷新页面
+        SwingUtilities.invokeLater(() -> {
+            refreshAllSettings();
+        });
     }
     
     @Override

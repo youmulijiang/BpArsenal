@@ -315,12 +315,12 @@ public class ToolPanel extends JPanel implements
             JPopupMenu contextMenu = new JPopupMenu();
             
             // 执行工具命令
-            JMenuItem executeItem = new JMenuItem("执行命令");
-            executeItem.addActionListener(event -> 
-                controller.executeToolCommand(toolTable.getSelectedRow(), tableModel.getToolCommands()));
-            contextMenu.add(executeItem);
-            
-            contextMenu.addSeparator();
+//            JMenuItem executeItem = new JMenuItem("执行命令");
+//            executeItem.addActionListener(event ->
+//                controller.executeToolCommand(toolTable.getSelectedRow(), tableModel.getToolCommands()));
+//            contextMenu.add(executeItem);
+//
+//            contextMenu.addSeparator();
             
             // 编辑
             JMenuItem editItem = new JMenuItem("编辑工具");
@@ -341,10 +341,10 @@ public class ToolPanel extends JPanel implements
             contextMenu.addSeparator();
             
             // 复制命令
-            JMenuItem copyItem = new JMenuItem("复制命令");
-            copyItem.addActionListener(event -> 
-                controller.copyCommandToClipboard(toolTable.getSelectedRow(), tableModel.getToolCommands()));
-            contextMenu.add(copyItem);
+//            JMenuItem copyItem = new JMenuItem("复制命令");
+//            copyItem.addActionListener(event ->
+//                controller.copyCommandToClipboard(toolTable.getSelectedRow(), tableModel.getToolCommands()));
+//            contextMenu.add(copyItem);
             
             // 删除
             JMenuItem deleteItem = new JMenuItem("删除工具");
