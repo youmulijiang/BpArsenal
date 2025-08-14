@@ -8,7 +8,6 @@ import javax.swing.*;
 import javax.swing.border.TitledBorder;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.*;
-import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
 
@@ -178,7 +177,7 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
         JPanel directoryPanel = new JPanel(new GridBagLayout());
         directoryPanel.setBorder(BorderFactory.createTitledBorder(
             BorderFactory.createEtchedBorder(),
-            "工具目录设置",
+            I18nManager.getInstance().getText("settings.directory.title"),
             TitledBorder.LEFT,
             TitledBorder.TOP,
             new Font("微软雅黑", Font.BOLD, 12)
@@ -190,7 +189,7 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
         
         // 目录输入行
         gbc.gridx = 0; gbc.gridy = 0;
-        JLabel directoryLabel = new JLabel("工具根目录:");
+        JLabel directoryLabel = new JLabel(I18nManager.getInstance().getText("settings.directory.label"));
         directoryLabel.setFont(new Font("微软雅黑", Font.PLAIN, 12));
         directoryPanel.add(directoryLabel, gbc);
         
@@ -199,18 +198,18 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
         gbc.weightx = 1.0;
         toolDirectoryField = new JTextField(30);
         toolDirectoryField.setFont(new Font("微软雅黑", Font.PLAIN, 11));
-        toolDirectoryField.setToolTipText("设置渗透测试工具的根目录路径");
+        toolDirectoryField.setToolTipText(I18nManager.getInstance().getText("settings.directory.tooltip"));
         directoryPanel.add(toolDirectoryField, gbc);
         
         gbc.gridx = 2; gbc.gridy = 0;
         gbc.fill = GridBagConstraints.NONE;
         gbc.weightx = 0;
-        browseDirectoryButton = createStyledButton("浏览", new Color(255, 152, 0));
+        browseDirectoryButton = createStyledButton(I18nManager.getInstance().getText("button.browse"), new Color(255, 152, 0));
         browseDirectoryButton.setPreferredSize(new Dimension(70, 25));
         directoryPanel.add(browseDirectoryButton, gbc);
         
         gbc.gridx = 3; gbc.gridy = 0;
-        applyDirectoryButton = createStyledButton("应用", new Color(46, 125, 50));
+        applyDirectoryButton = createStyledButton(I18nManager.getInstance().getText("button.apply"), new Color(46, 125, 50));
         applyDirectoryButton.setPreferredSize(new Dimension(70, 25));
         directoryPanel.add(applyDirectoryButton, gbc);
         
@@ -218,7 +217,7 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
         gbc.gridx = 0; gbc.gridy = 1;
         gbc.gridwidth = 4;
         gbc.fill = GridBagConstraints.HORIZONTAL;
-        directoryStatusLabel = new JLabel("目录状态: 未设置");
+        directoryStatusLabel = new JLabel(I18nManager.getInstance().getText("settings.directory.status") + ": " + I18nManager.getInstance().getText("settings.directory.status.notset"));
         directoryStatusLabel.setFont(new Font("微软雅黑", Font.PLAIN, 11));
         directoryStatusLabel.setForeground(new Color(100, 100, 100));
         directoryPanel.add(directoryStatusLabel, gbc);
@@ -226,9 +225,7 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
         // 说明文本
         gbc.gridy = 2;
         JTextArea directoryDescArea = new JTextArea(3, 50);
-        directoryDescArea.setText("工具根目录用于快速访问常用的渗透测试工具。\n" +
-                                "建议设置为: D:\\tools\\ 或 /usr/share/tools/\n" +
-                                "设置后可以在配置中使用相对路径，如: tools\\sqlmap\\sqlmap.py");
+        directoryDescArea.setText(I18nManager.getInstance().getText("desc.tool.directory"));
         directoryDescArea.setEditable(false);
         directoryDescArea.setBackground(getBackground());
         directoryDescArea.setFont(new Font("微软雅黑", Font.PLAIN, 11));
@@ -247,7 +244,7 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
         JPanel prefixPanel = new JPanel(new GridBagLayout());
         prefixPanel.setBorder(BorderFactory.createTitledBorder(
             BorderFactory.createEtchedBorder(),
-            "系统命令前缀设置",
+            I18nManager.getInstance().getText("settings.prefix.title"),
             TitledBorder.LEFT,
             TitledBorder.TOP,
             new Font("微软雅黑", Font.BOLD, 12)
@@ -261,7 +258,7 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
         gbc.gridx = 0; gbc.gridy = 0;
         gbc.gridwidth = 4;
         gbc.fill = GridBagConstraints.HORIZONTAL;
-        systemInfoLabel = new JLabel("当前系统: " + settingModel.getSystemInfo());
+        systemInfoLabel = new JLabel(I18nManager.getInstance().getText("settings.prefix.current.system") + ": " + settingModel.getSystemInfo());
         systemInfoLabel.setFont(new Font("微软雅黑", Font.BOLD, 12));
         systemInfoLabel.setForeground(new Color(46, 125, 50));
         prefixPanel.add(systemInfoLabel, gbc);
@@ -270,7 +267,7 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
         gbc.gridx = 0; gbc.gridy = 1;
         gbc.gridwidth = 1;
         gbc.fill = GridBagConstraints.NONE;
-        JLabel prefixLabel = new JLabel("命令前缀:");
+        JLabel prefixLabel = new JLabel(I18nManager.getInstance().getText("settings.prefix.label"));
         prefixLabel.setFont(new Font("微软雅黑", Font.PLAIN, 12));
         prefixPanel.add(prefixLabel, gbc);
         
@@ -279,18 +276,18 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
         gbc.weightx = 1.0;
         commandPrefixField = new JTextField(20);
         commandPrefixField.setFont(new Font("微软雅黑", Font.PLAIN, 11));
-        commandPrefixField.setToolTipText("设置命令执行前缀，如: cmd /c 或 /bin/bash -c");
+        commandPrefixField.setToolTipText(I18nManager.getInstance().getText("settings.prefix.tooltip"));
         prefixPanel.add(commandPrefixField, gbc);
         
         gbc.gridx = 2; gbc.gridy = 1;
         gbc.fill = GridBagConstraints.NONE;
         gbc.weightx = 0;
-        resetPrefixButton = createStyledButton("重置", new Color(255, 152, 0));
+        resetPrefixButton = createStyledButton(I18nManager.getInstance().getText("button.reset"), new Color(255, 152, 0));
         resetPrefixButton.setPreferredSize(new Dimension(70, 25));
         prefixPanel.add(resetPrefixButton, gbc);
         
         gbc.gridx = 3; gbc.gridy = 1;
-        applyPrefixButton = createStyledButton("应用", new Color(46, 125, 50));
+        applyPrefixButton = createStyledButton(I18nManager.getInstance().getText("button.apply"), new Color(46, 125, 50));
         applyPrefixButton.setPreferredSize(new Dimension(70, 25));
         prefixPanel.add(applyPrefixButton, gbc);
         
@@ -298,7 +295,7 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
         gbc.gridx = 0; gbc.gridy = 2;
         gbc.gridwidth = 4;
         gbc.fill = GridBagConstraints.HORIZONTAL;
-        prefixStatusLabel = new JLabel("前缀状态: 使用系统默认");
+        prefixStatusLabel = new JLabel(I18nManager.getInstance().getText("settings.prefix.status") + ": " + I18nManager.getInstance().getText("settings.prefix.status.default"));
         prefixStatusLabel.setFont(new Font("微软雅黑", Font.PLAIN, 11));
         prefixStatusLabel.setForeground(new Color(100, 100, 100));
         prefixPanel.add(prefixStatusLabel, gbc);
@@ -306,10 +303,7 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
         // 说明文本
         gbc.gridy = 3;
         JTextArea prefixDescArea = new JTextArea(4, 50);
-        prefixDescArea.setText("命令前缀用于在操作系统中执行工具命令。\n" +
-                              "Windows系统默认: cmd /c\n" +
-                              "Linux/Unix系统默认: /bin/bash -c\n" +
-                              "您可以根据需要自定义前缀，如使用PowerShell: powershell -Command");
+        prefixDescArea.setText(I18nManager.getInstance().getText("desc.command.prefix"));
         prefixDescArea.setEditable(false);
         prefixDescArea.setBackground(getBackground());
         prefixDescArea.setFont(new Font("微软雅黑", Font.PLAIN, 11));
@@ -398,7 +392,7 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
         JPanel infoPanel = new JPanel(new GridBagLayout());
         infoPanel.setBorder(BorderFactory.createTitledBorder(
             BorderFactory.createEtchedBorder(),
-            "插件信息",
+            I18nManager.getInstance().getText("settings.plugin.title"),
             TitledBorder.LEFT,
             TitledBorder.TOP,
             new Font("微软雅黑", Font.BOLD, 12)
@@ -410,7 +404,7 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
         
         // 插件名称
         gbc.gridx = 0; gbc.gridy = 0;
-        JLabel nameLabel = new JLabel("插件名称:");
+        JLabel nameLabel = new JLabel(I18nManager.getInstance().getText("settings.plugin.name") + ":");
         nameLabel.setFont(new Font("微软雅黑", Font.BOLD, 12));
         infoPanel.add(nameLabel, gbc);
         
@@ -421,7 +415,7 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
         
         // 版本信息
         gbc.gridx = 0; gbc.gridy = 1;
-        JLabel versionLabelTitle = new JLabel("版本:");
+        JLabel versionLabelTitle = new JLabel(I18nManager.getInstance().getText("settings.plugin.version") + ":");
         versionLabelTitle.setFont(new Font("微软雅黑", Font.BOLD, 12));
         infoPanel.add(versionLabelTitle, gbc);
         
@@ -432,7 +426,7 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
         
         // 作者信息
         gbc.gridx = 0; gbc.gridy = 2;
-        JLabel authorLabelTitle = new JLabel("作者:");
+        JLabel authorLabelTitle = new JLabel(I18nManager.getInstance().getText("settings.plugin.author") + ":");
         authorLabelTitle.setFont(new Font("微软雅黑", Font.BOLD, 12));
         infoPanel.add(authorLabelTitle, gbc);
         
@@ -466,30 +460,24 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
      * 创建按钮事件监听器
      */
     private ActionListener createButtonActionListener(String buttonText) {
+        I18nManager i18n = I18nManager.getInstance();
         return e -> {
-            switch (buttonText) {
-                case "导入配置":
-                    importConfiguration();
-                    break;
-                case "导出配置":
-                    exportConfiguration();
-                    break;
-                case "重置配置":
-                    resetConfiguration();
-                    break;
-                case "浏览":
-                    browseToolDirectory();
-                    break;
-                case "应用":
-                    if (e.getSource() == applyDirectoryButton) {
-                        applyToolDirectory();
-                    } else if (e.getSource() == applyPrefixButton) {
-                        applyCommandPrefix();
-                    }
-                    break;
-                case "重置":
-                    resetCommandPrefix();
-                    break;
+            if (buttonText.equals(i18n.getText("settings.config.import"))) {
+                importConfiguration();
+            } else if (buttonText.equals(i18n.getText("settings.config.export"))) {
+                exportConfiguration();
+            } else if (buttonText.equals(i18n.getText("settings.config.reset"))) {
+                resetConfiguration();
+            } else if (buttonText.equals(i18n.getText("button.browse"))) {
+                browseToolDirectory();
+            } else if (buttonText.equals(i18n.getText("button.apply"))) {
+                if (e.getSource() == applyDirectoryButton) {
+                    applyToolDirectory();
+                } else if (e.getSource() == applyPrefixButton) {
+                    applyCommandPrefix();
+                }
+            } else if (buttonText.equals(i18n.getText("button.reset"))) {
+                resetCommandPrefix();
             }
         };
     }
@@ -921,8 +909,6 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
             languageComboBox.removeActionListener(languageActionListener);
             
             try {
-                I18nManager.SupportedLanguage currentSelected = (I18nManager.SupportedLanguage) languageComboBox.getSelectedItem();
-                
                 languageComboBox.removeAllItems();
                 I18nManager i18n = I18nManager.getInstance();
                 for (I18nManager.SupportedLanguage language : i18n.getSupportedLanguages()) {

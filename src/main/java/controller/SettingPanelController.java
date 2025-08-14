@@ -1,12 +1,10 @@
 package controller;
 
 import manager.ConfigManager;
-import model.Config;
 import model.SettingModel;
 import util.I18nManager;
 import executor.ToolExecutor;
 
-import javax.swing.JOptionPane;
 import java.awt.Component;
 import java.io.File;
 
@@ -137,17 +135,8 @@ public class SettingPanelController {
                 }
             }
             
-            // 备份当前配置
-            String backupPath = settingModel.backupCurrentConfig();
-            if (backupPath != null) {
-                logInfo("配置文件已备份: " + backupPath);
-            }
-            
-            // 导入配置
-            settingModel.importConfiguration(configFilePath);
-            
-            // 重新加载配置
-            ConfigManager.getInstance().reloadConfig();
+            // 导入配置（自动保存到用户目录）
+            ConfigManager.getInstance().importConfig(configFilePath);
             
             updateStatus("配置导入成功: " + new File(configFilePath).getName(), StatusType.SUCCESS);
             logInfo("配置文件导入成功: " + configFilePath);
@@ -181,11 +170,8 @@ public class SettingPanelController {
      */
     public void exportConfiguration(String exportFilePath) {
         try {
-            // 获取当前配置
-            Config config = ConfigManager.getInstance().getConfig();
-            
             // 导出配置
-            settingModel.exportConfiguration(exportFilePath, config);
+            ConfigManager.getInstance().exportConfig(exportFilePath);
             
             updateStatus("配置导出成功: " + new File(exportFilePath).getName(), StatusType.SUCCESS);
             logInfo("配置文件导出成功: " + exportFilePath);
@@ -227,17 +213,8 @@ public class SettingPanelController {
                 }
             }
             
-            // 备份当前配置
-            String backupPath = settingModel.backupCurrentConfig();
-            if (backupPath != null) {
-                logInfo("配置文件已备份: " + backupPath);
-            }
-            
-            // 重置配置
-            settingModel.resetConfiguration();
-            
-            // 重新加载配置
-            ConfigManager.getInstance().reloadConfig();
+            // 重置配置为默认配置
+            ConfigManager.getInstance().resetToDefaultConfig();
             
             updateStatus("配置已重置为默认设置", StatusType.INFO);
             logInfo("配置文件已重置为默认设置");

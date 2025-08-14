@@ -7,7 +7,6 @@ import model.ThirdPartyTool;
 import model.WebSite;
 import manager.ConfigManager;
 import manager.ApiManager;
-import util.JsonUtil;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -985,14 +984,15 @@ public class ToolController {
     }
     
     /**
-     * 保存配置
+     * 保存配置到用户目录
      */
     private void saveConfiguration() {
         try {
-                         // ConfigManager暂未实现saveConfig方法，这里仅记录日志
+            ConfigManager.getInstance().saveConfig();
             logInfo("配置保存成功");
         } catch (Exception e) {
             logError("配置保存失败: " + e.getMessage());
+            throw new RuntimeException("配置保存失败: " + e.getMessage(), e);
         }
     }
     
