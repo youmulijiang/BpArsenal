@@ -36,4 +36,7 @@
     <!-- https://mvnrepository.com/artifact/org.freemarker/freemarker -->
 
   </dependencies>
+  <build>
+    <finalName>my-custom-jar-name</finalName>
+  </build>
 </project>

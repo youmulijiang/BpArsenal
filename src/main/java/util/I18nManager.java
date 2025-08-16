@@ -4,6 +4,7 @@ import manager.ApiManager;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.text.MessageFormat;
 import java.util.Locale;
 import java.util.Properties;
 import java.util.ResourceBundle;
@@ -259,7 +260,8 @@ public enum I18nManager {
         }
         
         try {
-            return String.format(text, params);
+            // 使用MessageFormat处理{0}, {1}格式的占位符
+            return MessageFormat.format(text, params);
         } catch (Exception e) {
             logError("格式化国际化文本失败: " + key + ", 错误: " + e.getMessage());
             return text;

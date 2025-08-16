@@ -9,6 +9,8 @@
 
 BpArsenal is a Burp Suite plugin developed based on the Montoya API, designed to quickly convert HTTP requests into command-line tool executions, launch third-party tools, and open related websites to improve penetration testing efficiency.
 
+![image-20250816090746076](img/image-20250816090746076.png)
+
 ## 🚀 Key Features
 
 ### 1. HTTP Tool Integration

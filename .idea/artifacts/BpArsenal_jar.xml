@@ -1,5 +1,5 @@
 <component name="ArtifactManager">
-  <artifact type="jar" name="BpArsenal-v1.0.1-alpha:jar">
+  <artifact type="jar" name="BpArsenal:jar">
     <output-path>$PROJECT_DIR$/out/artifacts/BpArsenal_jar</output-path>
     <root id="archive" name="BpArsenal.jar">
       <element id="module-output" name="BpArsenal" />

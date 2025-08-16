@@ -858,9 +858,9 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
      */
     private void updateFilterStatus() {
         I18nManager statusI18n = I18nManager.getInstance();
-        String title = statusI18n.getText("arsenal.dialog.title.pattern", 
-                                    String.valueOf(filteredToolCommands.size()), 
-                                    String.valueOf(allToolCommands.size()));
+        String title = statusI18n.getText("arsenal.dialog.title.pattern",
+                String.valueOf(filteredToolCommands.size()),
+                String.valueOf(allToolCommands.size()));
         setTitle(title);
     }
     
