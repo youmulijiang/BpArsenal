@@ -1,5 +1,6 @@
 import burp.api.montoya.BurpExtension;
 import burp.api.montoya.MontoyaApi;
+import burp.api.montoya.extension.ExtensionUnloadingHandler;
 import manager.ApiManager;
 import manager.ConfigManager;
 import view.MainPanel;
@@ -18,14 +19,24 @@ public class BpArsenal implements BurpExtension {
             // 设置扩展名称
             api.extension().setName("BpArsenal - hunter武器库");
 
+            api.logging().logToOutput(String.format(
+    "[   Pwn The Planet, One HTTP at a Time  ]\n" +
+    "[#] Author: youmulijiang\n" +
+    "[#] Github: https://github.com/youmulijiang/BpArsenal\n" +
+    "[#] Version: 1.0.0\n" +
+    "[#] Desc: Burp Suite Arsenal plugin - one-click convert HTTP requests to CLI tools, launch third-party tools, and access security bookmarks.\n"
+));
+
             // 初始化API管理器
             ApiManager.getInstance().setApi(api);
 
             // 初始化配置管理器
             ConfigManager.getInstance();
 
-            // 创建主面板（会自动初始化所有子面板）
+            // 创建主面板（会自动初始化所有子面板
             MainPanel mainPanel = new MainPanel();
+
+            api = ApiManager.getInstance().getApi();
 
             // 注册主面板到Burp Suite
             api.userInterface().registerSuiteTab("BpArsenal", mainPanel);
@@ -75,3 +86,4 @@ public class BpArsenal implements BurpExtension {
         }
     }
 }
+

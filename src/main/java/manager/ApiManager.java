@@ -1,6 +1,7 @@
 package manager;
 
 import burp.api.montoya.MontoyaApi;
+import burp.api.montoya.logging.Logging;
 
 /**
  * API管理器，负责MontoyaApi实例的全局管理
@@ -9,6 +10,7 @@ import burp.api.montoya.MontoyaApi;
 public class ApiManager {
     private static ApiManager instance;
     private MontoyaApi api;
+    private Logging logging;
     
     /**
      * 私有构造函数，防止外部实例化
@@ -33,6 +35,10 @@ public class ApiManager {
     public void setApi(MontoyaApi api) {
         this.api = api;
     }
+
+    public void setLogging(Logging logging) {
+        this.api.logging();
+    }
     
     /**
      * 获取MontoyaApi实例
@@ -45,6 +51,7 @@ public class ApiManager {
         }
         return this.api;
     }
+
     
     /**
      * 检查API是否已初始化
@@ -52,5 +59,15 @@ public class ApiManager {
      */
     public boolean isInitialized() {
         return api != null;
+    }
+
+    private void logToOutput(String message,Boolean enabled) {
+        if (!enabled) {
+            this.api.logging().logToOutput(message);
+        }
+    }
+
+    private void logToOutput(String message) {
+        this.api.logging().logToOutput(message);
     }
 } 

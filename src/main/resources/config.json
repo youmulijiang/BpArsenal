@@ -318,24 +318,7 @@
       ]
     }
   ],
-  "thirtyPart": [
-    {
-      "type":"exploit",
-      "content":[
-        {
-          "toolName":"dirsearch",
-          "startCommand":"D:\\tools\\dirsearch\\dirsearch.exe",
-          "favor":true,
-          "autoStart":true
-        },
-        {
-          "toolName":"burpsuite",
-          "startCommand":"java -jar D:\\tools\\burpsuite\\burpsuite_pro.jar",
-          "favor":true,
-          "autoStart":false
-        }
-      ]
-    },
+  "thirtyPart": [ 
     {
       "type":"编辑器",
       "content":[

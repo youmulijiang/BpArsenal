@@ -356,6 +356,7 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
             I18nManager.SupportedLanguage selected = (I18nManager.SupportedLanguage) languageComboBox.getSelectedItem();
             if (selected != null) {
                 controller.setLanguage(selected);
+                refreshAllSettings();
             }
         };
         
