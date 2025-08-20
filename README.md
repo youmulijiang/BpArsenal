@@ -369,7 +369,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 **youmulijiang** 
 
 I'm just an ordinary security developer.If this project helps you, please click the ⭐ in the top-right corner.
-Rika-chan loves stars the most! ヾ(≧▽≦*)o*
+youmulijiang loves stars the most! ヾ(≧▽≦*)o*
 
 ---
 
