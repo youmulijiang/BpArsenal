@@ -6,13 +6,18 @@
 ![API](https://img.shields.io/badge/API-Montoya-green.svg)
 
 **中文 | [English](README.md)**
-
+![logo](img/logo.png)
 BpArsenal 是一个基于 Montoya API 开发的 Burp Suite 插件，旨在快速将 HTTP 请求转化为命令行工具执行、启动第三方工具和打开相关网站，提高渗透测试效率。
 
 
 
-![image-20250816090746076](img/image-20250816090746076.png)
-
+| 界面名称                         | 界面展示                                             |
+|------------------------------|--------------------------------------------------|
+| http tool(报文转化工具界面)          | ![http_tool](img/http_tool_img.png)              |
+| thirdy-party tool  (第三方工具界面) | ![thirdy_party_tool](img/thirtdy_party_tool_img.png) |
+| website (第三方网站面板)            | ![website](img/website_tool_img.png)             |
+| setting (设置界面)               | ![setting](img/setting_tool_img.png)             |               
+| shell_exec(执行命令界面)           |![shell_exec](img/shell_exec_img.png)|
 
 
 ## 🚀 主要功能
@@ -178,20 +183,24 @@ HTTP 工具支持将 Burp Suite 中的请求转换为命令行工具执行：
 **配置示例:**
 
 ```json
+{
+  "thirtyPart": [
     {
-      "type": "exploit",
-      "content": [
-    {
-      "toolName": "dirsearch",
-      "startCommand": "D:\\tools\\dirsearch\\dirsearch.exe",
-      "favor": true,
-      "autoStart": false
-    },
+      "type":"编辑器",
+      "content":[
         {
-          "toolName": "burpsuite",
-          "startCommand": "java -jar D:\\tools\\burpsuite\\burpsuite_pro.jar",
-          "favor": true,
-          "autoStart": false
+          "toolName":"VSCode",
+          "startCommand":"code",
+          "favor":true,
+          "autoStart":false
+        },
+        {
+          "toolName":"Notepad++",
+          "startCommand":"notepad++",
+          "favor":false,
+          "autoStart":false
+        }
+      ]
     }
   ]
 }

@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<project version="4">
-  <component name="ProjectSettingsService">
-    <option name="localesDirectory" value="" />
-    <option name="parserStrategy" value="PROPERTIES" />
-    <option name="filePattern" value="*.properties" />
-    <option name="defaultNamespace" value="" />
-  </component>
-</project>

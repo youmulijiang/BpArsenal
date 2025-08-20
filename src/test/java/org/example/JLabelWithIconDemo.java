@@ -1,3 +1,5 @@
+package org.example;
+
 import javax.swing.*;
 import java.awt.*;
 
@@ -7,7 +9,7 @@ import java.awt.*;
  */
 public class JLabelWithIconDemo {
 
-    private static final String ICON_PATH = "java-icon.png"; // 换成你自己的图标路径
+    private static final String ICON_PATH = "D:\\programming\\武器开发\\burpExtend\\BpArsenal\\img\\logo.png"; // 换成你自己的图标路径
     private static final String TEXT      = "Hello Swing";
 
     public static void main(String[] args) {

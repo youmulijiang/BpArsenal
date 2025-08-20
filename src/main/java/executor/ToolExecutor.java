@@ -150,11 +150,11 @@ public class ToolExecutor {
                 String extensionDir = extensionFile.getParent();
                 
                 // 创建临时脚本目录
-                tempScriptDir = extensionDir + File.separator + "temp_scripts";
-                File scriptDir = new File(tempScriptDir);
-                if (!scriptDir.exists()) {
-                    scriptDir.mkdirs();
-                }
+//                tempScriptDir = extensionDir + File.separator + "temp_scripts";
+//                File scriptDir = new File(tempScriptDir);
+//                if (!scriptDir.exists()) {
+//                    scriptDir.mkdirs();
+//                }
                 
                 if (ApiManager.getInstance().isInitialized()) {
                     ApiManager.getInstance().getApi().logging().logToOutput(

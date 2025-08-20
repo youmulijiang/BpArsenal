@@ -7,9 +7,17 @@
 
 **[中文](README_CN.md) | English**
 
+![logo](img/logo.png)
 BpArsenal is a Burp Suite plugin developed based on the Montoya API, designed to quickly convert HTTP requests into command-line tool executions, launch third-party tools, and open related websites to improve penetration testing efficiency.
 
-![image-20250816090746076](img/image-20250816090746076.png)
+| Interface Name   | Interface Display                               |
+| ---------------- |-------------------------------------------------|
+| http tool        | ![http\_tool](img/http_tool_img.png)            |
+| third-party tool |  ![thirdy_party_tool](img/thirtdy_party_tool_img.png)                                                |
+| website          | ![website](img/website_tool_img.png)            |
+| setting          | ![setting](img/setting_tool_img.png)            |
+| shell\_exec      | ![shell\_exec](img/shell_exec_img.png)          |
+
 
 ## 🚀 Key Features
 
@@ -150,13 +158,19 @@ Third-party tools are used to quickly launch commonly used penetration testing t
 {
   "thirtyPart": [
     {
-      "type": "Tool Category",
-      "content": [
+      "type":"编辑器",
+      "content":[
         {
-          "toolName": "Tool Name",
-          "startCommand": "Launch Command",
-          "favor": true/false,
-          "autoStart": true/false
+          "toolName":"VSCode",
+          "startCommand":"code",
+          "favor":true,
+          "autoStart":false
+        },
+        {
+          "toolName":"Notepad++",
+          "startCommand":"notepad++",
+          "favor":false,
+          "autoStart":false
         }
       ]
     }
@@ -175,21 +189,7 @@ Third-party tools are used to quickly launch commonly used penetration testing t
 
 ```json
 {
-  "type": "exploit",
-  "content": [
-    {
-      "toolName": "dirsearch",
-      "startCommand": "D:\\tools\\dirsearch\\dirsearch.exe",
-      "favor": true,
-      "autoStart": false
-    },
-    {
-      "toolName": "burpsuite",
-      "startCommand": "java -jar D:\\tools\\burpsuite\\burpsuite_pro.jar",
-      "favor": true,
-      "autoStart": false
-    }
-  ]
+  
 }
 ```
 

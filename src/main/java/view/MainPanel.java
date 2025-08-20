@@ -3,8 +3,10 @@ package view;
 import manager.ConfigManager;
 import manager.ApiManager;
 import util.I18nManager;
+
 import javax.swing.*;
 import java.awt.*;
+import java.net.URL;
 
 /**
  * 主面板UI组件 (View层)
@@ -102,7 +104,7 @@ public class MainPanel extends JPanel implements I18nManager.LanguageChangeListe
         
         // 创建状态栏
         JPanel statusPanel = createStatusPanel();
-        add(statusPanel, BorderLayout.SOUTH);
+//        add(statusPanel, BorderLayout.SOUTH);
         
         // 设置面板首选大小
         setPreferredSize(new Dimension(900, 700));
@@ -113,6 +115,7 @@ public class MainPanel extends JPanel implements I18nManager.LanguageChangeListe
      * @return 标题面板
      */
     private JPanel createTitlePanel() {
+
         JPanel titlePanel = new JPanel(new BorderLayout());
         titlePanel.setBorder(BorderFactory.createEmptyBorder(10, 15, 10, 15));
         titlePanel.setBackground(new Color(245, 245, 245));
@@ -144,6 +147,17 @@ public class MainPanel extends JPanel implements I18nManager.LanguageChangeListe
         
         return titlePanel;
     }
+
+    private ImageIcon getImageIcon() {
+        ClassLoader classLoader = getClass().getClassLoader();
+        URL imageURL;
+        imageURL = classLoader.getResource("logo/logo.png");
+        ImageIcon originalIcon = new ImageIcon(imageURL);
+        Image originalImage = originalIcon.getImage();
+        Image scaledImage = originalImage.getScaledInstance(35, 30, Image.SCALE_FAST);
+        return new ImageIcon(scaledImage);
+    }
+
     
     /**
      * 创建状态栏
