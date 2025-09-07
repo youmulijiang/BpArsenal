@@ -418,8 +418,8 @@ public class ToolController {
             Config config = ConfigManager.getInstance().getConfig();
             List<String> categories = new ArrayList<>();
             
-            // 添加"全部"选项
-            categories.add("全部");
+            // 添加"全部"选项 - 使用国际化文本
+            categories.add(util.I18nManager.getInstance().getText("filter.all"));
             
             if (config.getHttpTool() != null) {
                 for (Config.HttpToolCategory category : config.getHttpTool()) {
@@ -440,7 +440,7 @@ public class ToolController {
             logError("获取HTTP工具分类失败: " + e.getMessage());
             // 返回默认分类
             List<String> defaultCategories = new ArrayList<>();
-            defaultCategories.add("全部");
+            defaultCategories.add(util.I18nManager.getInstance().getText("filter.all"));
             defaultCategories.add("SQL注入");
             defaultCategories.add("XSS检测");
             defaultCategories.add("目录扫描");
@@ -461,8 +461,8 @@ public class ToolController {
             Config config = ConfigManager.getInstance().getConfig();
             List<String> categories = new ArrayList<>();
             
-            // 添加"全部"选项
-            categories.add("全部");
+            // 添加"全部"选项 - 使用国际化文本
+            categories.add(util.I18nManager.getInstance().getText("filter.all"));
             
             if (config.getWebSite() != null) {
                 for (Config.WebSiteCategory category : config.getWebSite()) {
@@ -483,10 +483,10 @@ public class ToolController {
             logError("获取网站分类失败: " + e.getMessage());
             // 返回默认分类
             List<String> defaultCategories = new ArrayList<>();
-            defaultCategories.add("全部");
+            defaultCategories.add(util.I18nManager.getInstance().getText("filter.all"));
             defaultCategories.add("OSINT");
             defaultCategories.add("Recon");
-            defaultCategories.add("漏洞库");
+            defaultCategories.add(util.I18nManager.getInstance().getText("websites.category.vulnerability.db"));
             return defaultCategories;
         }
     }
@@ -500,8 +500,8 @@ public class ToolController {
             Config config = ConfigManager.getInstance().getConfig();
             List<String> categories = new ArrayList<>();
             
-            // 添加"全部"选项
-            categories.add("全部");
+            // 添加"全部"选项 - 使用国际化文本
+            categories.add(util.I18nManager.getInstance().getText("filter.all"));
             
             if (config.getThirtyPart() != null) {
                 for (Config.ThirdPartyToolCategory category : config.getThirtyPart()) {
@@ -522,9 +522,9 @@ public class ToolController {
             logError("获取第三方工具分类失败: " + e.getMessage());
             // 返回默认分类
             List<String> defaultCategories = new ArrayList<>();
-            defaultCategories.add("全部");
+            defaultCategories.add(util.I18nManager.getInstance().getText("filter.all"));
             defaultCategories.add("exploit");
-            defaultCategories.add("编辑器");
+            defaultCategories.add(util.I18nManager.getInstance().getText("thirdparty.category.editor"));
             return defaultCategories;
         }
     }
