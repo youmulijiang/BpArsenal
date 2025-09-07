@@ -1,5 +1,6 @@
 package controller;
 
+import burp.api.montoya.MontoyaApi;
 import model.HttpTool;
 import model.HttpToolCommand;
 import util.I18nManager;
@@ -392,7 +393,7 @@ public class ToolPanelController {
      * 记录错误日志
      */
     private void logError(String message) {
-        System.err.println("ToolPanelController: " + message);
+        JOptionPane.showMessageDialog(null, message, "<UNK>", JOptionPane.ERROR_MESSAGE);
     }
     
     /**

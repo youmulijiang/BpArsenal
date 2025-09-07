@@ -238,15 +238,22 @@ public class ThirdPartyPanel extends JPanel implements I18nManager.LanguageChang
         TableRendererFactory.applyTableStyle(toolTable);
         
         // 设置列宽
+        // setupColumnWidths();
+        
+        // 设置渲染器
+        configureTableRenderers();
+    }
+    
+    /**
+     * 设置列宽
+     */
+    private void setupColumnWidths() {
         TableColumnModel columnModel = toolTable.getColumnModel();
         columnModel.getColumn(0).setPreferredWidth(120);  // 工具名称
         columnModel.getColumn(1).setPreferredWidth(350);  // 启动命令
         columnModel.getColumn(2).setPreferredWidth(60);   // 收藏
         columnModel.getColumn(3).setPreferredWidth(80);   // 分类
         columnModel.getColumn(4).setPreferredWidth(80);   // 自启动
-        
-        // 设置渲染器
-        configureTableRenderers();
     }
     
     /**
@@ -618,6 +625,9 @@ public class ThirdPartyPanel extends JPanel implements I18nManager.LanguageChang
             tableModel.updateColumnNames();
             tableModel.fireTableStructureChanged();
             
+            // 重新设置列宽（因为fireTableStructureChanged会重置列宽）
+            setupColumnWidths();
+            
             // 重新设置渲染器（因为fireTableStructureChanged会重置所有列）
             configureTableRenderers();
         }
@@ -625,8 +635,10 @@ public class ThirdPartyPanel extends JPanel implements I18nManager.LanguageChang
         // 更新搜索范围下拉框选项
         updateSearchColumnFilter();
         
-        // 重新加载分类选项
-        loadCategoryOptions();
+        // 延迟重新加载分类选项，确保配置已完全加载
+        SwingUtilities.invokeLater(() -> {
+            loadCategoryOptions();
+        });
     }
 }
 
