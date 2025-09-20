@@ -407,6 +407,16 @@ public class ToolPanel extends JPanel implements
             }
             categoryFilter.setSelectedIndex(0);
         } catch (Exception e) {
+            // 异常处理：添加默认的国际化分类选项
+            I18nManager i18n = I18nManager.getInstance();
+            categoryFilter.removeAllItems();
+            categoryFilter.addItem(i18n.getText("filter.all"));
+            categoryFilter.addItem(i18n.getText("tools.category.sql.injection"));
+            categoryFilter.addItem(i18n.getText("tools.category.xss"));
+            categoryFilter.addItem(i18n.getText("tools.category.directory.scan"));
+            categoryFilter.addItem(i18n.getText("tools.category.vulnerability.scan"));
+            categoryFilter.addItem(i18n.getText("tools.category.brute.force"));
+            categoryFilter.setSelectedIndex(0);
             System.err.println("ToolPanel: 加载分类选项失败: " + e.getMessage());
         }
     }
@@ -596,8 +606,10 @@ public class ToolPanel extends JPanel implements
         // 更新搜索范围下拉框选项
         updateSearchColumnFilter();
         
-        // 重新加载分类选项
-        loadCategoryOptions();
+        // 延迟重新加载分类选项，确保配置已完全加载
+        SwingUtilities.invokeLater(() -> {
+            loadCategoryOptions();
+        });
     }
     
     /**

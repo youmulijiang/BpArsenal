@@ -592,8 +592,10 @@ public class WebsitePanel extends JPanel implements I18nManager.LanguageChangeLi
         // 更新搜索范围下拉框选项
         updateSearchColumnFilter();
         
-        // 重新加载分类选项
-        loadCategoryOptions();
+        // 延迟重新加载分类选项，确保配置已完全加载
+        SwingUtilities.invokeLater(() -> {
+            loadCategoryOptions();
+        });
     }
 }
 
