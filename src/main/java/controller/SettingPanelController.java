@@ -424,16 +424,15 @@ public class SettingPanelController {
             view.updateToolDirectory(toolDirectory);
         }
         
+        I18nManager i18n = I18nManager.getInstance();
         if (!toolDirectory.isEmpty()) {
             File directory = new File(toolDirectory);
             if (directory.exists() && directory.isDirectory()) {
-                I18nManager i18n = I18nManager.getInstance();
                 updateDirectoryStatus(i18n.getText("status.directory.valid", toolDirectory), StatusType.SUCCESS);
             } else {
                 updateDirectoryStatus(i18n.getText("status.directory.invalid", toolDirectory), StatusType.ERROR);
             }
         } else {
-            I18nManager i18n = I18nManager.getInstance();
             updateDirectoryStatus(i18n.getText("status.directory.not.set"), StatusType.INFO);
         }
     }
@@ -453,8 +452,8 @@ public class SettingPanelController {
             }
         }
         
+        I18nManager i18n = I18nManager.getInstance();
         if (!commandPrefix.isEmpty()) {
-            I18nManager i18n = I18nManager.getInstance();
             updatePrefixStatus(i18n.getText("status.prefix.custom.info", commandPrefix), StatusType.SUCCESS);
         } else {
             updatePrefixStatus(i18n.getText("status.prefix.default.info", defaultPrefix), StatusType.INFO);

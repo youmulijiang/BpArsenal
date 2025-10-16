@@ -5,6 +5,7 @@ import model.HttpToolCommand;
 import model.ThirdPartyTool;
 import model.SettingModel;
 import manager.ApiManager;
+import util.I18nManager;
 import burp.api.montoya.http.message.requests.HttpRequest;
 import burp.api.montoya.http.message.responses.HttpResponse;
 import java.io.IOException;
@@ -738,8 +739,6 @@ public class ToolExecutor {
                 
                 if (callback != null) {
                     callback.onOutputReceived(i18n.getText("tool.execution.command.started.directly"));
-                    String environment = isWindows() ? i18n.getText("tool.execution.windows.cmd") : 
-                                       (isMac() ? i18n.getText("tool.execution.macos.terminal") : i18n.getText("tool.execution.linux.terminal"));
                     callback.onOutputReceived(i18n.getText("tool.execution.environment") + ": " + environment);
                     if (finalWorkDir != null) {
                         callback.onOutputReceived(i18n.getText("tool.execution.work.dir") + ": " + finalWorkDir);

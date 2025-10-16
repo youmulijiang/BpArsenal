@@ -3,6 +3,7 @@ import burp.api.montoya.MontoyaApi;
 import burp.api.montoya.extension.ExtensionUnloadingHandler;
 import manager.ApiManager;
 import manager.ConfigManager;
+import util.I18nManager;
 import view.MainPanel;
 import view.menu.ArsenalMenuProvider;
 import view.contextmenu.ArsenalContextMenuProvider;

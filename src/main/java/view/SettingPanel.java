@@ -778,9 +778,9 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
     
     @Override
     public boolean confirmImportConfiguration(String fileName) {
+        I18nManager i18n = I18nManager.getInstance();
         int result = JOptionPane.showConfirmDialog(
             this,
-            I18nManager i18n = I18nManager.getInstance();
             i18n.getText("confirm.import.config.message", fileName),
             i18n.getText("confirm.import.config.title"),
             JOptionPane.YES_NO_OPTION,
@@ -791,9 +791,9 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
     
     @Override
     public boolean confirmResetConfiguration() {
+        I18nManager i18n = I18nManager.getInstance();
         int result = JOptionPane.showConfirmDialog(
             this,
-            I18nManager i18n = I18nManager.getInstance();
             i18n.getText("confirm.reset.config.message"),
             i18n.getText("confirm.reset.config.title"),
             JOptionPane.YES_NO_OPTION,
@@ -804,9 +804,9 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
     
     @Override
     public boolean confirmCreateDirectory(String directoryPath) {
+        I18nManager i18n = I18nManager.getInstance();
         int result = JOptionPane.showConfirmDialog(
             this,
-            I18nManager i18n = I18nManager.getInstance();
             i18n.getText("confirm.create.directory.message", directoryPath),
             i18n.getText("confirm.create.directory.title"),
             JOptionPane.YES_NO_OPTION,
@@ -817,9 +817,9 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
     
     @Override
     public void showImportSuccessMessage(String fileName) {
+        I18nManager i18n = I18nManager.getInstance();
         JOptionPane.showMessageDialog(
             this,
-            I18nManager i18n = I18nManager.getInstance();
             i18n.getText("success.import.config.message"),
             i18n.getText("success.import.config.title"),
             JOptionPane.INFORMATION_MESSAGE
@@ -828,9 +828,9 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
     
     @Override
     public void showImportErrorMessage(String errorMessage) {
+        I18nManager i18n = I18nManager.getInstance();
         JOptionPane.showMessageDialog(
             this,
-            I18nManager i18n = I18nManager.getInstance();
             i18n.getText("failed.import.config.message", errorMessage),
             i18n.getText("failed.import.config.title"),
             JOptionPane.ERROR_MESSAGE
@@ -839,9 +839,10 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
     
     @Override
     public void showExportSuccessMessage(String filePath) {
+        I18nManager i18n = I18nManager.getInstance();
+
         JOptionPane.showMessageDialog(
             this,
-            I18nManager i18n = I18nManager.getInstance();
             i18n.getText("success.export.config.message", filePath),
             i18n.getText("success.export.config.title"),
             JOptionPane.INFORMATION_MESSAGE
@@ -850,9 +851,10 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
     
     @Override
     public void showExportErrorMessage(String errorMessage) {
+        I18nManager i18n = I18nManager.getInstance();
+
         JOptionPane.showMessageDialog(
             this,
-            I18nManager i18n = I18nManager.getInstance();
             i18n.getText("failed.export.config.message", errorMessage),
             i18n.getText("failed.export.config.title"),
             JOptionPane.ERROR_MESSAGE
@@ -861,9 +863,10 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
     
     @Override
     public void showResetSuccessMessage() {
+        I18nManager i18n = I18nManager.getInstance();
+
         JOptionPane.showMessageDialog(
             this,
-            I18nManager i18n = I18nManager.getInstance();
             i18n.getText("success.reset.config.message"),
             i18n.getText("success.reset.config.title"),
             JOptionPane.INFORMATION_MESSAGE
@@ -872,9 +875,10 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
     
     @Override
     public void showResetErrorMessage(String errorMessage) {
+        I18nManager i18n = I18nManager.getInstance();
+
         JOptionPane.showMessageDialog(
             this,
-            I18nManager i18n = I18nManager.getInstance();
             i18n.getText("failed.reset.config.message", errorMessage),
             i18n.getText("failed.reset.config.title"),
             JOptionPane.ERROR_MESSAGE
@@ -883,9 +887,10 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
     
     @Override
     public void showDirectorySuccessMessage(String directoryPath) {
+        I18nManager i18n = I18nManager.getInstance();
+
         JOptionPane.showMessageDialog(
             this,
-            I18nManager i18n = I18nManager.getInstance();
             i18n.getText("success.set.directory.message", directoryPath),
             i18n.getText("success.set.directory.title"),
             JOptionPane.INFORMATION_MESSAGE
@@ -894,10 +899,10 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
     
     @Override
     public void showPrefixSuccessMessage(String prefix) {
+        I18nManager i18n = I18nManager.getInstance();
+        String prefixDisplay = (prefix == null || prefix.trim().isEmpty()) ? i18n.getText("success.set.prefix.default") : prefix;
         JOptionPane.showMessageDialog(
             this,
-            I18nManager i18n = I18nManager.getInstance();
-            String prefixDisplay = (prefix == null || prefix.trim().isEmpty()) ? i18n.getText("success.set.prefix.default") : prefix;
             i18n.getText("success.set.prefix.message", prefixDisplay),
             i18n.getText("success.set.prefix.title"),
             JOptionPane.INFORMATION_MESSAGE

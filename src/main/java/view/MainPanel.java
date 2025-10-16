@@ -85,7 +85,7 @@ public class MainPanel extends JPanel implements I18nManager.LanguageChangeListe
         
         // 创建选项卡面板
         tabbedPane = new JTabbedPane();
-        tabbedPane.setFont(new Font("微软雅黑", Font.PLAIN, 12));
+        tabbedPane.setFont(UIManager.getFont("TabbedPane.font"));
         
         // 初始化各个面板
         toolPanel = new ToolPanel();
@@ -122,17 +122,17 @@ public class MainPanel extends JPanel implements I18nManager.LanguageChangeListe
         
         // 标题标签
         titleLabel = new JLabel(I18nManager.getInstance().getText("main.title"));
-        titleLabel.setFont(new Font("微软雅黑", Font.BOLD, 18));
+        titleLabel.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 18));
         titleLabel.setForeground(new Color(51, 51, 51));
         
         // 版本标签
         JLabel versionLabel = new JLabel("v1.0.0");
-        versionLabel.setFont(new Font("微软雅黑", Font.PLAIN, 11));
+        versionLabel.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 11));
         versionLabel.setForeground(new Color(128, 128, 128));
         
         // 刷新按钮
         refreshButton = new JButton(I18nManager.getInstance().getText("button.refresh"));
-        refreshButton.setFont(new Font("微软雅黑", Font.PLAIN, 11));
+        refreshButton.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 11));
         refreshButton.setPreferredSize(new Dimension(80, 25));
         refreshButton.addActionListener(e -> refreshConfiguration());
         
@@ -169,7 +169,7 @@ public class MainPanel extends JPanel implements I18nManager.LanguageChangeListe
         statusPanel.setBackground(new Color(240, 240, 240));
         
         JLabel statusLabel = new JLabel("就绪");
-        statusLabel.setFont(new Font("微软雅黑", Font.PLAIN, 11));
+        statusLabel.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 11));
         statusLabel.setForeground(new Color(100, 100, 100));
         
         statusPanel.add(statusLabel, BorderLayout.WEST);

@@ -11,6 +11,7 @@ import controller.ToolController;
 import executor.ToolExecutor;
 import executor.CommandRenderingStrategy;
 import util.ContextMenuEventHandler;
+import util.I18nManager;
 import util.MenuUtils;
 
 import javax.swing.*;
