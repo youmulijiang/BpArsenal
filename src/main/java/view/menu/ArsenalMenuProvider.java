@@ -68,12 +68,8 @@ public class ArsenalMenuProvider {
                     mainMenu.repaint();
                     
                     // 记录更新日志
-                    ApiManager.getInstance().getApi().logging().logToOutput(
-                            "BpArsenal: 菜单已动态更新");
                     
                 } catch (Exception e) {
-                    ApiManager.getInstance().getApi().logging().logToError(
-                            "BpArsenal: 菜单更新失败 - " + e.getMessage());
                 }
             });
         }
@@ -110,13 +106,9 @@ public class ArsenalMenuProvider {
                         mainMenu.revalidate();
                         mainMenu.repaint();
                         
-                        ApiManager.getInstance().getApi().logging().logToOutput(
-                                "BpArsenal: 工具菜单已更新");
                     }
                     
                 } catch (Exception e) {
-                    ApiManager.getInstance().getApi().logging().logToError(
-                            "BpArsenal: 工具菜单更新失败 - " + e.getMessage());
                 }
             });
         }
@@ -153,13 +145,9 @@ public class ArsenalMenuProvider {
                         mainMenu.revalidate();
                         mainMenu.repaint();
                         
-                        ApiManager.getInstance().getApi().logging().logToOutput(
-                                "BpArsenal: 网站菜单已更新");
                     }
                     
                 } catch (Exception e) {
-                    ApiManager.getInstance().getApi().logging().logToError(
-                            "BpArsenal: 网站菜单更新失败 - " + e.getMessage());
                 }
             });
         }
@@ -312,8 +300,6 @@ public class ArsenalMenuProvider {
                     ToolExecutor.getInstance().executeThirdPartyTool(tool);
                     
                     // 显示启动提示
-                    ApiManager.getInstance().getApi().logging().logToOutput(
-                            "BpArsenal: 已启动工具 - " + tool.getToolName());
                     
                 } catch (Exception e) {
                     JOptionPane.showMessageDialog(null, 
@@ -321,13 +307,9 @@ public class ArsenalMenuProvider {
                             "错误", 
                             JOptionPane.ERROR_MESSAGE);
                     
-                    ApiManager.getInstance().getApi().logging().logToError(
-                            "BpArsenal: 启动工具失败 - " + tool.getToolName() + ": " + e.getMessage());
                 }
             });
         } catch (Exception e) {
-            ApiManager.getInstance().getApi().logging().logToError(
-                    "BpArsenal: 菜单启动工具异常 - " + e.getMessage());
         }
     }
     
@@ -350,8 +332,6 @@ public class ArsenalMenuProvider {
                         Desktop.getDesktop().browse(URI.create(url));
                         
                         // 记录访问日志
-                        ApiManager.getInstance().getApi().logging().logToOutput(
-                                "BpArsenal: 已打开网站 - " + website.getDesc() + " (" + url + ")");
                     } else {
                         JOptionPane.showMessageDialog(null, 
                                 "系统不支持自动打开浏览器\n请手动访问：" + url,
@@ -365,13 +345,9 @@ public class ArsenalMenuProvider {
                             "错误", 
                             JOptionPane.ERROR_MESSAGE);
                     
-                    ApiManager.getInstance().getApi().logging().logToError(
-                            "BpArsenal: 打开网站失败 - " + website.getDesc() + ": " + e.getMessage());
                 }
             });
         } catch (Exception e) {
-            ApiManager.getInstance().getApi().logging().logToError(
-                    "BpArsenal: 菜单打开网站异常 - " + e.getMessage());
         }
     }
     
@@ -387,8 +363,6 @@ public class ArsenalMenuProvider {
                         JOptionPane.INFORMATION_MESSAGE);
             });
         } catch (Exception e) {
-            ApiManager.getInstance().getApi().logging().logToError(
-                    "BpArsenal: 打开工具管理异常 - " + e.getMessage());
         }
     }
     
@@ -404,8 +378,6 @@ public class ArsenalMenuProvider {
                         JOptionPane.INFORMATION_MESSAGE);
             });
         } catch (Exception e) {
-            ApiManager.getInstance().getApi().logging().logToError(
-                    "BpArsenal: 打开网站管理异常 - " + e.getMessage());
         }
     }
     
@@ -425,8 +397,6 @@ public class ArsenalMenuProvider {
                         JOptionPane.INFORMATION_MESSAGE);
             });
         } catch (Exception e) {
-            ApiManager.getInstance().getApi().logging().logToError(
-                    "BpArsenal: 打开主面板异常 - " + e.getMessage());
         }
     }
 } 

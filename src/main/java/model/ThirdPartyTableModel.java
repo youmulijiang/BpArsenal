@@ -105,7 +105,6 @@ public class ThirdPartyTableModel extends AbstractTableModel {
             try {
                 ArsenalMenuProvider.updateToolsMenu();
             } catch (Exception e) {
-                System.err.println("更新菜单失败: " + e.getMessage());
             }
         }
     }

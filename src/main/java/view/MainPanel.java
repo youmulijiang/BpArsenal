@@ -193,9 +193,7 @@ public class MainPanel extends JPanel implements I18nManager.LanguageChangeListe
                 websitePanel.loadData();
             }
             
-            logInfo("配置数据加载完成");
         } catch (Exception e) {
-            logError("加载配置数据失败: " + e.getMessage());
         }
     }
     
@@ -206,7 +204,6 @@ public class MainPanel extends JPanel implements I18nManager.LanguageChangeListe
         try {
             ConfigManager.getInstance().reloadConfig();
             loadData();
-            logInfo("配置已刷新");
             
             // 显示成功提示
             JOptionPane.showMessageDialog(this, 
@@ -215,7 +212,6 @@ public class MainPanel extends JPanel implements I18nManager.LanguageChangeListe
                 JOptionPane.INFORMATION_MESSAGE);
                 
         } catch (Exception e) {
-            logError("刷新配置失败: " + e.getMessage());
             
             // 显示错误提示
             JOptionPane.showMessageDialog(this, 
@@ -230,9 +226,6 @@ public class MainPanel extends JPanel implements I18nManager.LanguageChangeListe
      * @param message 日志消息
      */
     private void logInfo(String message) {
-        if (ApiManager.getInstance().isInitialized()) {
-            ApiManager.getInstance().getApi().logging().logToOutput("BpArsenal UI: " + message);
-        }
     }
     
     /**
@@ -240,8 +233,5 @@ public class MainPanel extends JPanel implements I18nManager.LanguageChangeListe
      * @param message 错误消息
      */
     private void logError(String message) {
-        if (ApiManager.getInstance().isInitialized()) {
-            ApiManager.getInstance().getApi().logging().logToError("BpArsenal UI: " + message);
-        }
     }
 } 

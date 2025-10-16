@@ -69,11 +69,6 @@ public class ToolExecutor {
     public void refreshSettings() {
         if (settingModel != null) {
             settingModel.loadToolSettings();
-            if (ApiManager.getInstance().isInitialized()) {
-                ApiManager.getInstance().getApi().logging().logToOutput(
-                    "BpArsenal: ToolExecutor设置已刷新"
-                );
-            }
         }
     }
     
@@ -89,19 +84,9 @@ public class ToolExecutor {
             String trimmedToolWorkDir = toolWorkDir.trim();
             File toolDir = new File(trimmedToolWorkDir);
             if (toolDir.exists() && toolDir.isDirectory()) {
-                if (ApiManager.getInstance().isInitialized()) {
-                    ApiManager.getInstance().getApi().logging().logToOutput(
-                        "BpArsenal: 使用工具配置的工作目录 - " + trimmedToolWorkDir
-                    );
-                }
                 return trimmedToolWorkDir;
             } else {
-                if (ApiManager.getInstance().isInitialized()) {
-                    ApiManager.getInstance().getApi().logging().logToError(
-                        "BpArsenal: 工具配置的工作目录无效 - " + trimmedToolWorkDir
-                    );
                 }
-            }
         }
         
         // 2. 检查全局设置的工具目录
@@ -111,28 +96,13 @@ public class ToolExecutor {
                 String trimmedGlobalDir = globalToolDir.trim();
                 File globalDir = new File(trimmedGlobalDir);
                 if (globalDir.exists() && globalDir.isDirectory()) {
-                    if (ApiManager.getInstance().isInitialized()) {
-                        ApiManager.getInstance().getApi().logging().logToOutput(
-                            "BpArsenal: 使用全局设置的工具目录 - " + trimmedGlobalDir
-                        );
-                    }
                     return trimmedGlobalDir;
                 } else {
-                    if (ApiManager.getInstance().isInitialized()) {
-                        ApiManager.getInstance().getApi().logging().logToError(
-                            "BpArsenal: 全局设置的工具目录无效 - " + trimmedGlobalDir
-                        );
                     }
-                }
             }
         }
         
         // 3. 都不可用时，返回null表示使用当前目录
-        if (ApiManager.getInstance().isInitialized()) {
-            ApiManager.getInstance().getApi().logging().logToOutput(
-                "BpArsenal: 使用当前目录执行命令"
-            );
-        }
         return null;
     }
     
@@ -156,12 +126,7 @@ public class ToolExecutor {
 //                    scriptDir.mkdirs();
 //                }
                 
-                if (ApiManager.getInstance().isInitialized()) {
-                    ApiManager.getInstance().getApi().logging().logToOutput(
-                        "BpArsenal: 脚本目录初始化成功 - " + tempScriptDir
-                    );
-                }
-            } else {
+                } else {
                 // 如果API未初始化，使用系统临时目录
                 tempScriptDir = System.getProperty("java.io.tmpdir") + File.separator + "bparsenal_scripts";
                 File scriptDir = new File(tempScriptDir);
@@ -177,12 +142,7 @@ public class ToolExecutor {
                 scriptDir.mkdirs();
             }
             
-            if (ApiManager.getInstance().isInitialized()) {
-                ApiManager.getInstance().getApi().logging().logToError(
-                    "BpArsenal: 使用fallback脚本目录 - " + tempScriptDir + ", 原因: " + e.getMessage()
-                );
             }
-        }
     }
     
     /**
@@ -345,18 +305,8 @@ public class ToolExecutor {
             File workDirectory = new File(workDir.trim());
             if (workDirectory.exists() && workDirectory.isDirectory()) {
                 processBuilder.directory(workDirectory);
-                if (ApiManager.getInstance().isInitialized()) {
-                    ApiManager.getInstance().getApi().logging().logToOutput(
-                        "BpArsenal: 设置ProcessBuilder工作目录 - " + workDir
-                    );
+                } else {
                 }
-            } else {
-                if (ApiManager.getInstance().isInitialized()) {
-                    ApiManager.getInstance().getApi().logging().logToError(
-                        "BpArsenal: 工作目录无效，将使用默认目录 - " + workDir
-                    );
-                }
-            }
         }
         
         // 设置环境变量
@@ -375,8 +325,7 @@ public class ToolExecutor {
             String logMsg = workDir != null ? 
                 String.format("直接执行工具: %s (工作目录: %s) - %s", toolName, workDir, command) :
                 String.format("直接执行工具: %s - %s", toolName, command);
-            ApiManager.getInstance().getApi().logging().logToOutput(logMsg);
-        }
+            }
         
         // 异步等待进程完成
         CompletableFuture.runAsync(() -> {
@@ -384,23 +333,12 @@ public class ToolExecutor {
                 int exitCode = process.waitFor();
                 if (ApiManager.getInstance().isInitialized()) {
                     if (exitCode == 0) {
-                        ApiManager.getInstance().getApi().logging().logToOutput(
-                            toolName + " 命令执行完成，退出码: " + exitCode
-                        );
-                    } else {
-                        ApiManager.getInstance().getApi().logging().logToError(
-                            toolName + " 命令执行完成，退出码: " + exitCode
-                        );
-                    }
+                        } else {
+                        }
                 }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
-                if (ApiManager.getInstance().isInitialized()) {
-                    ApiManager.getInstance().getApi().logging().logToError(
-                        toolName + " 命令执行被中断: " + e.getMessage()
-                    );
                 }
-            }
         });
     }
     
@@ -447,12 +385,6 @@ public class ToolExecutor {
         // 设置可执行权限（Linux/Unix）
         if (!isWindows()) {
             scriptFile.setExecutable(true, true);
-        }
-        
-        if (ApiManager.getInstance().isInitialized()) {
-            ApiManager.getInstance().getApi().logging().logToOutput(
-                "BpArsenal: 创建临时脚本 - " + scriptFile.getAbsolutePath()
-            );
         }
         
         return scriptFile;
@@ -632,18 +564,8 @@ public class ToolExecutor {
             File workDirectory = new File(workDir.trim());
             if (workDirectory.exists() && workDirectory.isDirectory()) {
                 processBuilder.directory(workDirectory);
-                if (ApiManager.getInstance().isInitialized()) {
-                    ApiManager.getInstance().getApi().logging().logToOutput(
-                        "BpArsenal: ProcessBuilder 设置工作目录 - " + workDir
-                    );
+                } else {
                 }
-            } else {
-                if (ApiManager.getInstance().isInitialized()) {
-                    ApiManager.getInstance().getApi().logging().logToError(
-                        "BpArsenal: ProcessBuilder 工作目录无效，将使用默认目录 - " + workDir
-                    );
-                }
-            }
         }
         
         // 设置环境变量
@@ -658,10 +580,7 @@ public class ToolExecutor {
             try {
                 int exitCode = process.waitFor();
                 if (exitCode != 0 && ApiManager.getInstance().isInitialized()) {
-                    ApiManager.getInstance().getApi().logging().logToError(
-                        toolName + " 脚本执行完成，退出码: " + exitCode
-                    );
-                }
+                    }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
@@ -678,12 +597,7 @@ public class ToolExecutor {
             try {
                 Thread.sleep(30000); // 等待30秒
                 if (scriptFile.exists() && scriptFile.delete()) {
-                    if (ApiManager.getInstance().isInitialized()) {
-                        ApiManager.getInstance().getApi().logging().logToOutput(
-                            "BpArsenal: 清理临时脚本 - " + scriptFile.getName()
-                        );
                     }
-                }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
@@ -745,10 +659,7 @@ public class ToolExecutor {
                 if (Desktop.isDesktopSupported()) {
                     Desktop.getDesktop().browse(URI.create(url));
                     
-                    if (ApiManager.getInstance().isInitialized()) {
-                        ApiManager.getInstance().getApi().logging().logToOutput("打开网站: " + desc + " - " + url);
-                    }
-                } else {
+                    } else {
                     throw new UnsupportedOperationException("系统不支持Desktop操作");
                 }
             } catch (Exception e) {
@@ -830,18 +741,14 @@ public class ToolExecutor {
                     String logMsg = finalWorkDir != null ? 
                         String.format("工具直接执行: %s (工作目录: %s)", toolName, finalWorkDir) :
                         String.format("工具直接执行: %s", toolName);
-                    ApiManager.getInstance().getApi().logging().logToOutput(logMsg);
-                }
+                    }
                 
             } catch (Exception e) {
                 if (callback != null) {
                     callback.onCommandError(toolName, e);
                 }
                 
-                if (ApiManager.getInstance().isInitialized()) {
-                    ApiManager.getInstance().getApi().logging().logToError("脚本执行异常: " + e.getMessage());
                 }
-            }
         });
     }
     
@@ -1010,9 +917,7 @@ public class ToolExecutor {
             return "UTF-8";
         }
     }
-    
 
-    
     /**
      * 命令执行回调接口
      */
@@ -1100,12 +1005,7 @@ public class ToolExecutor {
      * 手动清理所有临时脚本文件（现在不再使用临时脚本文件，保留方法以兼容）
      */
     public void cleanupAllTempScripts() {
-        if (ApiManager.getInstance().isInitialized()) {
-            ApiManager.getInstance().getApi().logging().logToOutput(
-                "BpArsenal: 现在使用直接命令执行，无需清理临时脚本文件"
-            );
         }
-    }
     
     /**
      * 记录变量验证警告
@@ -1116,8 +1016,7 @@ public class ToolExecutor {
         if (ApiManager.getInstance().isInitialized()) {
             String warningMsg = String.format("工具 %s 中包含未解析的变量: %s", 
                 toolName, validation.getMissingVariables());
-            ApiManager.getInstance().getApi().logging().logToError(warningMsg);
-        }
+            }
     }
     
     /**
@@ -1128,10 +1027,6 @@ public class ToolExecutor {
      */
     private void handleError(String operation, String toolName, Exception e) {
         String errorMsg = operation + ": " + toolName + " - " + e.getMessage();
-        
-        if (ApiManager.getInstance().isInitialized()) {
-            ApiManager.getInstance().getApi().logging().logToError(errorMsg);
-        }
         
         // 在UI线程中显示错误提示
         javax.swing.SwingUtilities.invokeLater(() -> {

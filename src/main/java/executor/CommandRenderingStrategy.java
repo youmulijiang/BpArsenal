@@ -51,7 +51,6 @@ public class CommandRenderingStrategy {
             return replaceVariables(command, allVariables);
             
         } catch (Exception e) {
-            logError("命令渲染失败", e);
             return toolCommand.getCommand();
         }
     }
@@ -77,7 +76,6 @@ public class CommandRenderingStrategy {
                 allVariables.putAll(responseVariables);
             }
         } catch (Exception e) {
-            logError("解析HTTP变量失败", e);
         }
         
         return allVariables;
@@ -191,8 +189,6 @@ public class CommandRenderingStrategy {
      * @param e 异常对象
      */
     private static void logError(String message, Exception e) {
-        if (ApiManager.getInstance().isInitialized()) {
-            ApiManager.getInstance().getApi().logging().logToError(message + ": " + e.getMessage());
-        }
+        // 日志记录已移除
     }
 } 

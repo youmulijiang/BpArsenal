@@ -77,16 +77,10 @@ public class ConfigManager {
                 loadUserConfig();
             }
             
-            if (ApiManager.getInstance().isInitialized()) {
-                ApiManager.getInstance().getApi().logging().logToOutput("配置文件加载成功: " + USER_CONFIG_FILE);
-            }
             
         } catch (Exception e) {
             String errorMsg = "加载配置文件失败: " + e.getMessage();
             
-            if (ApiManager.getInstance().isInitialized()) {
-                ApiManager.getInstance().getApi().logging().logToError(errorMsg);
-            }
             
             // 创建默认配置
             this.config = createDefaultConfig();
@@ -95,9 +89,6 @@ public class ConfigManager {
             try {
                 saveConfig();
             } catch (Exception saveEx) {
-                if (ApiManager.getInstance().isInitialized()) {
-                    ApiManager.getInstance().getApi().logging().logToError("保存默认配置失败: " + saveEx.getMessage());
-                }
             }
             
             // 显示错误提示
@@ -121,9 +112,6 @@ public class ConfigManager {
                 throw new IOException("无法创建用户配置目录: " + USER_CONFIG_DIR);
             }
             
-            if (ApiManager.getInstance().isInitialized()) {
-                ApiManager.getInstance().getApi().logging().logToOutput("创建用户配置目录: " + USER_CONFIG_DIR);
-            }
         }
     }
     
@@ -147,9 +135,6 @@ public class ConfigManager {
             writer.write(jsonContent);
         }
         
-        if (ApiManager.getInstance().isInitialized()) {
-            ApiManager.getInstance().getApi().logging().logToOutput("复制默认配置到用户目录: " + USER_CONFIG_FILE);
-        }
     }
     
     /**
@@ -165,9 +150,6 @@ public class ConfigManager {
         
         this.config = JsonUtil.fromJson(jsonContent, Config.class);
         
-        if (ApiManager.getInstance().isInitialized()) {
-            ApiManager.getInstance().getApi().logging().logToOutput("从用户目录加载配置: " + USER_CONFIG_FILE);
-        }
     }
     
     /**
@@ -190,9 +172,6 @@ public class ConfigManager {
             writer.write(jsonContent);
         }
         
-        if (ApiManager.getInstance().isInitialized()) {
-            ApiManager.getInstance().getApi().logging().logToOutput("配置已保存到用户目录: " + USER_CONFIG_FILE);
-        }
     }
     
     /**
@@ -204,9 +183,6 @@ public class ConfigManager {
         File userConfigFile = new File(USER_CONFIG_FILE);
         if (userConfigFile.exists()) {
             if (!userConfigFile.delete()) {
-                if (ApiManager.getInstance().isInitialized()) {
-                    ApiManager.getInstance().getApi().logging().logToError("无法删除用户配置文件: " + USER_CONFIG_FILE);
-                }
             }
         }
         
@@ -216,9 +192,6 @@ public class ConfigManager {
         // 重新加载配置
         loadUserConfig();
         
-        if (ApiManager.getInstance().isInitialized()) {
-            ApiManager.getInstance().getApi().logging().logToOutput("配置已重置为默认配置");
-        }
     }
     
     /**
@@ -244,9 +217,6 @@ public class ConfigManager {
         // 保存到用户目录
         saveConfig();
         
-        if (ApiManager.getInstance().isInitialized()) {
-            ApiManager.getInstance().getApi().logging().logToOutput("配置已从文件导入: " + configFilePath);
-        }
     }
     
     /**
@@ -265,9 +235,6 @@ public class ConfigManager {
             writer.write(jsonContent);
         }
         
-        if (ApiManager.getInstance().isInitialized()) {
-            ApiManager.getInstance().getApi().logging().logToOutput("配置已导出到文件: " + targetFilePath);
-        }
     }
     
     /**

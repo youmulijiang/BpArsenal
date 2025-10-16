@@ -417,7 +417,6 @@ public class ToolPanel extends JPanel implements
             categoryFilter.addItem(i18n.getText("tools.category.vulnerability.scan"));
             categoryFilter.addItem(i18n.getText("tools.category.brute.force"));
             categoryFilter.setSelectedIndex(0);
-            System.err.println("ToolPanel: 加载分类选项失败: " + e.getMessage());
         }
     }
     

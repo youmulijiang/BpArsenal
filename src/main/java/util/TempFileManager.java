@@ -114,11 +114,6 @@ public class TempFileManager {
      * @param itemCount 数据项数量
      */
     private static void logFileCreation(String filePath, int itemCount) {
-        if (ApiManager.getInstance().isInitialized()) {
-            ApiManager.getInstance().getApi().logging().logToOutput(
-                String.format("BpArsenal: 创建临时文件 %s，包含 %d 项数据", filePath, itemCount)
-            );
-        }
     }
     
     /**
@@ -143,18 +138,8 @@ public class TempFileManager {
                     }
                 }
                 
-                if (deletedCount > 0 && ApiManager.getInstance().isInitialized()) {
-                    ApiManager.getInstance().getApi().logging().logToOutput(
-                        String.format("BpArsenal: 清理了 %d 个临时文件", deletedCount)
-                    );
-                }
             }
         } catch (Exception e) {
-            if (ApiManager.getInstance().isInitialized()) {
-                ApiManager.getInstance().getApi().logging().logToError(
-                    "清理临时文件失败: " + e.getMessage()
-                );
-            }
         }
     }
 } 

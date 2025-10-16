@@ -84,7 +84,6 @@ public class SettingPanelController {
             }
             
         } catch (Exception e) {
-            logError("初始化设置失败: " + e.getMessage());
             if (listener != null) {
                 listener.onError("初始化设置", e.getMessage());
             }
@@ -113,7 +112,6 @@ public class SettingPanelController {
             }
             
         } catch (Exception e) {
-            logError("加载设置失败: " + e.getMessage());
             if (listener != null) {
                 listener.onError("加载设置", e.getMessage());
             }
@@ -139,7 +137,6 @@ public class SettingPanelController {
             ConfigManager.getInstance().importConfig(configFilePath);
             
             updateStatus("配置导入成功: " + new File(configFilePath).getName(), StatusType.SUCCESS);
-            logInfo("配置文件导入成功: " + configFilePath);
             
             if (view != null) {
                 view.showImportSuccessMessage(new File(configFilePath).getName());
@@ -152,7 +149,6 @@ public class SettingPanelController {
         } catch (Exception e) {
             String errorMsg = "配置导入失败: " + e.getMessage();
             updateStatus(errorMsg, StatusType.ERROR);
-            logError(errorMsg);
             
             if (view != null) {
                 view.showImportErrorMessage(e.getMessage());
@@ -174,7 +170,6 @@ public class SettingPanelController {
             ConfigManager.getInstance().exportConfig(exportFilePath);
             
             updateStatus("配置导出成功: " + new File(exportFilePath).getName(), StatusType.SUCCESS);
-            logInfo("配置文件导出成功: " + exportFilePath);
             
             if (view != null) {
                 view.showExportSuccessMessage(exportFilePath);
@@ -187,7 +182,6 @@ public class SettingPanelController {
         } catch (Exception e) {
             String errorMsg = "配置导出失败: " + e.getMessage();
             updateStatus(errorMsg, StatusType.ERROR);
-            logError(errorMsg);
             
             if (view != null) {
                 view.showExportErrorMessage(e.getMessage());
@@ -217,7 +211,6 @@ public class SettingPanelController {
             ConfigManager.getInstance().resetToDefaultConfig();
             
             updateStatus("配置已重置为默认设置", StatusType.INFO);
-            logInfo("配置文件已重置为默认设置");
             
             if (view != null) {
                 view.showResetSuccessMessage();
@@ -230,7 +223,6 @@ public class SettingPanelController {
         } catch (Exception e) {
             String errorMsg = "配置重置失败: " + e.getMessage();
             updateStatus(errorMsg, StatusType.ERROR);
-            logError(errorMsg);
             
             if (view != null) {
                 view.showResetErrorMessage(e.getMessage());
@@ -280,7 +272,6 @@ public class SettingPanelController {
             updateDirectoryStatus("工具目录: " + directoryPath, StatusType.SUCCESS);
             
             updateStatus("工具目录设置成功: " + directoryPath, StatusType.SUCCESS);
-            logInfo("工具目录设置成功: " + directoryPath);
             
             if (view != null) {
                 view.showDirectorySuccessMessage(directoryPath);
@@ -293,7 +284,6 @@ public class SettingPanelController {
         } catch (Exception e) {
             String errorMsg = "设置工具目录失败: " + e.getMessage();
             updateStatus(errorMsg, StatusType.ERROR);
-            logError(errorMsg);
             
             if (listener != null) {
                 listener.onError("设置工具目录", e.getMessage());
@@ -328,7 +318,6 @@ public class SettingPanelController {
             updatePrefixStatus(prefixStatusMsg, StatusType.SUCCESS);
             
             updateStatus(statusMsg, StatusType.SUCCESS);
-            logInfo("命令前缀设置成功: " + (prefix == null || prefix.trim().isEmpty() ? "系统默认" : prefix));
             
             if (view != null) {
                 view.showPrefixSuccessMessage(prefix);
@@ -341,7 +330,6 @@ public class SettingPanelController {
         } catch (Exception e) {
             String errorMsg = "设置命令前缀失败: " + e.getMessage();
             updateStatus(errorMsg, StatusType.ERROR);
-            logError(errorMsg);
             
             if (listener != null) {
                 listener.onError("设置命令前缀", e.getMessage());
@@ -359,7 +347,6 @@ public class SettingPanelController {
             if (language != currentLanguage) {
                 I18nManager.getInstance().setCurrentLanguage(language);
                 updateStatus("语言设置已更改为: " + language.getDisplayName(), StatusType.SUCCESS);
-                logInfo("语言设置已更改为: " + language.getDisplayName());
                 
                 if (listener != null) {
                     listener.onLanguageChanged(language);
@@ -368,7 +355,6 @@ public class SettingPanelController {
         } catch (Exception e) {
             String errorMsg = "设置语言失败: " + e.getMessage();
             updateStatus(errorMsg, StatusType.ERROR);
-            logError(errorMsg);
             
             if (listener != null) {
                 listener.onError("设置语言", e.getMessage());
@@ -384,21 +370,17 @@ public class SettingPanelController {
             I18nManager.SupportedLanguage targetLanguage = settingModel.detectSystemLanguage();
             I18nManager.SupportedLanguage currentLanguage = I18nManager.getInstance().getCurrentLanguage();
             
-            logInfo("检测到系统语言: " + targetLanguage.getDisplayName());
             
             if (currentLanguage != targetLanguage) {
                 I18nManager.getInstance().setCurrentLanguage(targetLanguage);
-                logInfo("已根据系统地区自动设置语言为: " + targetLanguage.getDisplayName());
                 
                 if (listener != null) {
                     listener.onLanguageAutoSet(targetLanguage);
                 }
             } else {
-                logInfo("当前语言已经匹配系统地区，无需更改");
             }
             
         } catch (Exception e) {
-            logError("自动设置语言失败: " + e.getMessage());
         }
     }
     
@@ -543,9 +525,7 @@ public class SettingPanelController {
     private void refreshToolExecutorSettings() {
         try {
             ToolExecutor.getInstance().refreshSettings();
-            logInfo("已刷新ToolExecutor设置");
         } catch (Exception e) {
-            logError("刷新ToolExecutor设置失败: " + e.getMessage());
         }
     }
     
@@ -553,17 +533,11 @@ public class SettingPanelController {
      * 记录信息日志
      * @param message 日志消息
      */
-    private void logInfo(String message) {
-        System.out.println("SettingPanelController: " + message);
-    }
     
     /**
      * 记录错误日志
      * @param message 错误消息
      */
-    private void logError(String message) {
-        System.err.println("SettingPanelController: " + message);
-    }
     
     /**
      * 状态类型枚举

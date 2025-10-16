@@ -603,9 +603,6 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
             
         } catch (Exception e) {
             // 如果替换失败，返回原始命令
-            if (ApiManager.getInstance().isInitialized()) {
-                ApiManager.getInstance().getApi().logging().logToError("变量替换失败: " + e.getMessage());
-            }
             return command;
         }
     }
@@ -694,7 +691,6 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
             I18nManager parseErrorI18n = I18nManager.getInstance();
             String errorMsg = parseErrorI18n.getText("arsenal.dialog.error.variable.parse", e.getMessage());
             variablesPreviewArea.setText("# 错误\n" + errorMsg);
-            ApiManager.getInstance().getApi().logging().logToError(errorMsg);
         }
     }
     
@@ -781,7 +777,6 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
                 }
             }
         } catch (Exception e) {
-            ApiManager.getInstance().getApi().logging().logToError("提取分类失败: " + e.getMessage());
         }
         
         return categories;
@@ -809,7 +804,6 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
             
             return toolCommands;
         } catch (Exception e) {
-            ApiManager.getInstance().getApi().logging().logToError("加载工具数据失败: " + e.getMessage());
             return new ArrayList<>();
         }
     }
@@ -913,9 +907,6 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
                 originalCommandArea.setText("命令加载失败: " + e.getMessage());
                 renderedCommandArea.setText("命令渲染失败: " + e.getMessage());
         
-        if (ApiManager.getInstance().isInitialized()) {
-            ApiManager.getInstance().getApi().logging().logToError(errorMessage);
-        }
     }
     
     /**
@@ -960,7 +951,6 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
             
         } catch (Exception e) {
             // 记录错误到日志，但返回原始命令
-            ApiManager.getInstance().getApi().logging().logToError("命令渲染失败: " + e.getMessage());
             return toolCommand.getCommand();
         }
     }
@@ -1457,18 +1447,8 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
                 File workDirectory = new File(workDir.trim());
                 if (workDirectory.exists() && workDirectory.isDirectory()) {
                     processBuilder.directory(workDirectory);
-                    if (ApiManager.getInstance().isInitialized()) {
-                        ApiManager.getInstance().getApi().logging().logToOutput(
-                            "BpArsenal: 脚本ProcessBuilder设置工作目录 - " + workDir
-                        );
-                    }
                 } else {
                     processBuilder.directory(scriptFile.getParentFile());
-                    if (ApiManager.getInstance().isInitialized()) {
-                        ApiManager.getInstance().getApi().logging().logToError(
-                            "BpArsenal: 脚本指定工作目录无效，使用脚本目录 - " + workDir
-                        );
-                    }
                 }
             } else {
                 processBuilder.directory(scriptFile.getParentFile());
@@ -1612,20 +1592,12 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
                 copyI18n.getText("arsenal.dialog.copied.clipboard", String.valueOf(commandToCopy.trim().length())));
             
             // 记录到Burp日志
-            if (ApiManager.getInstance().isInitialized()) {
-                ApiManager.getInstance().getApi().logging().logToOutput(
-                    copyI18n.getText("arsenal.dialog.log.copy.command", toolName, commandType)
-                );
-            }
             
         } catch (Exception ex) {
             String errorMsg = copyI18n.getText("arsenal.dialog.copy.failed.pattern", ex.getMessage());
             JOptionPane.showMessageDialog(this, errorMsg, copyI18n.getText("arsenal.dialog.copy.failed.title"), 
                 JOptionPane.ERROR_MESSAGE);
             
-            if (ApiManager.getInstance().isInitialized()) {
-                ApiManager.getInstance().getApi().logging().logToError(errorMsg);
-            }
         }
     }
     
@@ -1649,8 +1621,6 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
                     try {
                         return request.url();
                     } catch (Exception e) {
-                        ApiManager.getInstance().getApi().logging().logToError(
-                            "获取请求URL失败: " + e.getMessage());
                         return null;
                     }
                 })
@@ -1718,8 +1688,6 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
                 
         } catch (Exception e) {
             I18nManager errorI18n = I18nManager.getInstance();
-            ApiManager.getInstance().getApi().logging().logToError(
-                errorI18n.getText("arsenal.dialog.error.httplist.failed", e.getMessage()));
             variables.put("httpList.error", e.getMessage());
         }
     }
@@ -1779,9 +1747,6 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
             
             // 记录创建的临时文件
             I18nManager tempFileI18n = I18nManager.getInstance();
-            ApiManager.getInstance().getApi().logging().logToOutput(
-                tempFileI18n.getText("arsenal.dialog.log.temp.file", 
-                    tempFile.getAbsolutePath(), String.valueOf(items.size())));
             
             return tempFile.getAbsolutePath();
             
@@ -1802,18 +1767,8 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
             String trimmedToolWorkDir = toolWorkDir.trim();
             File toolDir = new File(trimmedToolWorkDir);
             if (toolDir.exists() && toolDir.isDirectory()) {
-                if (ApiManager.getInstance().isInitialized()) {
-                    ApiManager.getInstance().getApi().logging().logToOutput(
-                        "BpArsenal: 使用工具配置的工作目录 - " + trimmedToolWorkDir
-                    );
-                }
                 return trimmedToolWorkDir;
             } else {
-                if (ApiManager.getInstance().isInitialized()) {
-                    ApiManager.getInstance().getApi().logging().logToError(
-                        "BpArsenal: 工具配置的工作目录无效 - " + trimmedToolWorkDir
-                    );
-                }
             }
         }
         
@@ -1825,34 +1780,14 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
                 String trimmedGlobalDir = globalToolDir.trim();
                 File globalDir = new File(trimmedGlobalDir);
                 if (globalDir.exists() && globalDir.isDirectory()) {
-                    if (ApiManager.getInstance().isInitialized()) {
-                        ApiManager.getInstance().getApi().logging().logToOutput(
-                            "BpArsenal: 使用全局设置的工具目录 - " + trimmedGlobalDir
-                        );
-                    }
                     return trimmedGlobalDir;
                 } else {
-                    if (ApiManager.getInstance().isInitialized()) {
-                        ApiManager.getInstance().getApi().logging().logToError(
-                            "BpArsenal: 全局设置的工具目录无效 - " + trimmedGlobalDir
-                        );
-                    }
                 }
             }
         } catch (Exception e) {
-            if (ApiManager.getInstance().isInitialized()) {
-                ApiManager.getInstance().getApi().logging().logToError(
-                    "BpArsenal: 获取全局设置失败 - " + e.getMessage()
-                );
-            }
         }
         
         // 3. 都不可用时，返回null表示使用当前目录
-        if (ApiManager.getInstance().isInitialized()) {
-            ApiManager.getInstance().getApi().logging().logToOutput(
-                "BpArsenal: 使用当前目录执行命令"
-            );
-        }
         return null;
     }
     

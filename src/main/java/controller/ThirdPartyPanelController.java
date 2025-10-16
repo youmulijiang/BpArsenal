@@ -88,7 +88,6 @@ public class ThirdPartyPanelController {
         } catch (Exception e) {
             String errorMsg = "加载失败: " + e.getMessage();
             updateStatus(errorMsg);
-            logError("加载第三方工具数据失败: " + e.getMessage());
             
             if (listener != null) {
                 listener.onError("数据加载", errorMsg);
@@ -130,7 +129,6 @@ public class ThirdPartyPanelController {
         } catch (Exception e) {
             String errorMsg = "添加工具失败: " + e.getMessage();
             updateStatus(errorMsg);
-            logError(errorMsg);
             if (listener != null) {
                 listener.onError("添加工具", errorMsg);
             }
@@ -185,7 +183,6 @@ public class ThirdPartyPanelController {
         } catch (Exception e) {
             String errorMsg = "编辑工具失败: " + e.getMessage();
             updateStatus(errorMsg);
-            logError(errorMsg);
             if (listener != null) {
                 listener.onError("编辑工具", errorMsg);
             }
@@ -241,7 +238,6 @@ public class ThirdPartyPanelController {
         } catch (Exception e) {
             String errorMsg = "删除工具失败: " + e.getMessage();
             updateStatus(errorMsg);
-            logError(errorMsg);
             if (listener != null) {
                 listener.onError("删除工具", errorMsg);
             }
@@ -290,7 +286,6 @@ public class ThirdPartyPanelController {
         } catch (Exception e) {
             String errorMsg = "切换收藏状态失败: " + e.getMessage();
             updateStatus(errorMsg);
-            logError(errorMsg);
             if (listener != null) {
                 listener.onError("切换收藏", errorMsg);
             }
@@ -325,7 +320,6 @@ public class ThirdPartyPanelController {
         } catch (Exception e) {
             String errorMsg = "启动失败: " + e.getMessage();
             updateStatus(errorMsg);
-            logError("启动第三方工具失败: " + e.getMessage());
             
             showMessage(parentComponent,
                 "启动工具失败！\n错误: " + e.getMessage(),
@@ -410,7 +404,6 @@ public class ThirdPartyPanelController {
         } catch (Exception e) {
             String errorMsg = "过滤数据失败: " + e.getMessage();
             updateStatus(errorMsg);
-            logError(errorMsg);
             if (listener != null) {
                 listener.onError("数据过滤", errorMsg);
             }
@@ -438,7 +431,6 @@ public class ThirdPartyPanelController {
         } catch (Exception e) {
             String errorMsg = "复制命令失败: " + e.getMessage();
             updateStatus(errorMsg);
-            logError(errorMsg);
             if (listener != null) {
                 listener.onError("复制命令", errorMsg);
             }
@@ -467,7 +459,6 @@ public class ThirdPartyPanelController {
         } catch (Exception e) {
             String errorMsg = "切换自启动状态失败: " + e.getMessage();
             updateStatus(errorMsg);
-            logError(errorMsg);
             if (listener != null) {
                 listener.onError("切换自启动", errorMsg);
             }
@@ -524,7 +515,6 @@ public class ThirdPartyPanelController {
         try {
             ArsenalMenuProvider.updateToolsMenu();
         } catch (Exception e) {
-            logError("更新菜单失败: " + e.getMessage());
         }
     }
     
@@ -532,9 +522,6 @@ public class ThirdPartyPanelController {
      * 记录错误日志
      * @param message 错误消息
      */
-    private void logError(String message) {
-        System.err.println("ThirdPartyPanelController: " + message);
-    }
     
     /**
      * 视图接口

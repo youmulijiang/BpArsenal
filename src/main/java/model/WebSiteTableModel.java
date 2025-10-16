@@ -94,7 +94,6 @@ public class WebSiteTableModel extends AbstractTableModel {
                 try {
                     ArsenalMenuProvider.updateWebsiteMenu();
                 } catch (Exception e) {
-                    System.err.println("更新菜单失败: " + e.getMessage());
                 }
             }
             

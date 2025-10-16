@@ -116,7 +116,6 @@ public class ArsenalContextMenuProvider implements ContextMenuItemsProvider {
             return favoriteMenu;
             
         } catch (Exception ex) {
-            ApiManager.getInstance().getApi().logging().logToError("创建收藏菜单失败: " + ex.getMessage());
             return null;
         }
     }
@@ -135,11 +134,6 @@ public class ArsenalContextMenuProvider implements ContextMenuItemsProvider {
             HttpResponse httpResponse = ContextMenuEventHandler.getHttpResponseFromEvent(event);
             List<HttpRequest> allSelectedRequests = ContextMenuEventHandler.getAllSelectedRequests(event);
             
-            // 记录选中的请求数量
-            int selectedCount = ContextMenuEventHandler.getSelectedCount(event);
-            ApiManager.getInstance().getApi().logging().logToOutput(
-                String.format("BpArsenal: 选中了 %d 个HTTP请求", selectedCount)
-            );
 
             if (httpRequest != null) {
                 // 创建并显示Arsenal工具对话框
@@ -157,16 +151,8 @@ public class ArsenalContextMenuProvider implements ContextMenuItemsProvider {
                         // 显示模态对话框
                         dialog.setVisible(true);
 
-                        if (ApiManager.getInstance().isInitialized()) {
-                            ApiManager.getInstance().getApi().logging().logToOutput(
-                                "BpArsenal: Arsenal工具对话框已成功显示"
-                            );
-                        }
 
                     } catch (Exception ex) {
-                        ApiManager.getInstance().getApi().logging().logToError(
-                            "BpArsenal: 创建Arsenal对话框失败: " + ex.getMessage()
-                        );
 
                         // 显示错误提示
                         JOptionPane.showMessageDialog(
@@ -179,10 +165,8 @@ public class ArsenalContextMenuProvider implements ContextMenuItemsProvider {
                 });
 
             } else {
-                ApiManager.getInstance().getApi().logging().logToError("无法获取HTTP请求数据");
             }
         } catch (Exception ex) {
-            ApiManager.getInstance().getApi().logging().logToError("打开Arsenal对话框失败: " + ex.getMessage());
         }
     }
     
@@ -237,7 +221,6 @@ public class ArsenalContextMenuProvider implements ContextMenuItemsProvider {
                     .filter(HttpToolCommand::isFavor)
                     .collect(Collectors.toList());
         } catch (Exception e) {
-            ApiManager.getInstance().getApi().logging().logToError("获取收藏工具失败: " + e.getMessage());
             return new ArrayList<>();
         }
     }
@@ -251,9 +234,6 @@ public class ArsenalContextMenuProvider implements ContextMenuItemsProvider {
         try {
             // 记录执行信息
             String toolName = toolCommand.getToolName();
-            ApiManager.getInstance().getApi().logging().logToOutput(
-                "BpArsenal: 执行收藏工具 - " + toolName
-            );
             
             // 渲染命令
             String renderedCommand = generateRenderedCommand(toolCommand, httpRequest, httpResponse);
@@ -271,7 +251,6 @@ public class ArsenalContextMenuProvider implements ContextMenuItemsProvider {
             
         } catch (Exception e) {
             String errorMsg = "执行工具命令失败: " + e.getMessage();
-            ApiManager.getInstance().getApi().logging().logToError(errorMsg);
             JOptionPane.showMessageDialog(null, errorMsg, "执行失败", JOptionPane.ERROR_MESSAGE);
         }
     }
@@ -298,7 +277,6 @@ public class ArsenalContextMenuProvider implements ContextMenuItemsProvider {
             );
             
         } catch (Exception e) {
-            ApiManager.getInstance().getApi().logging().logToError("命令渲染失败: " + e.getMessage());
             return toolCommand.getCommand();
         }
     }
@@ -326,7 +304,6 @@ public class ArsenalContextMenuProvider implements ContextMenuItemsProvider {
             String workDir = toolCommand.getWorkDir();
             ToolExecutor.getInstance().executeCommandSync(command, toolName, workDir);
         } catch (Exception e) {
-            ApiManager.getInstance().getApi().logging().logToError("命令执行失败: " + e.getMessage());
             throw new RuntimeException("命令执行失败: " + e.getMessage(), e);
         }
     }

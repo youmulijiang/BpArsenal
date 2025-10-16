@@ -634,14 +634,12 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
             repaint();
             
             // 记录成功日志（类似MainPanel的logInfo）
-            logInfo("设置面板刷新完成");
             
             // 可以在这里通知其他需要刷新的组件
             notifyOtherPanelsToRefresh();
             
         } catch (Exception e) {
             // 记录错误日志（类似MainPanel的logError）
-            logError("刷新设置面板失败: " + e.getMessage());
         }
     }
     
@@ -699,7 +697,6 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
      */
     private void logInfo(String message) {
         if (manager.ApiManager.getInstance().isInitialized()) {
-            manager.ApiManager.getInstance().getApi().logging().logToOutput("BpArsenal Setting: " + message);
         }
     }
     
@@ -709,7 +706,6 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
      */
     private void logError(String message) {
         if (manager.ApiManager.getInstance().isInitialized()) {
-            manager.ApiManager.getInstance().getApi().logging().logToError("BpArsenal Setting: " + message);
         }
     }
     
@@ -735,22 +731,18 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
                     // 如果是ToolPanel，调用其loadData方法
                     if (component instanceof ToolPanel && component != this) {
                         ((ToolPanel) component).loadData();
-                        logInfo("已通知工具面板刷新数据");
                     }
                     // 如果是ThirdPartyPanel，调用其loadData方法
                     else if (component instanceof ThirdPartyPanel && component != this) {
                         ((ThirdPartyPanel) component).loadData();
-                        logInfo("已通知第三方工具面板刷新数据");
                     }
                     // 如果是WebsitePanel，调用其loadData方法
                     else if (component instanceof WebsitePanel && component != this) {
                         ((WebsitePanel) component).loadData();
-                        logInfo("已通知网站面板刷新数据");
                     }
                 }
             }
         } catch (Exception e) {
-            logError("通知其他面板刷新失败: " + e.getMessage());
         }
     }
 
@@ -1027,7 +1019,6 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
     @Override
     public void onError(String operation, String errorMessage) {
         // 错误处理
-        System.err.println("SettingPanel错误 - " + operation + ": " + errorMessage);
     }
     
     // =========================== 实现LanguageChangeListener接口 ===========================

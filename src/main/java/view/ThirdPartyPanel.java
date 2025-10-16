@@ -470,16 +470,12 @@ public class ThirdPartyPanel extends JPanel implements I18nManager.LanguageChang
             categoryFilter.addItem(i18n.getText("filter.all"));
             categoryFilter.addItem("exploit");
             categoryFilter.addItem(i18n.getText("thirdparty.category.editor"));
-            logError("加载分类选项失败: " + e.getMessage());
         }
     }
     
     /**
      * 记录错误日志
      */
-    private void logError(String message) {
-        System.err.println("ThirdPartyPanel: " + message);
-    }
     
     // =========================== 实现ThirdPartyPanelView接口 ===========================
     
@@ -573,7 +569,6 @@ public class ThirdPartyPanel extends JPanel implements I18nManager.LanguageChang
     @Override
     public void onError(String operation, String errorMessage) {
         // 错误处理
-        logError(operation + "失败: " + errorMessage);
     }
     
     // =========================== 实现LanguageChangeListener接口 ===========================

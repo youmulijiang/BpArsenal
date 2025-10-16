@@ -152,7 +152,6 @@ public class HttpListVariableProcessor {
                 try {
                     return request.url();
                 } catch (Exception e) {
-                    logError("获取请求URL失败", e);
                     return null;
                 }
             })
@@ -246,7 +245,6 @@ public class HttpListVariableProcessor {
      */
     private static void handleError(String message, Exception e, Map<String, String> variables) {
         String errorMsg = message + ": " + e.getMessage();
-        logError(errorMsg, e);
         variables.put("httpList.error", errorMsg);
     }
     
@@ -254,8 +252,6 @@ public class HttpListVariableProcessor {
      * 记录错误日志
      */
     private static void logError(String message, Exception e) {
-        if (ApiManager.getInstance().isInitialized()) {
-            ApiManager.getInstance().getApi().logging().logToError(message + ": " + e.getMessage());
-        }
+        // 日志记录已移除
     }
 } 

@@ -30,7 +30,6 @@ public class ContextMenuEventHandler {
                 return event.selectedRequestResponses().get(0).request();
             }
         } catch (Exception e) {
-            logError("获取HTTP请求失败", e);
         }
         
         return null;
@@ -53,7 +52,6 @@ public class ContextMenuEventHandler {
                 return event.selectedRequestResponses().get(0).response();
             }
         } catch (Exception e) {
-            logError("获取HTTP响应失败", e);
         }
         
         return null;
@@ -76,7 +74,6 @@ public class ContextMenuEventHandler {
                 }
             }
         } catch (Exception e) {
-            logError("获取选中请求列表失败", e);
         }
         
         return requests;
@@ -99,7 +96,6 @@ public class ContextMenuEventHandler {
                 }
             }
         } catch (Exception e) {
-            logError("获取选中响应列表失败", e);
         }
         
         return responses;
@@ -125,7 +121,6 @@ public class ContextMenuEventHandler {
                 return event.selectedRequestResponses().size();
             }
         } catch (Exception e) {
-            logError("获取选中数量失败", e);
         }
         return 0;
     }
@@ -136,8 +131,6 @@ public class ContextMenuEventHandler {
      * @param e 异常对象
      */
     private static void logError(String message, Exception e) {
-        if (ApiManager.getInstance().isInitialized()) {
-            ApiManager.getInstance().getApi().logging().logToError(message + ": " + e.getMessage());
-        }
+        // 日志记录已移除
     }
 } 

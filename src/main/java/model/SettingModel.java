@@ -48,7 +48,6 @@ public class SettingModel {
             try (FileInputStream fis = new FileInputStream(settingsFile)) {
                 toolSettings.load(fis);
             } catch (IOException e) {
-                System.err.println("加载工具设置失败: " + e.getMessage());
             }
         }
     }
