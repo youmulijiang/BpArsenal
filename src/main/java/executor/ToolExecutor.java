@@ -244,7 +244,8 @@ public class ToolExecutor {
                 String workDir = determineWorkingDirectory(null);
                 executeCommandViaScript(tool.getStartCommand(), tool.getToolName(), workDir);
             } catch (Exception e) {
-                handleError("第三方工具启动失败", tool.getToolName(), e);
+                I18nManager i18n = I18nManager.getInstance();
+                handleError(i18n.getText("tool.execution.third.party.failed"), tool.getToolName(), e);
             }
         });
     }
@@ -266,7 +267,7 @@ public class ToolExecutor {
      * @param workDir 工作目录（可为null）
      * @throws IOException 执行异常
      */
-    private void executeCommandViaScript(String command, String toolName, String workDir) throws IOException {
+    public void executeCommandViaScript(String command, String toolName, String workDir) throws IOException {
         executeCommandDirectly(command, toolName, workDir);
     }
     
@@ -322,9 +323,10 @@ public class ToolExecutor {
         
         // 记录执行日志
         if (ApiManager.getInstance().isInitialized()) {
+            I18nManager i18n = I18nManager.getInstance();
             String logMsg = workDir != null ? 
-                String.format("直接执行工具: %s (工作目录: %s) - %s", toolName, workDir, command) :
-                String.format("直接执行工具: %s - %s", toolName, command);
+                String.format("%s: %s (%s: %s) - %s", i18n.getText("tool.execution.direct.tool"), toolName, i18n.getText("tool.execution.work.dir"), workDir, command) :
+                String.format("%s: %s - %s", i18n.getText("tool.execution.direct.tool"), toolName, command);
             }
         
         // 异步等待进程完成
@@ -480,28 +482,29 @@ public class ToolExecutor {
         script.append("\n");
         script.append("echo \"================================================\"\n");
         script.append("echo \"BpArsenal 工具执行器\"\n");
-        script.append("echo \"工具名称: ").append(toolName).append("\"\n");
-        script.append("echo \"执行时间: $(date)\"\n");
+        I18nManager i18n = I18nManager.getInstance();
+        script.append("echo \"").append(i18n.getText("tool.execution.tool.name")).append(": ").append(toolName).append("\"\n");
+        script.append("echo \"").append(i18n.getText("tool.execution.time")).append(": $(date)\"\n");
         script.append("echo \"================================================\"\n");
         script.append("echo\n");
         
         // 切换工作目录（如果指定）
         if (workDir != null && !workDir.trim().isEmpty()) {
-            script.append("echo \"切换到工作目录: ").append(workDir).append("\"\n");
+            script.append("echo \"").append(i18n.getText("tool.execution.switch.dir")).append(": ").append(workDir).append("\"\n");
             script.append("cd \"").append(workDir).append("\"\n");
             script.append("if [ $? -ne 0 ]; then\n");
-            script.append("    echo \"错误: 无法切换到工作目录\"\n");
-            script.append("    echo \"按 Enter 键继续...\"\n");
+            script.append("    echo \"").append(i18n.getText("tool.execution.switch.dir.error")).append("\"\n");
+            script.append("    echo \"").append(i18n.getText("tool.execution.press.enter")).append("\"\n");
             script.append("    read\n");
             script.append("    exit 1\n");
             script.append("fi\n");
-            script.append("echo \"当前目录: $(pwd)\"\n");
+            script.append("echo \"").append(i18n.getText("tool.execution.current.dir")).append(": $(pwd)\"\n");
             script.append("echo\n");
         }
         
-        script.append("echo \"执行命令: ").append(command).append("\"\n");
+        script.append("echo \"").append(i18n.getText("tool.execution.execute.command")).append(": ").append(command).append("\"\n");
         script.append("echo\n");
-        script.append("echo \"开始执行...\"\n");
+        script.append("echo \"").append(i18n.getText("tool.execution.start.executing")).append("\"\n");
         script.append("echo \"------------------------------------------------\"\n");
         script.append("\n");
         
@@ -511,10 +514,10 @@ public class ToolExecutor {
         script.append("\n");
         
         script.append("echo \"------------------------------------------------\"\n");
-        script.append("echo \"命令执行完成\"\n");
-        script.append("echo \"退出码: $EXIT_CODE\"\n");
+        script.append("echo \"").append(i18n.getText("tool.execution.command.completed")).append("\"\n");
+        script.append("echo \"").append(i18n.getText("tool.execution.exit.code")).append(": $EXIT_CODE\"\n");
         script.append("echo \"================================================\"\n");
-        script.append("echo \"按 Enter 键继续...\"\n");
+        script.append("echo \"").append(i18n.getText("tool.execution.press.enter")).append("\"\n");
         script.append("read\n");
         
         return script.toString();
@@ -644,7 +647,8 @@ public class ToolExecutor {
             }
             return command;
         } catch (Exception e) {
-            return "命令预览失败: " + e.getMessage();
+            I18nManager i18n = I18nManager.getInstance();
+            return i18n.getText("tool.execution.command.preview.failed") + ": " + e.getMessage();
         }
     }
     
@@ -660,10 +664,12 @@ public class ToolExecutor {
                     Desktop.getDesktop().browse(URI.create(url));
                     
                     } else {
-                    throw new UnsupportedOperationException("系统不支持Desktop操作");
+                    I18nManager i18n = I18nManager.getInstance();
+                    throw new UnsupportedOperationException(i18n.getText("tool.execution.system.not.support.desktop"));
                 }
             } catch (Exception e) {
-                handleError("打开网站失败", desc, e);
+                I18nManager i18n = I18nManager.getInstance();
+                handleError(i18n.getText("tool.execution.open.website.failed"), desc, e);
             }
         });
     }
@@ -721,17 +727,22 @@ public class ToolExecutor {
                 
                 // 构建输出信息
                 StringBuilder output = new StringBuilder();
-                output.append("命令已直接启动执行\n");
-                output.append("执行环境: ").append(isWindows() ? "Windows Command Prompt" : (isMac() ? "macOS Terminal" : "Linux Terminal")).append("\n");
+                I18nManager i18n = I18nManager.getInstance();
+                output.append(i18n.getText("tool.execution.command.started.directly")).append("\n");
+                String environment = isWindows() ? i18n.getText("tool.execution.windows.cmd") : 
+                                   (isMac() ? i18n.getText("tool.execution.macos.terminal") : i18n.getText("tool.execution.linux.terminal"));
+                output.append(i18n.getText("tool.execution.environment")).append(": ").append(environment).append("\n");
                 if (finalWorkDir != null) {
-                    output.append("工作目录: ").append(finalWorkDir).append("\n");
+                    output.append(i18n.getText("tool.execution.work.dir")).append(": ").append(finalWorkDir).append("\n");
                 }
                 
                 if (callback != null) {
-                    callback.onOutputReceived("命令已直接启动执行");
-                    callback.onOutputReceived("执行环境: " + (isWindows() ? "Windows Command Prompt" : (isMac() ? "macOS Terminal" : "Linux Terminal")));
+                    callback.onOutputReceived(i18n.getText("tool.execution.command.started.directly"));
+                    String environment = isWindows() ? i18n.getText("tool.execution.windows.cmd") : 
+                                       (isMac() ? i18n.getText("tool.execution.macos.terminal") : i18n.getText("tool.execution.linux.terminal"));
+                    callback.onOutputReceived(i18n.getText("tool.execution.environment") + ": " + environment);
                     if (finalWorkDir != null) {
-                        callback.onOutputReceived("工作目录: " + finalWorkDir);
+                        callback.onOutputReceived(i18n.getText("tool.execution.work.dir") + ": " + finalWorkDir);
                     }
                     callback.onCommandComplete(toolName, 0, output.toString());
                 }
@@ -739,8 +750,8 @@ public class ToolExecutor {
                 // 记录到Burp日志
                 if (ApiManager.getInstance().isInitialized()) {
                     String logMsg = finalWorkDir != null ? 
-                        String.format("工具直接执行: %s (工作目录: %s)", toolName, finalWorkDir) :
-                        String.format("工具直接执行: %s", toolName);
+                        String.format("%s: %s (%s: %s)", i18n.getText("tool.execution.tool.direct"), toolName, i18n.getText("tool.execution.work.dir"), finalWorkDir) :
+                        String.format("%s: %s", i18n.getText("tool.execution.tool.direct"), toolName);
                     }
                 
             } catch (Exception e) {
@@ -789,7 +800,8 @@ public class ToolExecutor {
             try {
                 executeCommandWithWorkDir(command, toolName, toolWorkDir);
             } catch (Exception e) {
-                handleError("命令执行失败", toolName, e);
+                I18nManager i18n = I18nManager.getInstance();
+                handleError(i18n.getText("tool.execution.command.failed"), toolName, e);
             }
         });
     }
@@ -878,7 +890,8 @@ public class ToolExecutor {
         if (isWindows()) {
             // Windows: 使用start命令在新的命令提示符窗口中执行
             // 修复: 使用正确的start语法，并添加title参数
-            return new String[]{"cmd", "/c", "start", "\"工具执行\"", "cmd", "/k", command + " & pause"};
+            I18nManager i18n = I18nManager.getInstance();
+            return new String[]{"cmd", "/c", "start", "\"" + i18n.getText("tool.execution.tool.execution") + "\"", "cmd", "/k", command + " & pause"};
         } else if (isMac()) {
             // macOS: 使用osascript在Terminal.app中执行
             return new String[]{"osascript", "-e", "tell application \"Terminal\" to do script \"" + command.replace("\"", "\\\"") + "\""};
@@ -1014,7 +1027,8 @@ public class ToolExecutor {
      */
     private void logVariableValidationWarning(String toolName, HttpVariableReplacer.VariableValidationResult validation) {
         if (ApiManager.getInstance().isInitialized()) {
-            String warningMsg = String.format("工具 %s 中包含未解析的变量: %s", 
+            I18nManager i18n = I18nManager.getInstance();
+            String warningMsg = String.format(i18n.getText("tool.execution.unresolved.variables"), 
                 toolName, validation.getMissingVariables());
             }
     }
@@ -1030,10 +1044,11 @@ public class ToolExecutor {
         
         // 在UI线程中显示错误提示
         javax.swing.SwingUtilities.invokeLater(() -> {
+            I18nManager i18n = I18nManager.getInstance();
             JOptionPane.showMessageDialog(
                 null,
                 errorMsg + "\n请检查工具配置和路径",
-                "执行错误",
+                i18n.getText("tool.execution.error"),
                 JOptionPane.ERROR_MESSAGE
             );
         });

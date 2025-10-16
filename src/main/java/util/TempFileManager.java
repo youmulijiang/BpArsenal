@@ -54,7 +54,8 @@ public class TempFileManager {
      */
     public static String createListFile(List<String> items, String category, String suffix) throws IOException {
         if (items == null || items.isEmpty()) {
-            throw new IOException("数据列表为空，无法创建临时文件");
+            I18nManager i18n = I18nManager.getInstance();
+            throw new IOException(i18n.getText("temp.file.empty.data"));
         }
         
         try {
@@ -82,7 +83,8 @@ public class TempFileManager {
             return tempFile.getAbsolutePath();
             
         } catch (Exception e) {
-            throw new IOException("创建临时文件失败: " + e.getMessage(), e);
+            I18nManager i18n = I18nManager.getInstance();
+            throw new IOException(i18n.getText("temp.file.create.failed", e.getMessage()), e);
         }
     }
     

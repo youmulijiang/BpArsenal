@@ -17,7 +17,8 @@ public class BpArsenal implements BurpExtension {
     public void initialize(MontoyaApi api) {
         try {
             // 设置扩展名称
-            api.extension().setName("BpArsenal - hunter武器库");
+            I18nManager i18n = I18nManager.getInstance();
+            api.extension().setName(i18n.getText("main.title"));
 
             api.logging().logToOutput(String.format(
                     "[   Pwn The Planet, One HTTP at a Time  ]\n" +
@@ -40,7 +41,7 @@ public class BpArsenal implements BurpExtension {
             api = ApiManager.getInstance().getApi();
 
             // 注册主面板到Burp Suite
-            api.userInterface().registerSuiteTab("BpArsenal", mainPanel);
+            api.userInterface().registerSuiteTab(i18n.getText("main.title"), mainPanel);
 
             // 注册菜单栏
             try {

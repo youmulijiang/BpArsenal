@@ -155,10 +155,11 @@ public class ArsenalContextMenuProvider implements ContextMenuItemsProvider {
                     } catch (Exception ex) {
 
                         // 显示错误提示
+                        I18nManager i18n = I18nManager.getInstance();
                         JOptionPane.showMessageDialog(
                             ApiManager.getInstance().getApi().userInterface().swingUtils().suiteFrame(),
-                            "打开Arsenal对话框失败:\n" + ex.getMessage(),
-                            "错误",
+                            i18n.getText("context.menu.open.arsenal.failed", ex.getMessage()),
+                            i18n.getText("error.title"),
                             JOptionPane.ERROR_MESSAGE
                         );
                     }
@@ -181,7 +182,8 @@ public class ArsenalContextMenuProvider implements ContextMenuItemsProvider {
         for (HttpToolCommand command : commands) {
             String category = command.getCategory();
             if (category == null || category.trim().isEmpty()) {
-                category = "未分类";
+                I18nManager i18n = I18nManager.getInstance();
+                category = i18n.getText("common.uncategorized");
             }
             
             grouped.computeIfAbsent(category, k -> new ArrayList<>()).add(command);
@@ -239,9 +241,10 @@ public class ArsenalContextMenuProvider implements ContextMenuItemsProvider {
             String renderedCommand = generateRenderedCommand(toolCommand, httpRequest, httpResponse);
             
             if (renderedCommand == null || renderedCommand.trim().isEmpty()) {
+                I18nManager i18n = I18nManager.getInstance();
                 JOptionPane.showMessageDialog(null, 
-                    "命令渲染失败或为空，无法执行", 
-                    "执行失败", 
+                    i18n.getText("context.menu.command.render.failed"), 
+                    i18n.getText("context.menu.execution.failed"), 
                     JOptionPane.ERROR_MESSAGE);
                 return;
             }
@@ -250,8 +253,9 @@ public class ArsenalContextMenuProvider implements ContextMenuItemsProvider {
             executeToolCommandWithWorkDir(toolCommand, renderedCommand, toolName);
             
         } catch (Exception e) {
-            String errorMsg = "执行工具命令失败: " + e.getMessage();
-            JOptionPane.showMessageDialog(null, errorMsg, "执行失败", JOptionPane.ERROR_MESSAGE);
+            I18nManager i18n = I18nManager.getInstance();
+            String errorMsg = i18n.getText("context.menu.tool.execution.failed", e.getMessage());
+            JOptionPane.showMessageDialog(null, errorMsg, i18n.getText("context.menu.execution.failed"), JOptionPane.ERROR_MESSAGE);
         }
     }
     
@@ -304,7 +308,8 @@ public class ArsenalContextMenuProvider implements ContextMenuItemsProvider {
             String workDir = toolCommand.getWorkDir();
             ToolExecutor.getInstance().executeCommandSync(command, toolName, workDir);
         } catch (Exception e) {
-            throw new RuntimeException("命令执行失败: " + e.getMessage(), e);
+            I18nManager i18n = I18nManager.getInstance();
+            throw new RuntimeException(i18n.getText("context.menu.command.execution.failed", e.getMessage()), e);
         }
     }
 } 

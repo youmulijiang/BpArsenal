@@ -199,8 +199,10 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
         
         toolTable = new JTable(tableModel);
         toolTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        toolTable.setFont(new Font("微软雅黑", Font.PLAIN, 12));
-        toolTable.getTableHeader().setFont(new Font("微软雅黑", Font.BOLD, 12));
+        Font uiFont = UIManager.getFont("Table.font");
+        if (uiFont == null) uiFont = new Font(Font.SANS_SERIF, Font.PLAIN, 12);
+        toolTable.setFont(uiFont);
+        toolTable.getTableHeader().setFont(uiFont.deriveFont(Font.BOLD));
         
         // 设置表格行高
         toolTable.setRowHeight(25);
@@ -221,7 +223,9 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
         
         // 创建运行按钮
         runButton = new JButton(i18n.getText("arsenal.dialog.button.run"));
-        runButton.setFont(new Font("微软雅黑", Font.BOLD, 12));
+        Font buttonFont = UIManager.getFont("Button.font");
+        if (buttonFont == null) buttonFont = new Font(Font.SANS_SERIF, Font.BOLD, 12);
+        runButton.setFont(buttonFont);
         runButton.setBackground(new Color(40, 167, 69));
         runButton.setForeground(Color.WHITE);
         runButton.setEnabled(false);
@@ -229,7 +233,9 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
         
         // 创建复制命令按钮（替换原来的刷新变量按钮）
         copyCommandButton = new JButton(i18n.getText("arsenal.dialog.button.copy.command"));
-        copyCommandButton.setFont(new Font("微软雅黑", Font.BOLD, 11));
+        Font copyButtonFont = UIManager.getFont("Button.font");
+        if (copyButtonFont == null) copyButtonFont = new Font(Font.SANS_SERIF, Font.BOLD, 11);
+        copyCommandButton.setFont(copyButtonFont.deriveFont(11f));
         copyCommandButton.setBackground(new Color(255, 193, 7));
         copyCommandButton.setForeground(Color.BLACK);
         copyCommandButton.setEnabled(false);
@@ -238,7 +244,9 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
         // 创建执行历史文本框 - 修改为白色背景
         commandResultArea = new JTextArea(8, 50);
         commandResultArea.setEditable(false);
-        commandResultArea.setFont(new Font("微软雅黑", Font.PLAIN, 11));  // 使用支持中文的字体
+        Font textAreaFont = UIManager.getFont("TextArea.font");
+        if (textAreaFont == null) textAreaFont = new Font(Font.SANS_SERIF, Font.PLAIN, 11);
+        commandResultArea.setFont(textAreaFont);
         commandResultArea.setBackground(Color.WHITE);  // 修改为白色背景
         commandResultArea.setForeground(Color.BLACK);  // 修改为黑色文字
         commandResultArea.setBorder(BorderFactory.createTitledBorder(i18n.getText("arsenal.dialog.execution.history")));  // 修改标题
@@ -253,7 +261,9 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
      */
     private void initializeCommandTabs() {
         commandTabbedPane = new JTabbedPane();
-        commandTabbedPane.setFont(new Font("微软雅黑", Font.PLAIN, 12));
+        Font tabbedPaneFont = UIManager.getFont("TabbedPane.font");
+        if (tabbedPaneFont == null) tabbedPaneFont = new Font(Font.SANS_SERIF, Font.PLAIN, 12);
+        commandTabbedPane.setFont(tabbedPaneFont);
         
         // 原始命令选项卡
         originalCommandArea = new JTextArea(5, 50);
@@ -313,17 +323,23 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
         // 工具名称筛选框
         I18nManager filterI18n = I18nManager.getInstance();
         toolNameFilterField = new JTextField(15);
-        toolNameFilterField.setFont(new Font("微软雅黑", Font.PLAIN, 12));
+        Font filterFieldFont = UIManager.getFont("TextField.font");
+        if (filterFieldFont == null) filterFieldFont = new Font(Font.SANS_SERIF, Font.PLAIN, 12);
+        toolNameFilterField.setFont(filterFieldFont);
         toolNameFilterField.setBorder(BorderFactory.createTitledBorder(filterI18n.getText("arsenal.dialog.filter.tool.name")));
         
         // 分类筛选下拉框
         categoryFilterCombo = new JComboBox<>();
-        categoryFilterCombo.setFont(new Font("微软雅黑", Font.PLAIN, 12));
+        Font comboBoxFont = UIManager.getFont("ComboBox.font");
+        if (comboBoxFont == null) comboBoxFont = new Font(Font.SANS_SERIF, Font.PLAIN, 12);
+        categoryFilterCombo.setFont(comboBoxFont);
         categoryFilterCombo.addItem(filterI18n.getText("arsenal.dialog.filter.category.all"));
         
         // 清除筛选按钮
         clearFilterButton = new JButton(filterI18n.getText("arsenal.dialog.button.clear.filter"));
-        clearFilterButton.setFont(new Font("微软雅黑", Font.PLAIN, 11));
+        Font clearButtonFont = UIManager.getFont("Button.font");
+        if (clearButtonFont == null) clearButtonFont = new Font(Font.SANS_SERIF, Font.PLAIN, 11);
+        clearFilterButton.setFont(clearButtonFont.deriveFont(11f));
         clearFilterButton.setPreferredSize(new Dimension(80, 25));
     }
     
@@ -508,11 +524,12 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
      * @return 字体对象
      */
     private Font createMonospaceFont() {
-        // 尝试创建支持中文的等宽字体，优先级：Consolas > 微软雅黑 > 默认等宽字体
+        // 尝试创建支持中文的等宽字体，优先级：Consolas > 系统字体 > 默认等宽字体
+        Font systemFont = UIManager.getFont("TextArea.font");
         Font[] preferredFonts = {
             new Font("Consolas", Font.PLAIN, 11),
             new Font("Microsoft YaHei", Font.PLAIN, 11),
-            new Font("微软雅黑", Font.PLAIN, 11),
+            systemFont != null ? systemFont.deriveFont(11f) : new Font(Font.SANS_SERIF, Font.PLAIN, 11),
             new Font(Font.MONOSPACED, Font.PLAIN, 11)
         };
         
@@ -643,27 +660,28 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
             preview.append("# 用法: 在命令中使用 %变量名% 进行替换\n\n");
             
             // 按分类显示变量
-            addVariablesByCategory(preview, "基础信息", requestVariables, 
+            I18nManager variableI18n = I18nManager.getInstance();
+            addVariablesByCategory(preview, variableI18n.getText("variables.category.basic"), requestVariables, 
                 new String[]{"http.request.url", "http.request.method", "http.request.host", 
                            "http.request.port", "http.request.path", "http.request.protocol"});
             
-            addVariablesByCategory(preview, "头部信息", requestVariables, 
+            addVariablesByCategory(preview, variableI18n.getText("variables.category.headers"), requestVariables, 
                 new String[]{"http.request.headers.user-agent", "http.request.headers.cookie", 
                            "http.request.headers.referer", "http.request.headers.authorization"});
             
-            addVariablesByCategory(preview, "请求体信息", requestVariables,
+            addVariablesByCategory(preview, variableI18n.getText("variables.category.body"), requestVariables,
                 new String[]{"http.request.body", "body.type", "body.json.field.count"});
             
-            addVariablesByCategory(preview, "文件信息", requestVariables,
+            addVariablesByCategory(preview, variableI18n.getText("variables.category.file"), requestVariables,
                 new String[]{"file.name", "file.extension", "path.directory"});
             
-            addVariablesByCategory(preview, "认证信息", requestVariables,
+            addVariablesByCategory(preview, variableI18n.getText("variables.category.auth"), requestVariables,
                 new String[]{"auth.type", "auth.username", "auth.password", "auth.token"});
             
             // 响应变量
             if (!responseVariables.isEmpty()) {
                 preview.append("\n## HTTP响应变量\n");
-                addVariablesByCategory(preview, "响应信息", responseVariables,
+                addVariablesByCategory(preview, variableI18n.getText("variables.category.response"), responseVariables,
                     new String[]{"http.response.status", "http.response.headers.content-type", 
                                "response.format", "response.html.title"});
             }
@@ -903,9 +921,10 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
      * @param e 异常对象
      */
     private void handleCommandPreviewError(Exception e) {
-        String errorMessage = "命令预览更新失败: " + e.getMessage();
-                originalCommandArea.setText("命令加载失败: " + e.getMessage());
-                renderedCommandArea.setText("命令渲染失败: " + e.getMessage());
+        I18nManager errorI18n = I18nManager.getInstance();
+        String errorMessage = errorI18n.getText("command.preview.update.failed") + ": " + e.getMessage();
+                originalCommandArea.setText(errorI18n.getText("command.load.failed") + ": " + e.getMessage());
+                renderedCommandArea.setText(errorI18n.getText("command.render.failed") + ": " + e.getMessage());
         
     }
     
@@ -1175,37 +1194,28 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
     }
     
     /**
-     * 通过临时脚本执行命令（支持工作目录）
+     * 通过ToolExecutor执行命令
      * @param command 要执行的命令
      * @param toolName 工具名称
      * @param toolWorkDir 工具配置的工作目录（可为null）
      */
     private void executeCommandViaScript(String command, String toolName, String toolWorkDir) {
         try {
-            // 确定最终工作目录
-            String finalWorkDir = determineWorkingDirectory(toolWorkDir);
-            
-            // 获取插件路径
-            String extensionPath = getExtensionPath();
-            if (extensionPath == null) {
-                I18nManager pathErrorI18n = I18nManager.getInstance();
-                throw new Exception(pathErrorI18n.getText("arsenal.dialog.error.no.plugin.path"));
-            }
-            
-            // 生成临时脚本文件（包含工作目录切换）
-            java.io.File scriptFile = createTemporaryScript(command, extensionPath, finalWorkDir);
             I18nManager scriptI18n = I18nManager.getInstance();
-            addExecutionLogEntry(scriptI18n.getText("arsenal.dialog.execution.script.generated"), toolName, 
-                scriptI18n.getText("arsenal.dialog.execution.script.path"), scriptFile.getAbsolutePath());
+            addExecutionLogEntry(scriptI18n.getText("arsenal.dialog.execution.start"), toolName, 
+                scriptI18n.getText("arsenal.dialog.execution.system.command"), command);
             
             // 记录工作目录信息
-            if (finalWorkDir != null) {
+            if (toolWorkDir != null && !toolWorkDir.trim().isEmpty()) {
                 addExecutionLogEntry(scriptI18n.getText("arsenal.dialog.execution.workdir"), toolName, 
-                    scriptI18n.getText("arsenal.dialog.execution.final.workdir"), finalWorkDir);
+                    scriptI18n.getText("arsenal.dialog.execution.tool.workdir"), toolWorkDir);
             }
             
-            // 执行脚本（传递工作目录给ProcessBuilder）
-            executeScript(scriptFile, toolName, finalWorkDir);
+            // 使用ToolExecutor执行命令
+            ToolExecutor.getInstance().executeCommandViaScript(command, toolName, toolWorkDir);
+            
+            addExecutionLogEntry(scriptI18n.getText("arsenal.dialog.execution.script.started"), toolName, 
+                scriptI18n.getText("arsenal.dialog.execution.success"), scriptI18n.getText("arsenal.dialog.script.started.success"));
             
         } catch (Exception e) {
             I18nManager scriptExecI18n = I18nManager.getInstance();
@@ -1223,290 +1233,6 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
         }
     }
     
-    /**
-     * 获取插件路径
-     * @return 插件路径
-     */
-    private String getExtensionPath() {
-        try {
-            if (ApiManager.getInstance().isInitialized()) {
-                String filename = ApiManager.getInstance().getApi().extension().filename();
-                if (filename != null && !filename.isEmpty()) {
-                    // 获取插件所在目录
-                    java.io.File file = new java.io.File(filename);
-                    return file.getParent();
-                }
-            }
-            // 如果无法获取插件路径，使用系统临时目录
-            return System.getProperty("java.io.tmpdir");
-        } catch (Exception e) {
-            I18nManager pathI18n = I18nManager.getInstance();
-            addExecutionLogEntry(pathI18n.getText("arsenal.dialog.execution.tool"), pathI18n.getText("arsenal.dialog.execution.system.command"), 
-                pathI18n.getText("arsenal.dialog.execution.warning"), pathI18n.getText("arsenal.dialog.error.plugin.path.use.temp", e.getMessage()));
-            return System.getProperty("java.io.tmpdir");
-        }
-    }
-    
-    /**
-     * 创建临时脚本文件（支持工作目录）
-     * @param command 要执行的命令
-     * @param extensionPath 插件路径
-     * @param workDir 工作目录（可为null）
-     * @return 脚本文件
-     * @throws Exception 创建异常
-     */
-    private java.io.File createTemporaryScript(String command, String extensionPath, String workDir) throws Exception {
-        java.io.File scriptFile;
-        String scriptContent;
-        
-        if (ToolExecutor.isWindows()) {
-            // Windows: 创建批处理文件
-            scriptFile = new java.io.File(extensionPath, "bparsenal_temp_" + System.currentTimeMillis() + ".bat");
-            scriptContent = generateBatchScript(command, workDir);
-        } else {
-            // Linux/Unix: 创建shell脚本
-            scriptFile = new java.io.File(extensionPath, "bparsenal_temp_" + System.currentTimeMillis() + ".sh");
-            scriptContent = generateShellScript(command, workDir);
-        }
-        
-        // 写入脚本内容，Windows使用系统默认编码(GBK)，Linux使用UTF-8
-        String encoding = ToolExecutor.isWindows() ? "GBK" : "UTF-8";
-        try (java.io.OutputStreamWriter writer = new java.io.OutputStreamWriter(
-                new java.io.FileOutputStream(scriptFile), encoding)) {
-            writer.write(scriptContent);
-        } catch (java.io.UnsupportedEncodingException e) {
-            // 如果指定编码不支持，使用默认编码
-            try (java.io.FileWriter writer = new java.io.FileWriter(scriptFile)) {
-                writer.write(scriptContent);
-            }
-        }
-        
-        // 设置脚本为可执行
-        if (!ToolExecutor.isWindows()) {
-            scriptFile.setExecutable(true);
-        }
-        
-        // 设置脚本在程序退出时自动删除
-        scriptFile.deleteOnExit();
-        
-        return scriptFile;
-    }
-    
-    /**
-     * 生成Windows批处理脚本（支持工作目录）
-     * @param command 要执行的命令
-     * @param workDir 工作目录（可为null）
-     * @return 脚本内容
-     */
-    private String generateBatchScript(String command, String workDir) {
-        StringBuilder script = new StringBuilder();
-        script.append("@echo off\r\n");
-        script.append("title BpArsenal Tool Execution\r\n");
-        script.append("echo.\r\n");
-        script.append("echo ========================================\r\n");
-        I18nManager batchI18n = I18nManager.getInstance();
-        script.append("echo ").append(batchI18n.getText("arsenal.dialog.shell.title.bparsenal")).append("\r\n");
-        script.append("echo Time: %date% %time%\r\n");
-        script.append("echo ========================================\r\n");
-        script.append("echo.\r\n");
-        
-        // 切换工作目录（如果指定）
-        if (workDir != null && !workDir.trim().isEmpty()) {
-            script.append("echo Changing to work directory: ").append(workDir).append("\r\n");
-            script.append("cd /d \"").append(workDir).append("\"\r\n");
-            script.append("if errorlevel 1 (\r\n");
-            script.append("    echo ERROR: Failed to change to work directory\r\n");
-            script.append("    pause\r\n");
-            script.append("    exit /b 1\r\n");
-            script.append(")\r\n");
-            script.append("echo Current directory: %cd%\r\n");
-            script.append("echo.\r\n");
-        }
-        
-        script.append("echo Executing command:\r\n");
-        
-        // 显示命令但转义特殊字符
-        String displayCommand = command.replace("%", "%%").replace("^", "^^");
-        script.append("echo ").append(displayCommand).append("\r\n");
-        script.append("echo.\r\n");
-        script.append("echo ========================================\r\n");
-        script.append("echo.\r\n");
-        
-        // 执行实际命令
-        script.append(command).append("\r\n");
-        script.append("set EXEC_CODE=%ERRORLEVEL%\r\n");
-        
-        script.append("\r\n");
-        script.append("echo.\r\n");
-        script.append("echo ========================================\r\n");
-        script.append("echo Command completed with exit code: %EXEC_CODE%\r\n");
-        script.append("echo ========================================\r\n");
-        script.append("echo.\r\n");
-        script.append("pause\r\n"); // 暂停以便查看结果
-        
-        return script.toString();
-    }
-    
-    /**
-     * 生成Linux Shell脚本（支持工作目录）
-     * @param command 要执行的命令
-     * @param workDir 工作目录（可为null）
-     * @return 脚本内容
-     */
-    private String generateShellScript(String command, String workDir) {
-        I18nManager shellI18n = I18nManager.getInstance();
-        StringBuilder script = new StringBuilder();
-        script.append("#!/bin/bash\n");
-        script.append("# ").append(shellI18n.getText("arsenal.dialog.shell.comment")).append("\n");
-        script.append("# 自动生成于: $(date)\n\n");
-        
-        script.append("echo \"========================================\"\n");
-        script.append("echo \"").append(shellI18n.getText("arsenal.dialog.shell.title.bparsenal")).append("\"\n");
-        script.append("echo \"").append(shellI18n.getText("arsenal.dialog.shell.time")).append("\"\n");
-        script.append("echo \"========================================\"\n");
-        script.append("echo\n");
-        
-        // 切换工作目录（如果指定）
-        if (workDir != null && !workDir.trim().isEmpty()) {
-            script.append("echo \"切换到工作目录: ").append(workDir).append("\"\n");
-            script.append("cd \"").append(workDir).append("\"\n");
-            script.append("if [ $? -ne 0 ]; then\n");
-            script.append("    echo \"错误: 无法切换到工作目录\"\n");
-            script.append("    echo \"按 Enter 键继续...\"\n");
-            script.append("    read\n");
-            script.append("    exit 1\n");
-            script.append("fi\n");
-            script.append("echo \"当前目录: $(pwd)\"\n");
-            script.append("echo\n");
-        }
-        
-        script.append("echo \"").append(shellI18n.getText("arsenal.dialog.shell.executing.command")).append("\"\n");
-        script.append("echo \"").append(command.replace("\"", "\\\"")).append("\"\n"); // 转义双引号
-        script.append("echo\n");
-        script.append("echo \"========================================\"\n");
-        script.append("echo\n");
-        
-        // 执行实际命令
-        script.append(command).append("\n");
-        script.append("EXIT_CODE=$?\n");
-        
-        script.append("\n");
-        script.append("echo\n");
-        script.append("echo \"========================================\"\n");
-        script.append("echo \"").append(shellI18n.getText("arsenal.dialog.shell.command.completed")).append("\"\n");
-        script.append("echo \"========================================\"\n");
-        script.append("read -p \"").append(shellI18n.getText("arsenal.dialog.shell.press.enter")).append("\"\n"); // 暂停以便查看结果
-        
-        return script.toString();
-    }
-    
-    /**
-     * 执行脚本文件（支持工作目录）
-     * @param scriptFile 脚本文件
-     * @param toolName 工具名称
-     * @param workDir 工作目录（可为null）
-     */
-    private void executeScript(java.io.File scriptFile, String toolName, String workDir) {
-        try {
-            ProcessBuilder processBuilder = null;
-            
-            if (ToolExecutor.isWindows()) {
-                // Windows: 在新命令窗口中执行批处理文件
-                processBuilder = new ProcessBuilder("cmd", "/c", "start", "\"BpArsenal Tool Execution\"", 
-                    "cmd", "/k", "\"" + scriptFile.getAbsolutePath() + "\"");
-            } else {
-                // Linux: 尝试在终端中执行
-                String[] terminalCommands = {
-                    "x-terminal-emulator", "-e", "bash", scriptFile.getAbsolutePath(),
-                    "gnome-terminal", "--", "bash", scriptFile.getAbsolutePath(),
-                    "xterm", "-e", "bash", scriptFile.getAbsolutePath(),
-                    "konsole", "-e", "bash", scriptFile.getAbsolutePath()
-                };
-                
-                for (int i = 0; i < terminalCommands.length; i += 3) {
-                    try {
-                        processBuilder = new ProcessBuilder(terminalCommands[i], terminalCommands[i+1], 
-                            terminalCommands[i+2], scriptFile.getAbsolutePath());
-                        break;
-                    } catch (Exception e) {
-                        if (i + 3 >= terminalCommands.length) {
-                            // 如果所有终端都失败，直接执行脚本
-                            processBuilder = new ProcessBuilder("bash", scriptFile.getAbsolutePath());
-                        }
-                    }
-                }
-                
-                // 如果仍然没有成功创建，使用默认方式
-                if (processBuilder == null) {
-                    processBuilder = new ProcessBuilder("bash", scriptFile.getAbsolutePath());
-                }
-            }
-            
-            // 设置工作目录（优先使用传入的工作目录，否则使用脚本文件所在目录）
-            if (workDir != null && !workDir.trim().isEmpty()) {
-                File workDirectory = new File(workDir.trim());
-                if (workDirectory.exists() && workDirectory.isDirectory()) {
-                    processBuilder.directory(workDirectory);
-                } else {
-                    processBuilder.directory(scriptFile.getParentFile());
-                }
-            } else {
-                processBuilder.directory(scriptFile.getParentFile());
-            }
-            
-            // 启动进程
-            Process process = processBuilder.start();
-            
-            I18nManager launchI18n = I18nManager.getInstance();
-            addExecutionLogEntry(launchI18n.getText("arsenal.dialog.execution.script.started"), toolName, 
-                launchI18n.getText("arsenal.dialog.execution.success"), launchI18n.getText("arsenal.dialog.script.started.success"));
-            
-            // 异步等待进程完成并清理
-            CompletableFuture.runAsync(() -> {
-                try {
-                    int exitCode = process.waitFor();
-                    
-                    SwingUtilities.invokeLater(() -> {
-                        I18nManager processI18n = I18nManager.getInstance();
-                        String status = exitCode == 0 ? processI18n.getText("arsenal.dialog.execution.success.hint") : 
-                            processI18n.getText("arsenal.dialog.execution.completed.hint");
-                        addExecutionLogEntry(processI18n.getText("arsenal.dialog.execution.script.completed"), toolName, 
-                            status, processI18n.getText("arsenal.dialog.exit.code", String.valueOf(exitCode)));
-                        
-                        // 恢复按钮状态
-                        runButton.setEnabled(true);
-                        runButton.setText(processI18n.getText("arsenal.dialog.button.run"));
-                    });
-                    
-                    // 延迟删除脚本文件（给进程时间完成）
-                    Thread.sleep(5000);
-                    if (scriptFile.exists()) {
-                        scriptFile.delete();
-                    }
-                    
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                } catch (Exception e) {
-                    SwingUtilities.invokeLater(() -> {
-                        I18nManager exceptionI18n = I18nManager.getInstance();
-                        addExecutionLogEntry(exceptionI18n.getText("arsenal.dialog.execution.script.exception"), toolName, 
-                            exceptionI18n.getText("arsenal.dialog.execution.error"), e.getMessage());
-                        runButton.setEnabled(true);
-                        runButton.setText(exceptionI18n.getText("arsenal.dialog.button.run"));
-                    });
-                }
-            });
-            
-        } catch (Exception e) {
-            I18nManager startFailI18n = I18nManager.getInstance();
-            addExecutionLogEntry(startFailI18n.getText("arsenal.dialog.execution.script.failed"), toolName, 
-                startFailI18n.getText("arsenal.dialog.execution.error"), e.getMessage());
-            // 恢复按钮状态
-            runButton.setEnabled(true);
-            runButton.setText(startFailI18n.getText("arsenal.dialog.button.run"));
-            throw new RuntimeException(startFailI18n.getText("arsenal.dialog.copy.failed.pattern", e.getMessage()), e);
-        }
-    }
     
     /**
      * 添加执行日志条目
@@ -1751,45 +1477,11 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
             return tempFile.getAbsolutePath();
             
         } catch (Exception e) {
-            throw new IOException("创建临时文件失败: " + e.getMessage(), e);
+            I18nManager tempFileI18n = I18nManager.getInstance();
+            throw new IOException(tempFileI18n.getText("command.create.temp.file.failed") + ": " + e.getMessage(), e);
         }
     }
     
-    /**
-     * 确定工作目录
-     * 优先级：工具配置的工作目录 > 全局设置的工具目录 > 当前目录
-     * @param toolWorkDir 工具配置的工作目录
-     * @return 最终使用的工作目录
-     */
-    private String determineWorkingDirectory(String toolWorkDir) {
-        // 1. 首先检查工具配置的工作目录
-        if (toolWorkDir != null && !toolWorkDir.trim().isEmpty()) {
-            String trimmedToolWorkDir = toolWorkDir.trim();
-            File toolDir = new File(trimmedToolWorkDir);
-            if (toolDir.exists() && toolDir.isDirectory()) {
-                return trimmedToolWorkDir;
-            } else {
-            }
-        }
-        
-        // 2. 检查全局设置的工具目录
-        try {
-            SettingModel settingModel = new SettingModel();
-            String globalToolDir = settingModel.getToolDirectory();
-            if (globalToolDir != null && !globalToolDir.trim().isEmpty()) {
-                String trimmedGlobalDir = globalToolDir.trim();
-                File globalDir = new File(trimmedGlobalDir);
-                if (globalDir.exists() && globalDir.isDirectory()) {
-                    return trimmedGlobalDir;
-                } else {
-                }
-            }
-        } catch (Exception e) {
-        }
-        
-        // 3. 都不可用时，返回null表示使用当前目录
-        return null;
-    }
     
     /**
      * 语言变更监听器实现

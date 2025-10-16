@@ -85,7 +85,8 @@ public class SettingPanelController {
             
         } catch (Exception e) {
             if (listener != null) {
-                listener.onError("初始化设置", e.getMessage());
+                I18nManager i18n = I18nManager.getInstance();
+                listener.onError(i18n.getText("common.error.init.settings"), e.getMessage());
             }
         }
     }
@@ -113,7 +114,8 @@ public class SettingPanelController {
             
         } catch (Exception e) {
             if (listener != null) {
-                listener.onError("加载设置", e.getMessage());
+                I18nManager i18n = I18nManager.getInstance();
+                listener.onError(i18n.getText("common.error.load.settings"), e.getMessage());
             }
         }
     }
@@ -136,7 +138,8 @@ public class SettingPanelController {
             // 导入配置（自动保存到用户目录）
             ConfigManager.getInstance().importConfig(configFilePath);
             
-            updateStatus("配置导入成功: " + new File(configFilePath).getName(), StatusType.SUCCESS);
+            I18nManager i18n = I18nManager.getInstance();
+            updateStatus(i18n.getText("status.config.import.success", new File(configFilePath).getName()), StatusType.SUCCESS);
             
             if (view != null) {
                 view.showImportSuccessMessage(new File(configFilePath).getName());
@@ -147,7 +150,8 @@ public class SettingPanelController {
             }
             
         } catch (Exception e) {
-            String errorMsg = "配置导入失败: " + e.getMessage();
+            I18nManager i18n = I18nManager.getInstance();
+            String errorMsg = i18n.getText("status.config.import.failed", e.getMessage());
             updateStatus(errorMsg, StatusType.ERROR);
             
             if (view != null) {
@@ -155,7 +159,7 @@ public class SettingPanelController {
             }
             
             if (listener != null) {
-                listener.onError("配置导入", e.getMessage());
+                listener.onError(i18n.getText("common.error.config.import"), e.getMessage());
             }
         }
     }
@@ -169,7 +173,8 @@ public class SettingPanelController {
             // 导出配置
             ConfigManager.getInstance().exportConfig(exportFilePath);
             
-            updateStatus("配置导出成功: " + new File(exportFilePath).getName(), StatusType.SUCCESS);
+            I18nManager i18n = I18nManager.getInstance();
+            updateStatus(i18n.getText("status.config.export.success", new File(exportFilePath).getName()), StatusType.SUCCESS);
             
             if (view != null) {
                 view.showExportSuccessMessage(exportFilePath);
@@ -180,7 +185,8 @@ public class SettingPanelController {
             }
             
         } catch (Exception e) {
-            String errorMsg = "配置导出失败: " + e.getMessage();
+            I18nManager i18n = I18nManager.getInstance();
+            String errorMsg = i18n.getText("status.config.export.failed", e.getMessage());
             updateStatus(errorMsg, StatusType.ERROR);
             
             if (view != null) {
@@ -188,7 +194,7 @@ public class SettingPanelController {
             }
             
             if (listener != null) {
-                listener.onError("配置导出", e.getMessage());
+                listener.onError(i18n.getText("common.error.config.export"), e.getMessage());
             }
         }
     }
@@ -210,7 +216,8 @@ public class SettingPanelController {
             // 重置配置为默认配置
             ConfigManager.getInstance().resetToDefaultConfig();
             
-            updateStatus("配置已重置为默认设置", StatusType.INFO);
+            I18nManager i18n = I18nManager.getInstance();
+            updateStatus(i18n.getText("status.config.reset.success"), StatusType.INFO);
             
             if (view != null) {
                 view.showResetSuccessMessage();
@@ -221,7 +228,8 @@ public class SettingPanelController {
             }
             
         } catch (Exception e) {
-            String errorMsg = "配置重置失败: " + e.getMessage();
+            I18nManager i18n = I18nManager.getInstance();
+            String errorMsg = i18n.getText("status.config.reset.failed", e.getMessage());
             updateStatus(errorMsg, StatusType.ERROR);
             
             if (view != null) {
@@ -229,7 +237,7 @@ public class SettingPanelController {
             }
             
             if (listener != null) {
-                listener.onError("配置重置", e.getMessage());
+                listener.onError(i18n.getText("common.error.config.reset"), e.getMessage());
             }
         }
     }
@@ -269,9 +277,10 @@ public class SettingPanelController {
             refreshToolExecutorSettings();
             
             // 更新目录状态显示
-            updateDirectoryStatus("工具目录: " + directoryPath, StatusType.SUCCESS);
+            I18nManager i18n = I18nManager.getInstance();
+            updateDirectoryStatus(i18n.getText("status.directory.valid", directoryPath), StatusType.SUCCESS);
             
-            updateStatus("工具目录设置成功: " + directoryPath, StatusType.SUCCESS);
+            updateStatus(i18n.getText("status.directory.set.success", directoryPath), StatusType.SUCCESS);
             
             if (view != null) {
                 view.showDirectorySuccessMessage(directoryPath);
@@ -282,11 +291,12 @@ public class SettingPanelController {
             }
             
         } catch (Exception e) {
-            String errorMsg = "设置工具目录失败: " + e.getMessage();
+            I18nManager i18n = I18nManager.getInstance();
+            String errorMsg = i18n.getText("status.directory.set.failed", e.getMessage());
             updateStatus(errorMsg, StatusType.ERROR);
             
             if (listener != null) {
-                listener.onError("设置工具目录", e.getMessage());
+                listener.onError(i18n.getText("common.error.set.directory"), e.getMessage());
             }
         }
     }
@@ -307,11 +317,13 @@ public class SettingPanelController {
             String statusMsg;
             String prefixStatusMsg;
             if (prefix == null || prefix.trim().isEmpty()) {
-                statusMsg = "已重置为系统默认前缀";
-                prefixStatusMsg = "使用系统默认: " + settingModel.getDefaultCommandPrefix();
+                I18nManager i18n = I18nManager.getInstance();
+                statusMsg = i18n.getText("status.prefix.reset.default");
+                prefixStatusMsg = i18n.getText("status.prefix.default.info", settingModel.getDefaultCommandPrefix());
             } else {
-                statusMsg = "自定义前缀设置成功: " + prefix;
-                prefixStatusMsg = "自定义前缀: " + prefix;
+                I18nManager i18n = I18nManager.getInstance();
+                statusMsg = i18n.getText("status.prefix.custom", prefix);
+                prefixStatusMsg = i18n.getText("status.prefix.custom.info", prefix);
             }
             
             // 更新前缀状态显示
@@ -328,11 +340,12 @@ public class SettingPanelController {
             }
             
         } catch (Exception e) {
-            String errorMsg = "设置命令前缀失败: " + e.getMessage();
+            I18nManager i18n = I18nManager.getInstance();
+            String errorMsg = i18n.getText("status.prefix.set.failed", e.getMessage());
             updateStatus(errorMsg, StatusType.ERROR);
             
             if (listener != null) {
-                listener.onError("设置命令前缀", e.getMessage());
+                listener.onError(i18n.getText("common.error.set.prefix"), e.getMessage());
             }
         }
     }
@@ -346,18 +359,20 @@ public class SettingPanelController {
             I18nManager.SupportedLanguage currentLanguage = I18nManager.getInstance().getCurrentLanguage();
             if (language != currentLanguage) {
                 I18nManager.getInstance().setCurrentLanguage(language);
-                updateStatus("语言设置已更改为: " + language.getDisplayName(), StatusType.SUCCESS);
+                I18nManager i18n = I18nManager.getInstance();
+                updateStatus(i18n.getText("status.language.changed", language.getDisplayName()), StatusType.SUCCESS);
                 
                 if (listener != null) {
                     listener.onLanguageChanged(language);
                 }
             }
         } catch (Exception e) {
-            String errorMsg = "设置语言失败: " + e.getMessage();
+            I18nManager i18n = I18nManager.getInstance();
+            String errorMsg = i18n.getText("status.language.set.failed", e.getMessage());
             updateStatus(errorMsg, StatusType.ERROR);
             
             if (listener != null) {
-                listener.onError("设置语言", e.getMessage());
+                listener.onError(i18n.getText("common.error.set.language"), e.getMessage());
             }
         }
     }
@@ -412,12 +427,14 @@ public class SettingPanelController {
         if (!toolDirectory.isEmpty()) {
             File directory = new File(toolDirectory);
             if (directory.exists() && directory.isDirectory()) {
-                updateDirectoryStatus("工具目录: " + toolDirectory, StatusType.SUCCESS);
+                I18nManager i18n = I18nManager.getInstance();
+                updateDirectoryStatus(i18n.getText("status.directory.valid", toolDirectory), StatusType.SUCCESS);
             } else {
-                updateDirectoryStatus("工具目录无效: " + toolDirectory, StatusType.ERROR);
+                updateDirectoryStatus(i18n.getText("status.directory.invalid", toolDirectory), StatusType.ERROR);
             }
         } else {
-            updateDirectoryStatus("工具目录未设置", StatusType.INFO);
+            I18nManager i18n = I18nManager.getInstance();
+            updateDirectoryStatus(i18n.getText("status.directory.not.set"), StatusType.INFO);
         }
     }
     
@@ -437,9 +454,10 @@ public class SettingPanelController {
         }
         
         if (!commandPrefix.isEmpty()) {
-            updatePrefixStatus("自定义前缀: " + commandPrefix, StatusType.SUCCESS);
+            I18nManager i18n = I18nManager.getInstance();
+            updatePrefixStatus(i18n.getText("status.prefix.custom.info", commandPrefix), StatusType.SUCCESS);
         } else {
-            updatePrefixStatus("使用系统默认: " + defaultPrefix, StatusType.INFO);
+            updatePrefixStatus(i18n.getText("status.prefix.default.info", defaultPrefix), StatusType.INFO);
         }
     }
     
@@ -453,14 +471,16 @@ public class SettingPanelController {
             view.updateLanguage(currentLanguage);
         }
         
-        updateLanguageStatus("当前语言: " + currentLanguage.getDisplayName() + " (已根据系统地区自动设置)", StatusType.SUCCESS);
+        I18nManager i18n = I18nManager.getInstance();
+        updateLanguageStatus(i18n.getText("status.language.auto", currentLanguage.getDisplayName()), StatusType.SUCCESS);
     }
     
     /**
      * 加载配置状态
      */
     private void loadConfigurationStatus() {
-        updateConfigStatus("配置状态: 已加载", StatusType.SUCCESS);
+        I18nManager i18n = I18nManager.getInstance();
+        updateConfigStatus(i18n.getText("status.config.loaded"), StatusType.SUCCESS);
     }
     
     /**
