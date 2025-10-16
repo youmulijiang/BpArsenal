@@ -47,34 +47,6 @@
               "workDir": ""
             }
           ]
-        },
-        {
-          "toolName": "gobuster",
-          "commandList": [
-            {
-              "command": "gobuster dir -u \"%http.request.protocol%://%http.request.host%:%http.request.port%\" -w /usr/share/wordlists/dirb/common.txt -t 50",
-              "favor": true,
-              "note": "Gobuster目录爆破",
-              "workDir": ""
-            },
-            {
-              "command": "gobuster dir -u \"%http.request.url%\" -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -x php,html,txt -k",
-              "favor": false,
-              "note": "大字典目录扫描",
-              "workDir": ""
-            }
-          ]
-        },
-        {
-          "toolName": "dirb",
-          "commandList": [
-            {
-              "command": "dirb \"%http.request.protocol%://%http.request.host%:%http.request.port%\" /usr/share/dirb/wordlists/common.txt",
-              "favor": true,
-              "note": "Dirb基础扫描",
-              "workDir": ""
-            }
-          ]
         }
       ]
     },
@@ -352,8 +324,8 @@
           "favor":true
         },
         {
-          "url":"https://shodan.io",
-          "desc":"Shodan搜索引擎",
+          "url":"https://www.bing.com/",
+          "desc":"bing搜索",
           "favor":true
         }
       ]
@@ -363,7 +335,7 @@
       "content":[
         {
           "url":"https://www.fofa.com",
-          "desc":"fofa",
+          "desc":"fofa搜索",
           "favor":true
         },
         {
@@ -375,6 +347,16 @@
           "url":"https://hunter.io",
           "desc":"Hunter邮箱搜索",
           "favor":false
+        },
+        {
+          "url":"https://quake.360.net/quake/",
+          "desc":"quake搜索",
+          "favor":false
+        },
+        {
+          "url":"https://shodan.io",
+          "desc":"Shodan搜索引擎",
+          "favor":true
         }
       ]
     },
@@ -395,6 +377,25 @@
           "url":"https://exploit-db.com",
           "desc":"Exploit Database",
           "favor":true
+        }
+      ]
+    },{
+      "type": "文本处理",
+      "content": [
+        {
+          "url": "https://seo.juziseo.com/tools/domain/",
+          "desc": "在线提取子域名",
+          "favor": true
+        },
+        {
+          "url": "https://uutool.cn/extract-primary-domain/",
+          "desc": "在线提取主域名",
+          "favor": true
+        },
+        {
+          "url": "https://www.toolhelper.cn/Char/TextFilter",
+          "desc": "在线文本去重",
+          "favor": true
         }
       ]
     }

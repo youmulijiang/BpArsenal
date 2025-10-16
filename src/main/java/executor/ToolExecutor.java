@@ -478,7 +478,6 @@ public class ToolExecutor {
     private String generateWindowsBatchScript(String command, String toolName, String workDir) {
         StringBuilder script = new StringBuilder();
         script.append("@echo off\r\n");
-        // 移除chcp 65001设置，使用系统默认编码
         script.append("chcp 65001\r\n");
         script.append("title BpArsenal - ").append(toolName).append("\r\n");
         script.append("echo ================================================\r\n");

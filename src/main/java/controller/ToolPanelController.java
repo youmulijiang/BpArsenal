@@ -295,6 +295,7 @@ public class ToolPanelController {
         try {
             return ToolController.getInstance().getAllHttpToolCategories();
         } catch (Exception e) {
+            
             logError("加载分类选项失败: " + e.getMessage());
             // 返回默认分类
             I18nManager i18n = I18nManager.getInstance();

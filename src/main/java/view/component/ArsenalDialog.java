@@ -1312,7 +1312,6 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
         StringBuilder script = new StringBuilder();
         script.append("@echo off\r\n");
         script.append("title BpArsenal Tool Execution\r\n");
-        script.append("color 0A\r\n"); // 设置绿色文本
         script.append("echo.\r\n");
         script.append("echo ========================================\r\n");
         I18nManager batchI18n = I18nManager.getInstance();
