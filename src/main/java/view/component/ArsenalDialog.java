@@ -4,7 +4,7 @@ import burp.api.montoya.http.message.requests.HttpRequest;
 import burp.api.montoya.http.message.responses.HttpResponse;
 import controller.ToolController;
 import executor.ToolExecutor;
-import executor.AdvancedHttpParser;
+import executor.dsl.DslVariableReplacer;
 
 import manager.ApiManager;
 import manager.ConfigManager;
@@ -66,6 +66,9 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
     private List<HttpToolCommand> allToolCommands;
     private List<HttpToolCommand> filteredToolCommands;
     private HttpToolCommand selectedToolCommand;
+    
+    // DSL变量替换器
+    private final DslVariableReplacer dslReplacer = new DslVariableReplacer();
 
     
     /**
@@ -588,6 +591,7 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
     
     /**
      * 执行变量替换（从原始命令文本进行替换）
+     * 使用新的DSL表达式系统
      * @param command 原始命令文本
      * @return 替换后的命令
      */
@@ -597,26 +601,14 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
                 return command;
             }
             
-            // 使用AdvancedHttpParser解析请求，获取完整的变量映射
-            AdvancedHttpParser advancedParser = new AdvancedHttpParser();
-            Map<String, String> requestVariables = advancedParser.parseRequest(httpRequest);
-            
-            // 如果有响应数据，也进行解析
-            Map<String, String> responseVariables = new HashMap<>();
-            if (httpResponse != null) {
-                responseVariables = advancedParser.parseResponse(httpResponse);
+            // 使用DSL变量替换器（支持函数调用和链式访问）
+            if (allSelectedRequests != null && allSelectedRequests.size() > 1) {
+                // 批量请求模式
+                return dslReplacer.replaceWithList(command, allSelectedRequests, null);
+            } else {
+                // 单个请求模式
+                return dslReplacer.replace(command, httpRequest, httpResponse);
             }
-            
-            // 合并变量映射
-            Map<String, String> allVariables = new HashMap<>();
-            allVariables.putAll(requestVariables);
-            allVariables.putAll(responseVariables);
-            
-            // 处理httpList相关变量
-            addHttpListVariables(allVariables, allSelectedRequests);
-            
-            // 进行变量替换
-            return replaceVariables(command, allVariables);
             
         } catch (Exception e) {
             // 如果替换失败，返回原始命令
@@ -644,14 +636,20 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
         }
         
         try {
-            // 使用AdvancedHttpParser解析请求
-            AdvancedHttpParser advancedParser = new AdvancedHttpParser();
-            Map<String, String> requestVariables = advancedParser.parseRequest(httpRequest);
+            // 创建一个简单的变量预览
+            Map<String, String> requestVariables = new HashMap<>();
+            requestVariables.put("http.request.url", httpRequest.url());
+            requestVariables.put("http.request.method", httpRequest.method());
+            requestVariables.put("http.request.host", httpRequest.httpService().host());
+            requestVariables.put("http.request.port", String.valueOf(httpRequest.httpService().port()));
+            requestVariables.put("http.request.path", httpRequest.path());
+            requestVariables.put("http.request.protocol", httpRequest.httpService().secure() ? "https" : "http");
+            requestVariables.put("http.request.body", httpRequest.bodyToString());
             
-            // 解析响应（如果有）
             Map<String, String> responseVariables = new HashMap<>();
             if (httpResponse != null) {
-                responseVariables = advancedParser.parseResponse(httpResponse);
+                responseVariables.put("http.response.status", String.valueOf(httpResponse.statusCode()));
+                responseVariables.put("http.response.body", httpResponse.bodyToString());
             }
             
             // 生成变量预览文本
@@ -930,6 +928,7 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
     
     /**
      * 生成渲染后的命令
+     * 使用新的DSL表达式系统
      * @param toolCommand HTTP工具命令
      * @param request HTTP请求
      * @return 渲染后的命令字符串（纯命令，不包含注释）
@@ -945,28 +944,14 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
                 return command; // 返回原始命令，不添加警告注释
             }
             
-            // 使用AdvancedHttpParser解析请求，获取完整的变量映射
-            AdvancedHttpParser advancedParser = new AdvancedHttpParser();
-            Map<String, String> requestVariables = advancedParser.parseRequest(request);
-            
-            // 如果有响应数据，也进行解析
-            Map<String, String> responseVariables = new HashMap<>();
-            if (httpResponse != null) {
-                responseVariables = advancedParser.parseResponse(httpResponse);
+            // 使用DSL变量替换器（支持函数调用和链式访问）
+            if (allSelectedRequests != null && allSelectedRequests.size() > 1) {
+                // 批量请求模式
+                return dslReplacer.replaceWithList(command, allSelectedRequests, null);
+            } else {
+                // 单个请求模式
+                return dslReplacer.replace(command, request, httpResponse);
             }
-            
-            // 合并变量映射
-            Map<String, String> allVariables = new HashMap<>();
-            allVariables.putAll(requestVariables);
-            allVariables.putAll(responseVariables);
-            
-            // 处理httpList相关变量
-            addHttpListVariables(allVariables, allSelectedRequests);
-            
-            // 进行变量替换
-            String renderedCommand = replaceVariables(command, allVariables);
-            
-            return renderedCommand;
             
         } catch (Exception e) {
             // 记录错误到日志，但返回原始命令
@@ -974,67 +959,6 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
         }
     }
     
-    /**
-     * 替换命令中的变量
-     * @param command 原始命令
-     * @param variables 变量映射
-     * @return 替换后的命令
-     */
-    private String replaceVariables(String command, Map<String, String> variables) {
-        String result = command;
-        
-        // 按变量名长度排序，优先替换长变量名，避免部分匹配问题
-        List<String> sortedKeys = variables.keySet().stream()
-                .sorted((a, b) -> b.length() - a.length())
-                .collect(Collectors.toList());
-        
-        for (String key : sortedKeys) {
-            String value = variables.get(key);
-            if (value != null) {
-                String placeholder = "%" + key + "%";
-                if (result.contains(placeholder)) {
-                    // 对特殊字符进行转义，避免命令执行问题
-                    String escapedValue = escapeCommandValue(value);
-                    result = result.replace(placeholder, escapedValue);
-                }
-            }
-        }
-        
-        return result;
-    }
-    
-    /**
-     * 转义命令值中的特殊字符
-     * @param value 原始值
-     * @return 转义后的值
-     */
-    private String escapeCommandValue(String value) {
-        if (value == null) {
-            return "";
-        }
-        
-        // 移除可能危险的字符
-        String escaped = value.replace("\n", " ")
-                             .replace("\r", " ")
-                             .replace("\t", " ");
-        
-        // 如果包含空格，在Windows下用双引号包围，在Unix下转义空格
-        if (escaped.contains(" ")) {
-            if (ToolExecutor.isWindows()) {
-                // Windows: 用双引号包围，内部的双引号转义
-                escaped = "\"" + escaped.replace("\"", "\\\"") + "\"";
-            } else {
-                // Unix: 转义空格和特殊字符
-                escaped = escaped.replace(" ", "\\ ")
-                                .replace("\"", "\\\"")
-                                .replace("'", "\\'")
-                                .replace("`", "\\`")
-                                .replace("$", "\\$");
-            }
-        }
-        
-        return escaped;
-    }
     
 
     
@@ -1327,160 +1251,6 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
         }
     }
     
-    /**
-     * 添加httpList相关变量
-     * @param variables 变量映射
-     * @param allRequests 所有选中的HTTP请求
-     */
-    private void addHttpListVariables(Map<String, String> variables, List<HttpRequest> allRequests) {
-        try {
-            if (allRequests == null || allRequests.isEmpty()) {
-                return;
-            }
-            
-            // 添加请求数量
-            variables.put("httpList.count", String.valueOf(allRequests.size()));
-            
-            // 处理URLs
-            List<String> urls = allRequests.stream()
-                .map(request -> {
-                    try {
-                        return request.url();
-                    } catch (Exception e) {
-                        return null;
-                    }
-                })
-                .filter(url -> url != null && !url.isEmpty())
-                .distinct() // 去重
-                .collect(Collectors.toList());
-            
-            // 创建URLs临时文件
-            if (!urls.isEmpty()) {
-                String urlsFilePath = createTemporaryUrlsFile(urls);
-                variables.put("httpList.requests.urls", urlsFilePath);
-                
-                // 添加其他httpList变量
-                variables.put("httpList.requests.urls.count", String.valueOf(urls.size()));
-                variables.put("httpList.requests.urls.list", String.join("\n", urls));
-                variables.put("httpList.requests.urls.comma", String.join(",", urls));
-                variables.put("httpList.requests.urls.space", String.join(" ", urls));
-            }
-            
-            // 处理主机名
-            List<String> hosts = allRequests.stream()
-                .map(request -> {
-                    try {
-                        return request.httpService().host();
-                    } catch (Exception e) {
-                        return null;
-                    }
-                })
-                .filter(host -> host != null && !host.isEmpty())
-                .distinct()
-                .collect(Collectors.toList());
-            
-            if (!hosts.isEmpty()) {
-                String hostsFilePath = createTemporaryHostsFile(hosts);
-                variables.put("httpList.requests.hosts", hostsFilePath);
-                variables.put("httpList.requests.hosts.count", String.valueOf(hosts.size()));
-                variables.put("httpList.requests.hosts.list", String.join("\n", hosts));
-                variables.put("httpList.requests.hosts.comma", String.join(",", hosts));
-            }
-            
-            // 处理路径
-            List<String> paths = allRequests.stream()
-                .map(request -> {
-                    try {
-                        return request.path();
-                    } catch (Exception e) {
-                        return null;
-                    }
-                })
-                .filter(path -> path != null && !path.isEmpty())
-                .distinct()
-                .collect(Collectors.toList());
-            
-            if (!paths.isEmpty()) {
-                String pathsFilePath = createTemporaryPathsFile(paths);
-                variables.put("httpList.requests.paths", pathsFilePath);
-                variables.put("httpList.requests.paths.count", String.valueOf(paths.size()));
-                variables.put("httpList.requests.paths.list", String.join("\n", paths));
-            }
-            
-            // 统计信息
-            I18nManager summaryI18n = I18nManager.getInstance();
-            variables.put("httpList.summary", summaryI18n.getText("arsenal.dialog.requests.summary",
-                String.valueOf(allRequests.size()), String.valueOf(urls.size()), String.valueOf(hosts.size())));
-                
-        } catch (Exception e) {
-            I18nManager errorI18n = I18nManager.getInstance();
-            variables.put("httpList.error", e.getMessage());
-        }
-    }
-    
-    /**
-     * 创建包含URLs的临时文件
-     * @param urls URL列表
-     * @return 临时文件路径
-     */
-    private String createTemporaryUrlsFile(List<String> urls) throws IOException {
-        return createTemporaryListFile(urls, "bparsenal_urls_", ".txt");
-    }
-    
-    /**
-     * 创建包含主机名的临时文件
-     * @param hosts 主机名列表
-     * @return 临时文件路径
-     */
-    private String createTemporaryHostsFile(List<String> hosts) throws IOException {
-        return createTemporaryListFile(hosts, "bparsenal_hosts_", ".txt");
-    }
-    
-    /**
-     * 创建包含路径的临时文件
-     * @param paths 路径列表
-     * @return 临时文件路径
-     */
-    private String createTemporaryPathsFile(List<String> paths) throws IOException {
-        return createTemporaryListFile(paths, "bparsenal_paths_", ".txt");
-    }
-    
-    /**
-     * 创建包含列表数据的临时文件
-     * @param items 数据项列表
-     * @param prefix 文件名前缀
-     * @param suffix 文件名后缀
-     * @return 临时文件路径
-     */
-    private String createTemporaryListFile(List<String> items, String prefix, String suffix) throws IOException {
-        try {
-            // 获取临时目录
-            String tempDir = System.getProperty("java.io.tmpdir");
-            
-            // 创建临时文件
-            File tempFile = new File(tempDir, prefix + System.currentTimeMillis() + suffix);
-            
-            // 写入数据
-            try (FileWriter writer = new FileWriter(tempFile)) {
-                for (String item : items) {
-                    writer.write(item);
-                    writer.write(System.lineSeparator());
-                }
-            }
-            
-            // 设置文件在程序退出时删除
-            tempFile.deleteOnExit();
-            
-            // 记录创建的临时文件
-            I18nManager tempFileI18n = I18nManager.getInstance();
-            
-            return tempFile.getAbsolutePath();
-            
-        } catch (Exception e) {
-            I18nManager tempFileI18n = I18nManager.getInstance();
-            throw new IOException(tempFileI18n.getText("command.create.temp.file.failed") + ": " + e.getMessage(), e);
-        }
-    }
     
     
     /**

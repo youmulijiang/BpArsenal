@@ -13,9 +13,9 @@
               "workDir": ""
             },
             {
-              "command": "sqlmap -u \"%http.request.url%\" --data=\"%http.request.body.raw%\" --method=%http.request.method% --cookie=\"%http.request.headers.cookie%\" --headers=\"Authorization: %http.request.headers.authorization%\" --batch --risk=3 --level=5 --threads=10",
+              "command": "sqlmap -r %tmpFile(http.request.body.raw, 'txt')% --cookie=\"%http.request.headers.cookie%\" --batch --risk=3 --level=5 --threads=10",
               "favor": true,
-              "note": "深度注入测试（高风险）",
+              "note": "深度注入测试（使用原始请求文件）",
               "workDir": ""
             },
             {
@@ -25,9 +25,9 @@
               "workDir": ""
             },
             {
-              "command": "sqlmap -m <(echo -e \"%join(httpList.requests.*.request.url, '\\n')%\") --batch --smart --threads=5",
+              "command": "sqlmap -m %tmpFile(unique(httpList.requests.*.request.url), 'txt')% --batch --smart --threads=5",
               "favor": false,
-              "note": "批量URL注入测试",
+              "note": "批量URL注入测试（文件方式）",
               "workDir": ""
             }
           ]
@@ -81,9 +81,9 @@
               "workDir": ""
             },
             {
-              "command": "echo -e \"%join(unique(httpList.requests.*.request.url), '\\n')%\" | nuclei -t technologies/ -t takeovers/ -c 100 -silent",
+              "command": "nuclei -list %tmpFile(unique(httpList.requests.*.request.url), 'txt')% -t technologies/ -t takeovers/ -c 100 -silent -o nuclei_results.txt",
               "favor": false,
-              "note": "批量技术栈识别和子域接管",
+              "note": "批量技术栈识别（文件方式）",
               "workDir": ""
             },
             {
@@ -149,9 +149,15 @@
               "workDir": ""
             },
             {
-              "command": "nmap -sn %join(unique(httpList.requests.*.request.host), ' ')% -oG - | grep 'Up' | cut -d' ' -f2",
+              "command": "nmap -iL %tmpFile(unique(httpList.requests.*.request.host), 'txt')% -sn -oG - | grep 'Up' | cut -d' ' -f2",
               "favor": false,
-              "note": "批量主机存活探测",
+              "note": "批量主机存活探测（文件方式）",
+              "workDir": ""
+            },
+            {
+              "command": "nmap -iL %file(unique(httpList.requests.*.request.host), 'hosts.txt')% -p 80,443,8080,8443 -oN nmap_results.txt",
+              "favor": false,
+              "note": "批量端口扫描（保存结果）",
               "workDir": ""
             }
           ]
@@ -211,9 +217,9 @@
               "workDir": ""
             },
             {
-              "command": "echo -e \"%join(unique(httpList.requests.*.request.url), '\\n')%\" | dalfox pipe --silence --skip-bav --only-poc -o xss_results.txt",
+              "command": "dalfox file %tmpFile(unique(httpList.requests.*.request.url), 'txt')% --silence --skip-bav --only-poc -o xss_results.txt",
               "favor": false,
-              "note": "批量XSS扫描",
+              "note": "批量XSS扫描（文件方式）",
               "workDir": ""
             }
           ]
@@ -233,9 +239,9 @@
               "workDir": ""
             },
             {
-              "command": "whatweb -i <(echo -e \"%join(unique(httpList.requests.*.request.url), '\\n')%\") -v --log-brief=whatweb_scan.log",
+              "command": "whatweb -i %tmpFile(unique(httpList.requests.*.request.url), 'txt')% -v --log-brief=whatweb_scan.log",
               "favor": false,
-              "note": "批量技术栈识别",
+              "note": "批量技术栈识别（文件方式）",
               "workDir": ""
             }
           ]
@@ -305,9 +311,9 @@
               "workDir": ""
             },
             {
-              "command": "echo -e \"%join(unique(httpList.requests.*.request.url), '\\n')%\" | httpx -silent -status-code -content-type -json -o httpx_results.json",
+              "command": "httpx -list %tmpFile(unique(httpList.requests.*.request.url), 'txt')% -silent -status-code -content-type -json -o httpx_results.json",
               "favor": true,
-              "note": "批量HTTP探测（JSON输出）",
+              "note": "批量HTTP探测（文件方式）",
               "workDir": ""
             },
             {
@@ -333,9 +339,9 @@
               "workDir": ""
             },
             {
-              "command": "echo -e \"%join(unique(httpList.requests.*.request.url), '\\n')%\" | katana -silent -d 2 -jc -aff -o katana_batch.txt",
+              "command": "katana -list %tmpFile(unique(httpList.requests.*.request.url), 'txt')% -silent -d 2 -jc -aff -o katana_batch.txt",
               "favor": false,
-              "note": "批量爬虫抓取",
+              "note": "批量爬虫抓取（文件方式）",
               "workDir": ""
             }
           ]
@@ -349,21 +355,21 @@
           "toolName": "hashcat",
           "commandList": [
             {
-              "command": "echo \"%hash(http.request.body.raw, 'md5')%\" > hash.txt && hashcat -m 0 hash.txt /usr/share/wordlists/rockyou.txt --force",
+              "command": "hashcat -m 0 %file(hash(http.request.body.raw, 'md5'), 'hash.txt')% /usr/share/wordlists/rockyou.txt --force",
               "favor": true,
-              "note": "MD5哈希破解",
+              "note": "MD5哈希破解（文件方式）",
               "workDir": ""
             },
             {
-              "command": "echo \"%hash(http.request.body.raw, 'sha256')%\" > hash.txt && hashcat -m 1400 hash.txt /usr/share/wordlists/rockyou.txt --force",
+              "command": "hashcat -m 1400 %file(hash(http.request.body.raw, 'sha256'), 'hash.txt')% /usr/share/wordlists/rockyou.txt --force",
               "favor": false,
-              "note": "SHA256哈希破解",
+              "note": "SHA256哈希破解（文件方式）",
               "workDir": ""
             },
             {
-              "command": "echo \"%json(http.request.body, '$.password_hash')%\" > hash.txt && hashcat -m 0 hash.txt /usr/share/wordlists/rockyou.txt --force",
+              "command": "hashcat -m 0 %file(json(http.request.body, '$.password_hash'), 'hash.txt')% /usr/share/wordlists/rockyou.txt --force",
               "favor": false,
-              "note": "从JSON提取哈希并破解",
+              "note": "从JSON提取哈希并破解（文件方式）",
               "workDir": ""
             }
           ]

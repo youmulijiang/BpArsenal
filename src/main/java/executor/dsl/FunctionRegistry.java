@@ -34,6 +34,8 @@ public class FunctionRegistry {
         register(new FilterFunction());
         register(new MapFunction());
         register(new CountFunction());
+        register(new TmpFileFunction());
+        register(new FileFunction());
     }
     
     /**

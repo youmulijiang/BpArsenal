@@ -15,6 +15,9 @@ public class HttpContext {
     private HttpResponseContext response;
     private HttpListContext httpList;
     
+    // 内部包装类，用于支持 http.request.* 语法
+    private HttpWrapper http;
+    
     private HttpContext() {
     }
     
@@ -32,6 +35,8 @@ public class HttpContext {
         if (montoyaResponse != null) {
             context.response = HttpResponseContext.from(montoyaResponse);
         }
+        // 初始化http包装器，支持http.request.*和http.response.*语法
+        context.http = new HttpWrapper(context.request, context.response);
         return context;
     }
     
@@ -56,6 +61,9 @@ public class HttpContext {
         if (montoyaRequests != null && !montoyaRequests.isEmpty()) {
             context.httpList = HttpListContext.from(montoyaRequests, montoyaResponses);
         }
+        
+        // 初始化http包装器
+        context.http = new HttpWrapper(context.request, context.response);
         
         return context;
     }
@@ -87,12 +95,22 @@ public class HttpContext {
     }
     
     /**
+     * 获取HTTP包装器（用于支持http.request.*语法）
+     * @return HTTP包装器
+     */
+    public HttpWrapper getHttp() {
+        return http;
+    }
+    
+    /**
      * 获取属性（用于反射和动态访问）
      * @param propertyName 属性名称
      * @return 属性值
      */
     public Object getProperty(String propertyName) {
         switch (propertyName.toLowerCase()) {
+            case "http":
+                return http;
             case "request":
                 return request;
             case "response":
@@ -101,6 +119,42 @@ public class HttpContext {
                 return httpList;
             default:
                 return null;
+        }
+    }
+    
+    /**
+     * HTTP包装器内部类
+     * 用于支持 http.request.* 和 http.response.* 语法
+     */
+    public static class HttpWrapper {
+        private final HttpRequestContext request;
+        private final HttpResponseContext response;
+        
+        public HttpWrapper(HttpRequestContext request, HttpResponseContext response) {
+            this.request = request;
+            this.response = response;
+        }
+        
+        public HttpRequestContext getRequest() {
+            return request;
+        }
+        
+        public HttpResponseContext getResponse() {
+            return response;
+        }
+        
+        /**
+         * 获取属性（用于反射和动态访问）
+         */
+        public Object getProperty(String propertyName) {
+            switch (propertyName.toLowerCase()) {
+                case "request":
+                    return request;
+                case "response":
+                    return response;
+                default:
+                    return null;
+            }
         }
     }
 }

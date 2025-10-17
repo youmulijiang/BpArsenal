@@ -157,6 +157,7 @@ public class ChainAccessor {
         
         // HttpContext 及其子类的特殊处理
         if (obj instanceof HttpContext ||
+            obj instanceof HttpContext.HttpWrapper ||
             obj instanceof HttpRequestContext ||
             obj instanceof HttpResponseContext ||
             obj instanceof HttpListContext ||

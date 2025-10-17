@@ -27,8 +27,6 @@ import javax.swing.JOptionPane;
  */
 public class ToolExecutor {
     private static ToolExecutor instance;
-    private final HttpVariableReplacer variableReplacer;
-    private HttpMessageParser currentParser;
     private SettingModel settingModel;
     
     // 操作系统相关常量
@@ -40,12 +38,8 @@ public class ToolExecutor {
     
     /**
      * 私有构造函数，防止外部实例化
-     * 初始化HTTP解析器和变量替换器
      */
     private ToolExecutor() {
-        // 默认使用高级解析器
-        this.currentParser = new AdvancedHttpParser();
-        this.variableReplacer = new HttpVariableReplacer(currentParser);
         this.settingModel = new SettingModel();
         
         // 初始化脚本目录
@@ -146,93 +140,6 @@ public class ToolExecutor {
             }
     }
     
-    /**
-     * 执行HTTP工具
-     * @param tool 工具配置
-     * @param httpRequest HTTP请求对象
-     */
-    public void executeHttpTool(HttpTool tool, HttpRequest httpRequest) {
-        executeHttpTool(tool, httpRequest, null);
-    }
-    
-    /**
-     * 执行HTTP工具（支持请求和响应）
-     * @param tool 工具配置
-     * @param httpRequest HTTP请求对象
-     * @param httpResponse HTTP响应对象（可选）
-     */
-    public void executeHttpTool(HttpTool tool, HttpRequest httpRequest, HttpResponse httpResponse) {
-        CompletableFuture.runAsync(() -> {
-            try {
-                // 验证命令中的变量
-                HttpVariableReplacer.VariableValidationResult validation = 
-                    variableReplacer.validateVariables(tool.getCommand(), httpRequest, httpResponse);
-                
-                if (!validation.isValid()) {
-                    logVariableValidationWarning(tool.getToolName(), validation);
-                }
-                
-                // 替换变量并执行命令
-                String command;
-                if (httpResponse != null) {
-                    command = variableReplacer.replaceAllVariables(tool.getCommand(), httpRequest, httpResponse);
-                } else {
-                    command = variableReplacer.replaceRequestVariables(tool.getCommand(), httpRequest);
-                }
-                
-                // HttpTool本身没有workDir，使用全局设置
-                String workDir = determineWorkingDirectory(null);
-                executeCommandViaScript(command, tool.getToolName(), workDir);
-                
-            } catch (Exception e) {
-                handleError("HTTP工具执行失败", tool.getToolName(), e);
-            }
-        });
-    }
-    
-    /**
-     * 执行HTTP工具命令
-     * @param toolCommand 工具命令配置
-     * @param httpRequest HTTP请求对象
-     */
-    public void executeHttpToolCommand(HttpToolCommand toolCommand, HttpRequest httpRequest) {
-        executeHttpToolCommand(toolCommand, httpRequest, null);
-    }
-    
-    /**
-     * 执行HTTP工具命令（支持请求和响应）
-     * @param toolCommand 工具命令配置
-     * @param httpRequest HTTP请求对象
-     * @param httpResponse HTTP响应对象（可选）
-     */
-    public void executeHttpToolCommand(HttpToolCommand toolCommand, HttpRequest httpRequest, HttpResponse httpResponse) {
-        CompletableFuture.runAsync(() -> {
-            try {
-                // 验证命令中的变量
-                HttpVariableReplacer.VariableValidationResult validation = 
-                    variableReplacer.validateVariables(toolCommand.getCommand(), httpRequest, httpResponse);
-                
-                if (!validation.isValid()) {
-                    logVariableValidationWarning(toolCommand.getToolName(), validation);
-                }
-                
-                // 替换变量并执行命令
-                String command;
-                if (httpResponse != null) {
-                    command = variableReplacer.replaceAllVariables(toolCommand.getCommand(), httpRequest, httpResponse);
-                } else {
-                    command = variableReplacer.replaceRequestVariables(toolCommand.getCommand(), httpRequest);
-                }
-                
-                // 获取工作目录
-                String workDir = determineWorkingDirectory(toolCommand.getWorkDir());
-                executeCommandViaScript(command, toolCommand.getToolName(), workDir);
-                
-            } catch (Exception e) {
-                handleError("HTTP工具执行失败", toolCommand.getToolName(), e);
-            }
-        });
-    }
     
     /**
      * 执行第三方工具
@@ -640,13 +547,8 @@ public class ToolExecutor {
      */
     public String previewCommand(HttpTool tool, HttpRequest httpRequest, HttpResponse httpResponse) {
         try {
-            String command;
-            if (httpResponse != null) {
-                command = variableReplacer.replaceAllVariables(tool.getCommand(), httpRequest, httpResponse);
-            } else {
-                command = variableReplacer.replaceRequestVariables(tool.getCommand(), httpRequest);
-            }
-            return command;
+            executor.dsl.DslVariableReplacer dslReplacer = new executor.dsl.DslVariableReplacer();
+            return dslReplacer.replace(tool.getCommand(), httpRequest, httpResponse);
         } catch (Exception e) {
             I18nManager i18n = I18nManager.getInstance();
             return i18n.getText("tool.execution.command.preview.failed") + ": " + e.getMessage();
@@ -963,39 +865,6 @@ public class ToolExecutor {
         void onCommandError(String toolName, Exception error);
     }
     
-    /**
-     * 设置HTTP解析器策略
-     * @param parser HTTP解析器实例
-     */
-    public void setHttpParser(HttpMessageParser parser) {
-        this.currentParser = parser;
-    }
-    
-    /**
-     * 获取当前HTTP解析器
-     * @return 当前HTTP解析器
-     */
-    public HttpMessageParser getCurrentParser() {
-        return currentParser;
-    }
-    
-    /**
-     * 获取可用的请求变量（用于调试）
-     * @param httpRequest HTTP请求对象
-     * @return 变量映射
-     */
-    public java.util.Map<String, String> getAvailableRequestVariables(HttpRequest httpRequest) {
-        return variableReplacer.getAvailableRequestVariables(httpRequest);
-    }
-    
-    /**
-     * 获取可用的响应变量（用于调试）
-     * @param httpResponse HTTP响应对象
-     * @return 变量映射
-     */
-    public java.util.Map<String, String> getAvailableResponseVariables(HttpResponse httpResponse) {
-        return variableReplacer.getAvailableResponseVariables(httpResponse);
-    }
     
     /**
      * 获取临时脚本目录路径（现在不再使用，保留方法以兼容）
@@ -1019,18 +888,6 @@ public class ToolExecutor {
     public void cleanupAllTempScripts() {
         }
     
-    /**
-     * 记录变量验证警告
-     * @param toolName 工具名称
-     * @param validation 验证结果
-     */
-    private void logVariableValidationWarning(String toolName, HttpVariableReplacer.VariableValidationResult validation) {
-        if (ApiManager.getInstance().isInitialized()) {
-            I18nManager i18n = I18nManager.getInstance();
-            String warningMsg = String.format(i18n.getText("tool.execution.unresolved.variables"), 
-                toolName, validation.getMissingVariables());
-            }
-    }
     
     /**
      * 处理执行错误
