@@ -36,6 +36,7 @@ public class FunctionRegistry {
         register(new CountFunction());
         register(new TmpFileFunction());
         register(new FileFunction());
+        register(new SplitFunction());
     }
     
     /**

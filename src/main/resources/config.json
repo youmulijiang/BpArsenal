@@ -425,6 +425,40 @@
           ]
         }
       ]
+    },
+    {
+      "type": "URL处理",
+      "content": [
+        {
+          "toolName": "url-split",
+          "commandList": [
+            {
+              "command": "echo %join(unique(split(httpList.urls, \"/\")), \"\\n\")%",
+              "favor": true,
+              "note": "提取所有URL片段并去重",
+              "workDir": ""
+            },
+            {
+              "command": "echo \"Domains: %join(unique(split(httpList.urls, \"/\")[2]), \", \")%\"",
+              "favor": true,
+              "note": "提取所有域名",
+              "workDir": ""
+            },
+            {
+              "command": "for url in %join(httpList.urls, \" \")%; do echo \"URL: $url\"; echo \"Domain: $(echo $url | cut -d'/' -f3)\"; done",
+              "favor": false,
+              "note": "批量提取URL和域名",
+              "workDir": ""
+            },
+            {
+              "command": "echo %tmpFile(unique(split(httpList.urls, \"/\")[2]), 'txt')%",
+              "favor": false,
+              "note": "提取域名并保存到临时文件",
+              "workDir": ""
+            }
+          ]
+        }
+      ]
     }
   ],
   "thirtyPart": [

@@ -220,6 +220,11 @@ public class ArsenalContextMenuProvider implements ContextMenuItemsProvider {
             // 记录执行信息
             String toolName = toolCommand.getToolName();
             
+            // 检查命令是否需要多个请求
+            if (!validateHttpListRequirement(toolCommand)) {
+                return; // 验证失败，已经弹窗提示，直接返回
+            }
+            
             // 渲染命令
             String renderedCommand = generateRenderedCommand(toolCommand, httpRequest, httpResponse);
             
@@ -239,6 +244,62 @@ public class ArsenalContextMenuProvider implements ContextMenuItemsProvider {
             I18nManager i18n = I18nManager.getInstance();
             String errorMsg = i18n.getText("context.menu.tool.execution.failed", e.getMessage());
             JOptionPane.showMessageDialog(null, errorMsg, i18n.getText("context.menu.execution.failed"), JOptionPane.ERROR_MESSAGE);
+        }
+    }
+    
+    /**
+     * 验证命令是否满足httpList要求
+     * 如果命令包含httpList变量，但只选中了单个数据包，则弹窗警告并返回false
+     * 
+     * @param toolCommand 工具命令
+     * @return true表示验证通过，false表示验证失败
+     */
+    private boolean validateHttpListRequirement(HttpToolCommand toolCommand) {
+        try {
+            String command = toolCommand.getCommand();
+            if (command == null || command.trim().isEmpty()) {
+                return true;
+            }
+            
+            // 检查命令是否包含httpList变量（使用正则表达式匹配 %httpList.*%）
+            boolean containsHttpList = command.matches(".*%httpList\\..*%.*");
+            
+            if (!containsHttpList) {
+                // 命令不包含httpList变量，无需验证
+                return true;
+            }
+            
+            // 命令包含httpList变量，检查是否有多个选中的请求
+            ContextMenuEvent currentEvent = getCurrentContextMenuEvent();
+            List<HttpRequest> allSelectedRequests = ContextMenuEventHandler.getAllSelectedRequests(currentEvent);
+            
+            if (allSelectedRequests == null || allSelectedRequests.size() <= 1) {
+                // 只有单个或没有请求，弹窗警告
+                String warningMessage = String.format(
+                    "该命令需要多个HTTP请求才能执行！\n\n" +
+                    "命令: %s\n\n" +
+                    "该命令使用了批量处理变量 (httpList)，但您只选择了单个数据包。\n" +
+                    "请在Burp Suite的HTTP历史记录中选择多个请求后再执行此命令。\n\n" +
+                    "提示：按住Ctrl键可以多选请求。",
+                    toolCommand.getDisplayName()
+                );
+                
+                JOptionPane.showMessageDialog(
+                    ApiManager.getInstance().getApi().userInterface().swingUtils().suiteFrame(),
+                    warningMessage,
+                    "需要多选数据包",
+                    JOptionPane.WARNING_MESSAGE
+                );
+                
+                return false;
+            }
+            
+            // 有多个请求，验证通过
+            return true;
+            
+        } catch (Exception e) {
+            // 验证过程出错，允许继续执行（降级处理）
+            return true;
         }
     }
     
