@@ -1,0 +1,555 @@
+httpTool:
+- type: SQL注入
+  content:
+  - toolName: sqlmap
+    commandList:
+    - command: sqlmap -u "%http.request.url%" --cookie="%http.request.headers.cookie%"
+        --batch --dbs
+      favor: true
+      note: 基础数据库枚举
+      workDir: ''
+    - command: sqlmap -r %tmpFile(http.request.body.raw, 'txt')% --cookie="%http.request.headers.cookie%"
+        --batch --risk=3 --level=5 --threads=10
+      favor: true
+      note: 深度注入测试（使用原始请求文件）
+      workDir: ''
+    - command: sqlmap -u "%http.request.url%" --cookie="%http.request.headers.cookie%"
+        --tamper=space2comment,between --random-agent --batch --dump
+      favor: false
+      note: WAF绕过并导出数据
+      workDir: ''
+    - command: sqlmap -m %tmpFile(unique(httpList.requests.*.request.url), 'txt')%
+        --batch --smart --threads=5
+      favor: false
+      note: 批量URL注入测试（文件方式）
+      workDir: ''
+- type: 目录扫描
+  content:
+  - toolName: ffuf
+    commandList:
+    - command: ffuf -u "%http.request.protocol%://%http.request.host%:%http.request.port%/FUZZ"
+        -w /usr/share/wordlists/dirb/common.txt -mc 200,204,301,302,307,401,403 -ac
+        -t 100
+      favor: true
+      note: 目录爆破（自动过滤）
+      workDir: ''
+    - command: 'ffuf -u "%http.request.url%" -w /usr/share/seclists/Discovery/Web-Content/raft-large-files.txt
+        -e .php,.html,.txt,.bak,.zip -H "Cookie: %http.request.headers.cookie%" -ac
+        -t 50'
+      favor: true
+      note: 文件扩展名爆破
+      workDir: ''
+    - command: 'ffuf -u "%http.request.url%/FUZZ" -w /usr/share/wordlists/dirb/common.txt
+        -recursion -recursion-depth 2 -H "User-Agent: %http.request.headers.user.agent%"
+        -t 50'
+      favor: false
+      note: 递归目录扫描
+      workDir: ''
+- type: 漏洞扫描
+  content:
+  - toolName: nuclei
+    commandList:
+    - command: 'nuclei -u "%http.request.url%" -t cves/ -severity critical,high,medium
+        -H "Cookie: %http.request.headers.cookie%" -H "User-Agent: %http.request.headers.user.agent%"
+        -c 50'
+      favor: true
+      note: CVE漏洞扫描
+      workDir: ''
+    - command: 'nuclei -u "%http.request.url%" -t vulnerabilities/ -t exposures/ -t
+        misconfiguration/ -H "Authorization: %http.request.headers.authorization%"
+        -silent'
+      favor: true
+      note: 综合漏洞检测
+      workDir: ''
+    - command: nuclei -list %tmpFile(unique(httpList.requests.*.request.url), 'txt')%
+        -t technologies/ -t takeovers/ -c 100 -silent -o nuclei_results.txt
+      favor: false
+      note: 批量技术栈识别（文件方式）
+      workDir: ''
+    - command: 'nuclei -u "%http.request.url%" -t %http.request.protocol%/ -H "Cookie:
+        %http.request.headers.cookie%" -debug'
+      favor: false
+      note: 协议特定漏洞扫描
+      workDir: ''
+- type: 参数模糊测试
+  content:
+  - toolName: ffuf
+    commandList:
+    - command: 'ffuf -u "%http.request.url%" -X %http.request.method% -d "%http.request.body.raw%"
+        -H "Content-Type: %http.request.headers.content.type%" -H "Cookie: %http.request.headers.cookie%"
+        -w /usr/share/seclists/Fuzzing/XSS/XSS-Jhaddix.txt -mc all -fc 404 -t 50'
+      favor: true
+      note: POST参数XSS模糊测试
+      workDir: ''
+    - command: 'ffuf -u "%http.request.protocol%://%http.request.host%:%http.request.port%%http.request.path%?FUZZ=test"
+        -w /usr/share/seclists/Discovery/Web-Content/burp-parameter-names.txt -H "Cookie:
+        %http.request.headers.cookie%" -fw 1 -t 100'
+      favor: true
+      note: GET参数名爆破
+      workDir: ''
+    - command: 'ffuf -u "%http.request.url%" -X %http.request.method% -H "Cookie:
+        %http.request.headers.cookie%" -H "FUZZ: test" -w /usr/share/seclists/Discovery/Web-Content/custom-headers.txt
+        -mc all -t 50'
+      favor: false
+      note: HTTP头部模糊测试
+      workDir: ''
+- type: 端口扫描
+  content:
+  - toolName: nmap
+    commandList:
+    - command: nmap -sS -sV -sC -p- "%http.request.host%" -Pn --min-rate=1000 -T4
+        -oN %http.request.host%_scan.txt
+      favor: true
+      note: 全端口服务识别扫描
+      workDir: ''
+    - command: nmap -sV --script=vuln -p %http.request.port% "%http.request.host%"
+        -Pn -oN %http.request.host%_vuln.txt
+      favor: true
+      note: 漏洞脚本扫描
+      workDir: ''
+    - command: nmap -sV --script=http-enum,http-headers,http-methods,http-php-version
+        -p %http.request.port% "%http.request.host%" -Pn
+      favor: false
+      note: HTTP服务深度探测
+      workDir: ''
+    - command: nmap -iL %tmpFile(unique(httpList.requests.*.request.host), 'txt')%
+        -sn -oG - | grep 'Up' | cut -d' ' -f2
+      favor: false
+      note: 批量主机存活探测（文件方式）
+      workDir: ''
+    - command: nmap -iL %file(unique(httpList.requests.*.request.host), 'hosts.txt')%
+        -p 80,443,8080,8443 -oN nmap_results.txt
+      favor: false
+      note: 批量端口扫描（保存结果）
+      workDir: ''
+- type: Web应用测试
+  content:
+  - toolName: curl
+    commandList:
+    - command: 'curl -X %http.request.method% "%http.request.url%" -H "User-Agent:
+        %http.request.headers.user.agent%" -H "Cookie: %http.request.headers.cookie%"
+        -H "Authorization: %http.request.headers.authorization%" -H "Content-Type:
+        %http.request.headers.content.type%" -d "%http.request.body.raw%" -v -k'
+      favor: true
+      note: 完整请求重放
+      workDir: ''
+    - command: 'curl -I "%http.request.url%" -H "User-Agent: %http.request.headers.user.agent%"
+        -k -s | grep -iE "^(Server|X-Powered-By|Set-Cookie)"'
+      favor: true
+      note: 响应头信息提取
+      workDir: ''
+    - command: 'curl -X %http.request.method% "%http.request.url%" -H "Cookie: %http.request.headers.cookie%"
+        -d "%http.request.body.raw%" -o response.html && echo "Response saved to response.html"'
+      favor: false
+      note: 保存响应到文件
+      workDir: ''
+    - command: 'for url in %join(httpList.requests.*.request.url, '' '')%; do echo
+        "Testing: $url"; curl -I "$url" -k -s -m 5 | head -n 1; done'
+      favor: false
+      note: 批量URL状态码检测
+      workDir: ''
+- type: XSS测试
+  content:
+  - toolName: dalfox
+    commandList:
+    - command: 'dalfox url "%http.request.url%" -H "Cookie: %http.request.headers.cookie%"
+        -H "User-Agent: %http.request.headers.user.agent%" --skip-bav --only-poc --mining-dom'
+      favor: true
+      note: 深度XSS扫描（含DOM）
+      workDir: ''
+    - command: 'dalfox url "%http.request.url%" -H "Cookie: %http.request.headers.cookie%"
+        --data "%http.request.body.raw%" --method %http.request.method% --mining-dict
+        --skip-bav'
+      favor: true
+      note: POST参数XSS测试
+      workDir: ''
+    - command: dalfox file %tmpFile(unique(httpList.requests.*.request.url), 'txt')%
+        --silence --skip-bav --only-poc -o xss_results.txt
+      favor: false
+      note: 批量XSS扫描（文件方式）
+      workDir: ''
+- type: 信息收集
+  content:
+  - toolName: whatweb
+    commandList:
+    - command: whatweb "%http.request.url%" -v -a 3 --user-agent="%http.request.headers.user.agent%"
+        --cookie="%http.request.headers.cookie%"
+      favor: true
+      note: Web技术栈深度识别
+      workDir: ''
+    - command: whatweb -i %tmpFile(unique(httpList.requests.*.request.url), 'txt')%
+        -v --log-brief=whatweb_scan.log
+      favor: false
+      note: 批量技术栈识别（文件方式）
+      workDir: ''
+- type: DNS枚举
+  content:
+  - toolName: subfinder
+    commandList:
+    - command: subfinder -d "%http.request.host%" -all -recursive -t 100 -o %http.request.host%_subdomains.txt
+        && cat %http.request.host%_subdomains.txt
+      favor: true
+      note: 子域名枚举（多源）
+      workDir: ''
+    - command: subfinder -d "%http.request.host%" -silent | httpx -silent -status-code
+        -title -tech-detect -o %http.request.host%_alive.txt
+      favor: true
+      note: 子域名存活探测
+      workDir: ''
+    - command: echo %join(unique(httpList.requests.*.request.host), ' ')% | tr ' '
+        '\n' | xargs -I {} subfinder -d {} -silent
+      favor: false
+      note: 批量子域名枚举
+      workDir: ''
+- type: 敏感信息
+  content:
+  - toolName: trufflehog
+    commandList:
+    - command: echo "%http.response.body%" | trufflehog filesystem /dev/stdin --only-verified
+        --json
+      favor: true
+      note: 响应体敏感信息扫描
+      workDir: ''
+    - command: curl -s "%http.request.url%" | trufflehog filesystem /dev/stdin --json
+        | jq -r '.RawV2.line'
+      favor: false
+      note: URL内容敏感信息提取
+      workDir: ''
+- type: API测试
+  content:
+  - toolName: httpx
+    commandList:
+    - command: echo "%http.request.url%" | httpx -title -tech-detect -status-code
+        -content-length -content-type -location -method -ip -cname -cdn -probe
+      favor: true
+      note: HTTP全面探测
+      workDir: ''
+    - command: httpx -list %tmpFile(unique(httpList.requests.*.request.url), 'txt')%
+        -silent -status-code -content-type -json -o httpx_results.json
+      favor: true
+      note: 批量HTTP探测（文件方式）
+      workDir: ''
+    - command: echo "%http.request.url%" | httpx -path /api/v1,/api/v2,/graphql,/swagger
+        -status-code -mc 200 -silent
+      favor: false
+      note: API端点发现
+      workDir: ''
+- type: 爬虫抓取
+  content:
+  - toolName: katana
+    commandList:
+    - command: 'katana -u "%http.request.url%" -H "Cookie: %http.request.headers.cookie%"
+        -H "User-Agent: %http.request.headers.user.agent%" -d 3 -jc -kf all -aff -o
+        katana_crawl.txt'
+      favor: true
+      note: 深度爬虫（含JS链接）
+      workDir: ''
+    - command: katana -list %tmpFile(unique(httpList.requests.*.request.url), 'txt')%
+        -silent -d 2 -jc -aff -o katana_batch.txt
+      favor: false
+      note: 批量爬虫抓取（文件方式）
+      workDir: ''
+- type: 哈希破解
+  content:
+  - toolName: hashcat
+    commandList:
+    - command: hashcat -m 0 %file(hash(http.request.body.raw, 'md5'), 'hash.txt')%
+        /usr/share/wordlists/rockyou.txt --force
+      favor: true
+      note: MD5哈希破解（文件方式）
+      workDir: ''
+    - command: hashcat -m 1400 %file(hash(http.request.body.raw, 'sha256'), 'hash.txt')%
+        /usr/share/wordlists/rockyou.txt --force
+      favor: false
+      note: SHA256哈希破解（文件方式）
+      workDir: ''
+    - command: hashcat -m 0 %file(json(http.request.body, '$.password_hash'), 'hash.txt')%
+        /usr/share/wordlists/rockyou.txt --force
+      favor: false
+      note: 从JSON提取哈希并破解（文件方式）
+      workDir: ''
+- type: 数据提取
+  content:
+  - toolName: jq
+    commandList:
+    - command: echo '%http.response.body%' | jq -r '%json(http.response.body, "$.data")'
+      favor: true
+      note: JSON数据提取
+      workDir: ''
+    - command: 'curl -s "%http.request.url%" -H "Cookie: %http.request.headers.cookie%"
+        | jq -r ''.[] | select(.status=="active") | .id'''
+      favor: false
+      note: JSON过滤并提取ID
+      workDir: ''
+- type: 编码转换
+  content:
+  - toolName: base64
+    commandList:
+    - command: echo "%http.request.body.raw%" | base64
+      favor: true
+      note: Base64编码请求体
+      workDir: ''
+    - command: echo "%http.request.headers.authorization%" | cut -d' ' -f2 | base64
+        -d
+      favor: true
+      note: 解码Authorization头
+      workDir: ''
+    - command: echo "%base64(http.request.body.raw, 'encode')%"
+      favor: false
+      note: DSL函数Base64编码
+      workDir: ''
+- type: URL处理
+  content:
+  - toolName: url-split
+    commandList:
+    - command: echo %join(unique(split(httpList.urls, "/")), "\n")%
+      favor: true
+      note: 提取所有URL片段并去重
+      workDir: ''
+    - command: 'echo "Domains: %join(unique(split(httpList.urls, "/")[2]), ", ")%"'
+      favor: true
+      note: 提取所有域名
+      workDir: ''
+    - command: 'for url in %join(httpList.urls, " ")%; do echo "URL: $url"; echo "Domain:
+        $(echo $url | cut -d''/'' -f3)"; done'
+      favor: false
+      note: 批量提取URL和域名
+      workDir: ''
+    - command: echo %tmpFile(unique(split(httpList.urls, "/")[2]), 'txt')%
+      favor: false
+      note: 提取域名并保存到临时文件
+      workDir: ''
+thirtyPart:
+- type: 渗透框架
+  content:
+  - toolName: Metasploit
+    startCommand: msfconsole
+    favor: true
+    autoStart: false
+  - toolName: Cobalt Strike
+    startCommand: cobaltstrike
+    favor: false
+    autoStart: false
+- type: 钓鱼工具
+  content:
+  - toolName: Gophish
+    startCommand: gophish
+    favor: true
+    autoStart: false
+  - toolName: SET (Social-Engineer Toolkit)
+    startCommand: setoolkit
+    favor: true
+    autoStart: false
+  - toolName: EvilGinx2
+    startCommand: evilginx2
+    favor: false
+    autoStart: false
+- type: 密码破解
+  content:
+  - toolName: Hashcat
+    startCommand: hashcat
+    favor: true
+    autoStart: false
+  - toolName: John the Ripper
+    startCommand: john
+    favor: true
+    autoStart: false
+  - toolName: Hydra
+    startCommand: hydra
+    favor: true
+    autoStart: false
+- type: 代理工具
+  content:
+  - toolName: Proxychains
+    startCommand: proxychains4
+    favor: true
+    autoStart: false
+  - toolName: Tor Browser
+    startCommand: tor
+    favor: false
+    autoStart: false
+- type: 数据库工具
+  content:
+  - toolName: MySQL Client
+    startCommand: mysql
+    favor: true
+    autoStart: false
+  - toolName: PostgreSQL Client
+    startCommand: psql
+    favor: true
+    autoStart: false
+  - toolName: MongoDB Client
+    startCommand: mongo
+    favor: false
+    autoStart: false
+  - toolName: Redis Client
+    startCommand: redis-cli
+    favor: false
+    autoStart: false
+- type: 流量分析
+  content:
+  - toolName: Wireshark
+    startCommand: wireshark
+    favor: true
+    autoStart: false
+  - toolName: tcpdump
+    startCommand: tcpdump
+    favor: true
+    autoStart: false
+  - toolName: tshark
+    startCommand: tshark
+    favor: false
+    autoStart: false
+- type: 编辑器
+  content:
+  - toolName: VSCode
+    startCommand: code
+    favor: true
+    autoStart: false
+  - toolName: Vim
+    startCommand: vim
+    favor: true
+    autoStart: false
+  - toolName: Sublime Text
+    startCommand: subl
+    favor: false
+    autoStart: false
+- type: 终端工具
+  content:
+  - toolName: tmux
+    startCommand: tmux
+    favor: true
+    autoStart: false
+  - toolName: screen
+    startCommand: screen
+    favor: false
+    autoStart: false
+- type: 其他工具
+  content:
+  - toolName: Burp Suite
+    startCommand: burpsuite
+    favor: true
+    autoStart: false
+  - toolName: OWASP ZAP
+    startCommand: zaproxy
+    favor: false
+    autoStart: false
+webSite:
+- type: OSINT
+  content:
+  - url: https://www.google.com
+    desc: Google搜索
+    favor: true
+  - url: https://www.shodan.io
+    desc: Shodan搜索引擎
+    favor: true
+  - url: https://www.zoomeye.org
+    desc: ZoomEye网络空间搜索
+    favor: true
+  - url: https://www.baidu.com
+    desc: 百度搜索
+    favor: false
+- type: Recon
+  content:
+  - url: https://fofa.info
+    desc: FOFA网络空间测绘
+    favor: true
+  - url: https://censys.io
+    desc: Censys搜索引擎
+    favor: true
+  - url: https://quake.360.net
+    desc: 360 Quake网络空间测绘
+    favor: true
+  - url: https://hunter.qianxin.com
+    desc: 奇安信鹰图
+    favor: true
+  - url: https://www.virustotal.com
+    desc: VirusTotal多引擎扫描
+    favor: false
+- type: 漏洞库
+  content:
+  - url: https://cve.mitre.org
+    desc: CVE官方数据库
+    favor: true
+  - url: https://nvd.nist.gov
+    desc: NVD漏洞数据库
+    favor: true
+  - url: https://www.exploit-db.com
+    desc: Exploit Database
+    favor: true
+  - url: https://github.com/advisories
+    desc: GitHub安全公告
+    favor: false
+  - url: https://www.cnnvd.org.cn
+    desc: CNNVD国家漏洞库
+    favor: false
+- type: 威胁情报
+  content:
+  - url: https://threatbook.cn
+    desc: 微步在线威胁情报
+    favor: true
+  - url: https://x.threatbook.com
+    desc: 微步社区版
+    favor: true
+  - url: https://www.virustotal.com
+    desc: VirusTotal
+    favor: true
+  - url: https://otx.alienvault.com
+    desc: AlienVault OTX
+    favor: false
+- type: 在线工具
+  content:
+  - url: https://gchq.github.io/CyberChef/
+    desc: CyberChef数据处理
+    favor: true
+  - url: https://www.base64decode.org
+    desc: Base64编解码
+    favor: true
+  - url: https://codebeautify.org/jsonviewer
+    desc: JSON格式化
+    favor: true
+  - url: https://regex101.com
+    desc: 正则表达式测试
+    favor: true
+  - url: https://www.urlencoder.org
+    desc: URL编解码
+    favor: false
+- type: 文本处理
+  content:
+  - url: https://seo.juziseo.com/tools/domain/
+    desc: 在线提取子域名
+    favor: true
+  - url: https://uutool.cn/extract-primary-domain/
+    desc: 在线提取主域名
+    favor: true
+  - url: https://www.toolhelper.cn/Char/TextFilter
+    desc: 在线文本去重
+    favor: true
+  - url: https://c.runoob.com/front-end/854/
+    desc: 文本对比工具
+    favor: false
+- type: 密码学
+  content:
+  - url: https://crackstation.net
+    desc: 在线哈希破解
+    favor: true
+  - url: https://hashes.com
+    desc: Hash查询
+    favor: true
+  - url: https://www.md5decrypt.net
+    desc: MD5解密
+    favor: false
+- type: API文档
+  content:
+  - url: https://portswigger.net/burp/documentation
+    desc: Burp Suite文档
+    favor: true
+  - url: https://owasp.org/www-project-web-security-testing-guide/
+    desc: OWASP测试指南
+    favor: true
+  - url: https://book.hacktricks.xyz
+    desc: HackTricks渗透手册
+    favor: true
+  - url: https://www.kali.org/docs/
+    desc: Kali Linux文档
+    favor: false
