@@ -39,9 +39,12 @@ public class ThirdPartyPanel extends JPanel implements I18nManager.LanguageChang
     private ThirdPartyPanelController controller;
     
     // 列索引常量
-    private static final int FAVORITE_COLUMN_INDEX = 2;
+    private static final int TOOL_NAME_COLUMN_INDEX = 0;
     private static final int COMMAND_COLUMN_INDEX = 1;
-    private static final int AUTO_START_COLUMN_INDEX = 4;
+    private static final int WORK_DIR_COLUMN_INDEX = 2;
+    private static final int FAVORITE_COLUMN_INDEX = 3;
+    private static final int CATEGORY_COLUMN_INDEX = 4;
+    private static final int AUTO_START_COLUMN_INDEX = 5;
     
     public ThirdPartyPanel() {
         // 初始化控制器
@@ -250,10 +253,11 @@ public class ThirdPartyPanel extends JPanel implements I18nManager.LanguageChang
     private void setupColumnWidths() {
         TableColumnModel columnModel = toolTable.getColumnModel();
         columnModel.getColumn(0).setPreferredWidth(120);  // 工具名称
-        columnModel.getColumn(1).setPreferredWidth(350);  // 启动命令
-        columnModel.getColumn(2).setPreferredWidth(60);   // 收藏
-        columnModel.getColumn(3).setPreferredWidth(80);   // 分类
-        columnModel.getColumn(4).setPreferredWidth(80);   // 自启动
+        columnModel.getColumn(1).setPreferredWidth(300);  // 启动命令
+        columnModel.getColumn(2).setPreferredWidth(150);  // 工作目录
+        columnModel.getColumn(3).setPreferredWidth(60);   // 收藏
+        columnModel.getColumn(4).setPreferredWidth(80);   // 分类
+        columnModel.getColumn(5).setPreferredWidth(80);   // 自启动
     }
     
     /**
@@ -262,14 +266,17 @@ public class ThirdPartyPanel extends JPanel implements I18nManager.LanguageChang
     private void configureTableRenderers() {
         TableColumnModel columnModel = toolTable.getColumnModel();
         
+        // 设置命令列渲染器
+        columnModel.getColumn(COMMAND_COLUMN_INDEX).setCellRenderer(new ThirdPartyCommandRenderer());
+        
+        // 设置工作目录列渲染器
+        columnModel.getColumn(WORK_DIR_COLUMN_INDEX).setCellRenderer(new ThirdPartyWorkDirRenderer());
+        
         // 设置收藏列渲染器
         columnModel.getColumn(FAVORITE_COLUMN_INDEX).setCellRenderer(new ThirdPartyFavoriteRenderer());
         
         // 设置自启动列渲染器
         columnModel.getColumn(AUTO_START_COLUMN_INDEX).setCellRenderer(new ThirdPartyAutoStartRenderer());
-        
-        // 设置命令列渲染器
-        columnModel.getColumn(COMMAND_COLUMN_INDEX).setCellRenderer(new ThirdPartyCommandRenderer());
     }
     
     /**
@@ -722,6 +729,38 @@ class ThirdPartyCommandRenderer extends DefaultTableCellRenderer {
             
             // 设置文本对齐
             setHorizontalAlignment(JLabel.LEFT);
+        }
+        
+        return comp;
+    }
+}
+
+/**
+ * 工作目录渲染器
+ */
+class ThirdPartyWorkDirRenderer extends DefaultTableCellRenderer {
+    @Override
+    public Component getTableCellRendererComponent(JTable table, Object value, 
+            boolean isSelected, boolean hasFocus, int row, int column) {
+        
+        Component comp = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+        
+        if (value != null) {
+            String workDir = value.toString();
+            
+            // 显示完整路径作为提示
+            setToolTipText(workDir);
+            
+            // 如果路径太长，截断显示
+            if (workDir.length() > 30) {
+                setText("..." + workDir.substring(workDir.length() - 27));
+            } else {
+                setText(workDir);
+            }
+            
+            // 设置文本对齐和样式
+            setHorizontalAlignment(JLabel.LEFT);
+            setForeground(new Color(100, 100, 100));
         }
         
         return comp;

@@ -8,6 +8,7 @@ public class ThirdPartyTool {
     private String startCommand;
     private boolean favor;
     private boolean autoStart;
+    private String workDir;  // 工作目录
     
     public ThirdPartyTool() {}
     
@@ -16,6 +17,15 @@ public class ThirdPartyTool {
         this.startCommand = startCommand;
         this.favor = favor;
         this.autoStart = autoStart;
+        this.workDir = "";
+    }
+    
+    public ThirdPartyTool(String toolName, String startCommand, boolean favor, boolean autoStart, String workDir) {
+        this.toolName = toolName;
+        this.startCommand = startCommand;
+        this.favor = favor;
+        this.autoStart = autoStart;
+        this.workDir = workDir;
     }
     
     public String getToolName() {
@@ -50,6 +60,14 @@ public class ThirdPartyTool {
         this.autoStart = autoStart;
     }
     
+    public String getWorkDir() {
+        return workDir;
+    }
+    
+    public void setWorkDir(String workDir) {
+        this.workDir = workDir;
+    }
+    
     @Override
     public String toString() {
         return "ThirdPartyTool{" +
@@ -57,6 +75,7 @@ public class ThirdPartyTool {
                 ", startCommand='" + startCommand + '\'' +
                 ", favor=" + favor +
                 ", autoStart=" + autoStart +
+                ", workDir='" + workDir + '\'' +
                 '}';
     }
 } 

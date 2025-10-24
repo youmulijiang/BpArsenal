@@ -35,6 +35,7 @@ public class ThirdPartyTableModel extends AbstractTableModel {
         columnNames = new String[]{
             i18n.getText("thirdparty.tool.name"), 
             i18n.getText("thirdparty.start.command"), 
+            i18n.getText("column.work.dir"),
             i18n.getText("column.favorite"), 
             i18n.getText("label.category"), 
             i18n.getText("thirdparty.auto.start")
@@ -62,22 +63,23 @@ public class ThirdPartyTableModel extends AbstractTableModel {
         switch (columnIndex) {
             case 0: return tool.getToolName();
             case 1: return tool.getStartCommand();
-            case 2: return tool.isFavor();
-            case 3: return ToolController.getInstance().getThirdPartyToolCategory(tool.getToolName());
-            case 4: return tool.isAutoStart();
+            case 2: return tool.getWorkDir() != null ? tool.getWorkDir() : "";
+            case 3: return tool.isFavor();
+            case 4: return ToolController.getInstance().getThirdPartyToolCategory(tool.getToolName());
+            case 5: return tool.isAutoStart();
             default: return null;
         }
     }
     
     @Override
     public Class<?> getColumnClass(int columnIndex) {
-        if (columnIndex == 2 || columnIndex == 4) return Boolean.class;
+        if (columnIndex == 3 || columnIndex == 5) return Boolean.class;
         return String.class;
     }
     
     @Override
     public boolean isCellEditable(int rowIndex, int columnIndex) {
-        return columnIndex == 2 || columnIndex == 4; // 收藏和自启动列可编辑
+        return columnIndex == 3 || columnIndex == 5; // 收藏和自启动列可编辑
     }
     
     @Override
@@ -85,7 +87,7 @@ public class ThirdPartyTableModel extends AbstractTableModel {
         ThirdPartyTool tool = tools.get(rowIndex);
         boolean favoriteChanged = false;
         
-        if (columnIndex == 2) {
+        if (columnIndex == 3) {
             boolean oldFavoriteState = tool.isFavor();
             tool.setFavor((Boolean) value);
             favoriteChanged = (oldFavoriteState != tool.isFavor());
@@ -94,8 +96,10 @@ public class ThirdPartyTableModel extends AbstractTableModel {
             if (favoriteChanged) {
                 ToolController.getInstance().updateThirdPartyToolFavorite(tool, tool.isFavor());
             }
-        } else if (columnIndex == 4) {
+        } else if (columnIndex == 5) {
             tool.setAutoStart((Boolean) value);
+            // 更新数据库中的自启动状态
+            ToolController.getInstance().updateThirdPartyToolAutoStart(tool, tool.isAutoStart());
         }
         
         fireTableCellUpdated(rowIndex, columnIndex);

@@ -650,6 +650,41 @@ public class ToolController {
     }
     
     /**
+     * 更新第三方工具自动启动状态
+     * @param tool 工具对象
+     * @param autoStart 自动启动状态
+     * @return 是否成功
+     */
+    public boolean updateThirdPartyToolAutoStart(ThirdPartyTool tool, boolean autoStart) {
+        try {
+            Config config = ConfigManager.getInstance().getConfig();
+            if (config.getThirtyPart() == null) return false;
+            
+            boolean updated = false;
+            for (Config.ThirdPartyToolCategory category : config.getThirtyPart()) {
+                if (category.getContent() != null) {
+                    for (ThirdPartyTool t : category.getContent()) {
+                        if (t.getToolName().equals(tool.getToolName())) {
+                            t.setAutoStart(autoStart);
+                            updated = true;
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            if (updated) {
+                saveConfiguration();
+            }
+            
+            return updated;
+            
+        } catch (Exception e) {
+            return false;
+        }
+    }
+    
+    /**
      * 根据工具名称获取第三方工具分类
      * @param toolName 工具名称
      * @return 分类显示名称

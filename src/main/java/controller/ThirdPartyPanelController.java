@@ -446,14 +446,22 @@ public class ThirdPartyPanelController {
         try {
             ThirdPartyTool tool = tableModel.getToolAt(selectedRow);
             if (tool != null) {
-                tool.setAutoStart(newAutoStartState);
-                tableModel.fireTableDataChanged();
-                
-                String status = tool.isAutoStart() ? "已启用自启动" : "已禁用自启动";
-                updateStatus(status + ": " + tool.getToolName());
-                
-                if (listener != null) {
-                    listener.onAutoStartToggled(tool, newAutoStartState);
+                // 更新配置文件中的自启动状态
+                if (ToolController.getInstance().updateThirdPartyToolAutoStart(tool, newAutoStartState)) {
+                    tool.setAutoStart(newAutoStartState);
+                    tableModel.fireTableDataChanged();
+                    
+                    String status = tool.isAutoStart() ? "已启用自启动" : "已禁用自启动";
+                    updateStatus(status + ": " + tool.getToolName());
+                    
+                    if (listener != null) {
+                        listener.onAutoStartToggled(tool, newAutoStartState);
+                    }
+                } else {
+                    updateStatus("更新自启动状态失败");
+                    if (listener != null) {
+                        listener.onError("更新自启动", "更新自启动状态到数据库失败");
+                    }
                 }
             }
         } catch (Exception e) {
