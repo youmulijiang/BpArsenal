@@ -1,9 +1,11 @@
 package util;
 
+import model.Config;
 import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.Constructor;
+import org.yaml.snakeyaml.nodes.Tag;
 import org.yaml.snakeyaml.representer.Representer;
 
 import java.io.*;
@@ -29,6 +31,8 @@ public class YamlUtil {
         
         Representer representer = new Representer(options);
         representer.getPropertyUtils().setSkipMissingProperties(true);
+        // 配置Config类不输出类型标签，避免反序列化时的"Global tag is not allowed"错误
+        representer.addClassTag(Config.class, Tag.MAP);
         
         return new Yaml(representer, options);
     }
@@ -59,6 +63,8 @@ public class YamlUtil {
         
         LoaderOptions loaderOptions = new LoaderOptions();
         Constructor constructor = new Constructor(classOfT, loaderOptions);
+        // 设置属性工具，允许跳过缺失的属性（向后兼容）
+        constructor.getPropertyUtils().setSkipMissingProperties(true);
         Yaml yamlParser = new Yaml(constructor);
         return yamlParser.load(yamlString);
     }
@@ -76,6 +82,8 @@ public class YamlUtil {
              InputStreamReader reader = new InputStreamReader(fis, StandardCharsets.UTF_8)) {
             LoaderOptions loaderOptions = new LoaderOptions();
             Constructor constructor = new Constructor(classOfT, loaderOptions);
+            // 设置属性工具，允许跳过缺失的属性（向后兼容）
+            constructor.getPropertyUtils().setSkipMissingProperties(true);
             Yaml yamlParser = new Yaml(constructor);
             return yamlParser.load(reader);
         }
@@ -96,6 +104,8 @@ public class YamlUtil {
         try (InputStreamReader reader = new InputStreamReader(inputStream, StandardCharsets.UTF_8)) {
             LoaderOptions loaderOptions = new LoaderOptions();
             Constructor constructor = new Constructor(classOfT, loaderOptions);
+            // 设置属性工具，允许跳过缺失的属性（向后兼容）
+            constructor.getPropertyUtils().setSkipMissingProperties(true);
             Yaml yamlParser = new Yaml(constructor);
             return yamlParser.load(reader);
         } catch (IOException e) {
