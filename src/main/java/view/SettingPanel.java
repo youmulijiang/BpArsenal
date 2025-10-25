@@ -493,7 +493,10 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
     private void importConfiguration() {
         JFileChooser fileChooser = new JFileChooser();
         I18nManager i18n = I18nManager.getInstance();
-        fileChooser.setFileFilter(new FileNameExtensionFilter(i18n.getText("dialog.config.file.filter"), "json"));
+        // 支持yaml和json格式
+        fileChooser.addChoosableFileFilter(new FileNameExtensionFilter(i18n.getText("dialog.config.file.filter.yaml"), "yaml", "yml"));
+        fileChooser.addChoosableFileFilter(new FileNameExtensionFilter(i18n.getText("dialog.config.file.filter.json"), "json"));
+        fileChooser.setFileFilter(fileChooser.getChoosableFileFilters()[0]); // 默认选择yaml
         fileChooser.setDialogTitle(i18n.getText("dialog.import.config.title"));
         
         int result = fileChooser.showOpenDialog(this);
@@ -509,17 +512,27 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
     private void exportConfiguration() {
         JFileChooser fileChooser = new JFileChooser();
         I18nManager i18n = I18nManager.getInstance();
-        fileChooser.setFileFilter(new FileNameExtensionFilter(i18n.getText("dialog.config.file.filter"), "json"));
+        // 支持yaml和json格式
+        fileChooser.addChoosableFileFilter(new FileNameExtensionFilter(i18n.getText("dialog.config.file.filter.yaml"), "yaml", "yml"));
+        fileChooser.addChoosableFileFilter(new FileNameExtensionFilter(i18n.getText("dialog.config.file.filter.json"), "json"));
+        fileChooser.setFileFilter(fileChooser.getChoosableFileFilters()[0]); // 默认选择yaml
         fileChooser.setDialogTitle(i18n.getText("dialog.export.config.title"));
-        fileChooser.setSelectedFile(new File("bparsenal_config_" + System.currentTimeMillis() + ".json"));
+        fileChooser.setSelectedFile(new File("bparsenal_config_" + System.currentTimeMillis() + ".yaml"));
         
         int result = fileChooser.showSaveDialog(this);
         if (result == JFileChooser.APPROVE_OPTION) {
             File selectedFile = fileChooser.getSelectedFile();
             
-            // 确保文件有.json扩展名
-            if (!selectedFile.getName().toLowerCase().endsWith(".json")) {
-                selectedFile = new File(selectedFile.getAbsolutePath() + ".json");
+            // 确保文件有正确的扩展名
+            String fileName = selectedFile.getName().toLowerCase();
+            if (!fileName.endsWith(".yaml") && !fileName.endsWith(".yml") && !fileName.endsWith(".json")) {
+                // 根据选择的过滤器添加扩展名
+                if (fileChooser.getFileFilter().getDescription().contains("YAML") || 
+                    fileChooser.getFileFilter().getDescription().contains("yaml")) {
+                    selectedFile = new File(selectedFile.getAbsolutePath() + ".yaml");
+                } else {
+                    selectedFile = new File(selectedFile.getAbsolutePath() + ".json");
+                }
             }
             
             controller.exportConfiguration(selectedFile.getAbsolutePath());

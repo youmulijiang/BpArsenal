@@ -242,7 +242,7 @@ public class ThirdPartyPanel extends JPanel implements I18nManager.LanguageChang
         TableRendererFactory.applyTableStyle(toolTable);
         
         // 设置列宽
-        // setupColumnWidths();
+        setupColumnWidths();
         
         // 设置渲染器
         configureTableRenderers();
