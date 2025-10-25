@@ -16,6 +16,7 @@ public class ThirdPartyToolEditDialog extends JDialog implements I18nManager.Lan
     
     private JTextField toolNameField;
     private JTextField startCommandField;
+    private JTextField noteField;
     private JTextField workDirField;
     private JButton browseButton;
     private JCheckBox favorCheckBox;
@@ -140,15 +141,31 @@ public class ThirdPartyToolEditDialog extends JDialog implements I18nManager.Lan
         startCommandField.setToolTipText(basicI18n.getText("thirdparty.edit.dialog.tooltip.command"));
         basicPanel.add(startCommandField, gbc);
         
-        // 工作目录
+        // 备注
         gbc.gridx = 0; gbc.gridy = 2;
+        gbc.fill = GridBagConstraints.NONE;
+        gbc.weightx = 0;
+        JLabel noteLabel = new JLabel(basicI18n.getText("thirdparty.edit.dialog.label.note"));
+        noteLabel.setFont(new Font("微软雅黑", Font.PLAIN, 12));
+        basicPanel.add(noteLabel, gbc);
+        
+        gbc.gridx = 1; gbc.gridy = 2;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.weightx = 1.0;
+        noteField = new JTextField(25);
+        noteField.setFont(new Font("微软雅黑", Font.PLAIN, 11));
+        noteField.setToolTipText(basicI18n.getText("thirdparty.edit.dialog.tooltip.note"));
+        basicPanel.add(noteField, gbc);
+        
+        // 工作目录
+        gbc.gridx = 0; gbc.gridy = 3;
         gbc.fill = GridBagConstraints.NONE;
         gbc.weightx = 0;
         JLabel workDirLabel = new JLabel(basicI18n.getText("thirdparty.edit.dialog.label.work.dir"));
         workDirLabel.setFont(new Font("微软雅黑", Font.PLAIN, 12));
         basicPanel.add(workDirLabel, gbc);
         
-        gbc.gridx = 1; gbc.gridy = 2;
+        gbc.gridx = 1; gbc.gridy = 3;
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.weightx = 1.0;
         JPanel workDirPanel = new JPanel(new BorderLayout(5, 0));
@@ -164,14 +181,14 @@ public class ThirdPartyToolEditDialog extends JDialog implements I18nManager.Lan
         basicPanel.add(workDirPanel, gbc);
         
         // 分类
-        gbc.gridx = 0; gbc.gridy = 3;
+        gbc.gridx = 0; gbc.gridy = 4;
         gbc.fill = GridBagConstraints.NONE;
         gbc.weightx = 0;
         JLabel categoryLabel = new JLabel(basicI18n.getText("thirdparty.edit.dialog.label.category"));
         categoryLabel.setFont(new Font("微软雅黑", Font.PLAIN, 12));
         basicPanel.add(categoryLabel, gbc);
         
-        gbc.gridx = 1; gbc.gridy = 3;
+        gbc.gridx = 1; gbc.gridy = 4;
         gbc.fill = GridBagConstraints.HORIZONTAL;
         categoryCombo = new JComboBox<>(new String[]{
             basicI18n.getText("thirdparty.category.penetration"),
@@ -313,6 +330,7 @@ public class ThirdPartyToolEditDialog extends JDialog implements I18nManager.Lan
         if (tool != null) {
             toolNameField.setText(tool.getToolName());
             startCommandField.setText(tool.getStartCommand());
+            noteField.setText(tool.getNote() != null ? tool.getNote() : "");
             workDirField.setText(tool.getWorkDir() != null ? tool.getWorkDir() : "");
             favorCheckBox.setSelected(tool.isFavor());
             autoStartCheckBox.setSelected(tool.isAutoStart());
@@ -327,6 +345,7 @@ public class ThirdPartyToolEditDialog extends JDialog implements I18nManager.Lan
             }
         } else {
             // 默认值
+            noteField.setText("");
             workDirField.setText("");
             favorCheckBox.setSelected(false);
             autoStartCheckBox.setSelected(false);
@@ -368,6 +387,7 @@ public class ThirdPartyToolEditDialog extends JDialog implements I18nManager.Lan
         
         tool.setToolName(toolNameField.getText().trim());
         tool.setStartCommand(startCommandField.getText().trim());
+        tool.setNote(noteField.getText().trim());
         tool.setWorkDir(workDirField.getText().trim());
         tool.setFavor(favorCheckBox.isSelected());
         tool.setAutoStart(autoStartCheckBox.isSelected());

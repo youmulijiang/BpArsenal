@@ -41,10 +41,11 @@ public class ThirdPartyPanel extends JPanel implements I18nManager.LanguageChang
     // 列索引常量
     private static final int TOOL_NAME_COLUMN_INDEX = 0;
     private static final int COMMAND_COLUMN_INDEX = 1;
-    private static final int WORK_DIR_COLUMN_INDEX = 2;
-    private static final int FAVORITE_COLUMN_INDEX = 3;
-    private static final int CATEGORY_COLUMN_INDEX = 4;
-    private static final int AUTO_START_COLUMN_INDEX = 5;
+    private static final int FAVORITE_COLUMN_INDEX = 2;
+    private static final int NOTE_COLUMN_INDEX = 3;
+    private static final int WORK_DIR_COLUMN_INDEX = 4;
+    private static final int CATEGORY_COLUMN_INDEX = 5;
+    private static final int AUTO_START_COLUMN_INDEX = 6;
     
     public ThirdPartyPanel() {
         // 初始化控制器
@@ -253,11 +254,12 @@ public class ThirdPartyPanel extends JPanel implements I18nManager.LanguageChang
     private void setupColumnWidths() {
         TableColumnModel columnModel = toolTable.getColumnModel();
         columnModel.getColumn(0).setPreferredWidth(120);  // 工具名称
-        columnModel.getColumn(1).setPreferredWidth(300);  // 启动命令
-        columnModel.getColumn(2).setPreferredWidth(150);  // 工作目录
-        columnModel.getColumn(3).setPreferredWidth(60);   // 收藏
-        columnModel.getColumn(4).setPreferredWidth(80);   // 分类
-        columnModel.getColumn(5).setPreferredWidth(80);   // 自启动
+        columnModel.getColumn(1).setPreferredWidth(250);  // 启动命令
+        columnModel.getColumn(2).setPreferredWidth(60);   // 收藏
+        columnModel.getColumn(3).setPreferredWidth(150);  // 备注
+        columnModel.getColumn(4).setPreferredWidth(120);  // 工作目录
+        columnModel.getColumn(5).setPreferredWidth(80);   // 分类
+        columnModel.getColumn(6).setPreferredWidth(80);   // 自启动
     }
     
     /**
@@ -269,11 +271,14 @@ public class ThirdPartyPanel extends JPanel implements I18nManager.LanguageChang
         // 设置命令列渲染器
         columnModel.getColumn(COMMAND_COLUMN_INDEX).setCellRenderer(new ThirdPartyCommandRenderer());
         
-        // 设置工作目录列渲染器
-        columnModel.getColumn(WORK_DIR_COLUMN_INDEX).setCellRenderer(new ThirdPartyWorkDirRenderer());
-        
         // 设置收藏列渲染器
         columnModel.getColumn(FAVORITE_COLUMN_INDEX).setCellRenderer(new ThirdPartyFavoriteRenderer());
+        
+        // 设置备注列渲染器
+        columnModel.getColumn(NOTE_COLUMN_INDEX).setCellRenderer(new ThirdPartyNoteRenderer());
+        
+        // 设置工作目录列渲染器
+        columnModel.getColumn(WORK_DIR_COLUMN_INDEX).setCellRenderer(new ThirdPartyWorkDirRenderer());
         
         // 设置自启动列渲染器
         columnModel.getColumn(AUTO_START_COLUMN_INDEX).setCellRenderer(new ThirdPartyAutoStartRenderer());
@@ -432,6 +437,7 @@ public class ThirdPartyPanel extends JPanel implements I18nManager.LanguageChang
             searchColumnFilter.addItem(i18n.getText("filter.all"));
             searchColumnFilter.addItem(i18n.getText("thirdparty.tool.name"));
             searchColumnFilter.addItem(i18n.getText("thirdparty.start.command"));
+            searchColumnFilter.addItem(i18n.getText("column.note"));
             searchColumnFilter.addItem(i18n.getText("label.category"));
             
             searchColumnFilter.setSelectedIndex(0);
@@ -452,6 +458,7 @@ public class ThirdPartyPanel extends JPanel implements I18nManager.LanguageChang
             searchColumnFilter.addItem(i18n.getText("filter.all"));
             searchColumnFilter.addItem(i18n.getText("thirdparty.tool.name"));
             searchColumnFilter.addItem(i18n.getText("thirdparty.start.command"));
+            searchColumnFilter.addItem(i18n.getText("column.note"));
             searchColumnFilter.addItem(i18n.getText("label.category"));
             
             if (selectedIndex >= 0 && selectedIndex < searchColumnFilter.getItemCount()) {
@@ -729,6 +736,38 @@ class ThirdPartyCommandRenderer extends DefaultTableCellRenderer {
             
             // 设置文本对齐
             setHorizontalAlignment(JLabel.LEFT);
+        }
+        
+        return comp;
+    }
+}
+
+/**
+ * 备注渲染器
+ */
+class ThirdPartyNoteRenderer extends DefaultTableCellRenderer {
+    @Override
+    public Component getTableCellRendererComponent(JTable table, Object value, 
+            boolean isSelected, boolean hasFocus, int row, int column) {
+        
+        Component comp = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+        
+        if (value != null) {
+            String note = value.toString();
+            
+            // 显示完整备注作为提示
+            setToolTipText(note);
+            
+            // 如果备注太长，截断显示
+            if (note.length() > 30) {
+                setText(note.substring(0, 27) + "...");
+            } else {
+                setText(note);
+            }
+            
+            // 设置文本对齐和样式
+            setHorizontalAlignment(JLabel.LEFT);
+            setForeground(new Color(80, 80, 80));
         }
         
         return comp;

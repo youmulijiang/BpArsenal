@@ -33,12 +33,13 @@ public class ThirdPartyTableModel extends AbstractTableModel {
     public void updateColumnNames() {
         I18nManager i18n = I18nManager.getInstance();
         columnNames = new String[]{
-            i18n.getText("thirdparty.tool.name"), 
-            i18n.getText("thirdparty.start.command"), 
-            i18n.getText("column.work.dir"),
-            i18n.getText("column.favorite"), 
-            i18n.getText("label.category"), 
-            i18n.getText("thirdparty.auto.start")
+            i18n.getText("thirdparty.tool.name"),      // 0: 工具名称
+            i18n.getText("thirdparty.start.command"),  // 1: 启动命令
+            i18n.getText("column.favorite"),           // 2: 收藏
+            i18n.getText("column.note"),               // 3: 备注
+            i18n.getText("column.work.dir"),           // 4: 工作目录
+            i18n.getText("label.category"),            // 5: 分类
+            i18n.getText("thirdparty.auto.start")      // 6: 自启动
         };
     }
     
@@ -63,23 +64,24 @@ public class ThirdPartyTableModel extends AbstractTableModel {
         switch (columnIndex) {
             case 0: return tool.getToolName();
             case 1: return tool.getStartCommand();
-            case 2: return tool.getWorkDir() != null ? tool.getWorkDir() : "";
-            case 3: return tool.isFavor();
-            case 4: return ToolController.getInstance().getThirdPartyToolCategory(tool.getToolName());
-            case 5: return tool.isAutoStart();
+            case 2: return tool.isFavor();
+            case 3: return tool.getNote() != null ? tool.getNote() : "";
+            case 4: return tool.getWorkDir() != null ? tool.getWorkDir() : "";
+            case 5: return ToolController.getInstance().getThirdPartyToolCategory(tool.getToolName());
+            case 6: return tool.isAutoStart();
             default: return null;
         }
     }
     
     @Override
     public Class<?> getColumnClass(int columnIndex) {
-        if (columnIndex == 3 || columnIndex == 5) return Boolean.class;
+        if (columnIndex == 2 || columnIndex == 6) return Boolean.class;  // 收藏列和自启动列
         return String.class;
     }
     
     @Override
     public boolean isCellEditable(int rowIndex, int columnIndex) {
-        return columnIndex == 3 || columnIndex == 5; // 收藏和自启动列可编辑
+        return columnIndex == 2 || columnIndex == 6; // 收藏和自启动列可编辑
     }
     
     @Override
@@ -87,7 +89,7 @@ public class ThirdPartyTableModel extends AbstractTableModel {
         ThirdPartyTool tool = tools.get(rowIndex);
         boolean favoriteChanged = false;
         
-        if (columnIndex == 3) {
+        if (columnIndex == 2) {  // 收藏列
             boolean oldFavoriteState = tool.isFavor();
             tool.setFavor((Boolean) value);
             favoriteChanged = (oldFavoriteState != tool.isFavor());
@@ -96,7 +98,7 @@ public class ThirdPartyTableModel extends AbstractTableModel {
             if (favoriteChanged) {
                 ToolController.getInstance().updateThirdPartyToolFavorite(tool, tool.isFavor());
             }
-        } else if (columnIndex == 5) {
+        } else if (columnIndex == 6) {  // 自启动列
             tool.setAutoStart((Boolean) value);
             // 更新数据库中的自启动状态
             ToolController.getInstance().updateThirdPartyToolAutoStart(tool, tool.isAutoStart());

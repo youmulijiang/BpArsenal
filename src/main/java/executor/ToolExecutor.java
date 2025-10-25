@@ -148,8 +148,9 @@ public class ToolExecutor {
     public void executeThirdPartyTool(ThirdPartyTool tool) {
         CompletableFuture.runAsync(() -> {
             try {
-                // 第三方工具没有独立的工作目录配置，使用全局设置
-                String workDir = determineWorkingDirectory(null);
+                // 使用工具配置的工作目录（如果有），否则使用全局设置
+                String toolWorkDir = tool.getWorkDir();
+                String workDir = determineWorkingDirectory(toolWorkDir);
                 executeCommandViaScript(tool.getStartCommand(), tool.getToolName(), workDir);
             } catch (Exception e) {
                 I18nManager i18n = I18nManager.getInstance();

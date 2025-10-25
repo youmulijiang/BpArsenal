@@ -325,114 +325,162 @@ thirtyPart:
   - toolName: Metasploit
     startCommand: msfconsole
     favor: true
+    note: 强大的渗透测试框架
+    workDir: ''
     autoStart: false
   - toolName: Cobalt Strike
     startCommand: cobaltstrike
     favor: false
+    note: 商业渗透测试工具
+    workDir: ''
     autoStart: false
 - type: 钓鱼工具
   content:
   - toolName: Gophish
     startCommand: gophish
     favor: true
+    note: 开源钓鱼框架
+    workDir: ''
     autoStart: false
   - toolName: SET (Social-Engineer Toolkit)
     startCommand: setoolkit
     favor: true
+    note: 社会工程学工具包
+    workDir: ''
     autoStart: false
   - toolName: EvilGinx2
     startCommand: evilginx2
     favor: false
+    note: 中间人钓鱼工具
+    workDir: ''
     autoStart: false
 - type: 密码破解
   content:
   - toolName: Hashcat
     startCommand: hashcat
     favor: true
+    note: GPU加速密码破解
+    workDir: ''
     autoStart: false
   - toolName: John the Ripper
     startCommand: john
     favor: true
+    note: 经典密码破解工具
+    workDir: ''
     autoStart: false
   - toolName: Hydra
     startCommand: hydra
     favor: true
+    note: 网络服务密码暴力破解
+    workDir: ''
     autoStart: false
 - type: 代理工具
   content:
   - toolName: Proxychains
     startCommand: proxychains4
     favor: true
+    note: 命令行代理链工具
+    workDir: ''
     autoStart: false
   - toolName: Tor Browser
     startCommand: tor
     favor: false
+    note: Tor匿名网络
+    workDir: ''
     autoStart: false
 - type: 数据库工具
   content:
   - toolName: MySQL Client
     startCommand: mysql
     favor: true
+    note: MySQL命令行客户端
+    workDir: ''
     autoStart: false
   - toolName: PostgreSQL Client
     startCommand: psql
     favor: true
+    note: PostgreSQL命令行客户端
+    workDir: ''
     autoStart: false
   - toolName: MongoDB Client
     startCommand: mongo
     favor: false
+    note: MongoDB命令行客户端
+    workDir: ''
     autoStart: false
   - toolName: Redis Client
     startCommand: redis-cli
     favor: false
+    note: Redis命令行客户端
+    workDir: ''
     autoStart: false
 - type: 流量分析
   content:
   - toolName: Wireshark
     startCommand: wireshark
     favor: true
+    note: 图形化流量分析工具
+    workDir: ''
     autoStart: false
   - toolName: tcpdump
     startCommand: tcpdump
     favor: true
+    note: 命令行流量抓包工具
+    workDir: ''
     autoStart: false
   - toolName: tshark
     startCommand: tshark
     favor: false
+    note: Wireshark命令行版本
+    workDir: ''
     autoStart: false
 - type: 编辑器
   content:
   - toolName: VSCode
     startCommand: code
     favor: true
+    note: 微软开源代码编辑器
+    workDir: ''
     autoStart: false
   - toolName: Vim
     startCommand: vim
     favor: true
+    note: 经典文本编辑器
+    workDir: ''
     autoStart: false
   - toolName: Sublime Text
     startCommand: subl
     favor: false
+    note: 轻量级代码编辑器
+    workDir: ''
     autoStart: false
 - type: 终端工具
   content:
   - toolName: tmux
     startCommand: tmux
     favor: true
+    note: 终端复用器
+    workDir: ''
     autoStart: false
   - toolName: screen
     startCommand: screen
     favor: false
+    note: 终端会话管理工具
+    workDir: ''
     autoStart: false
 - type: 其他工具
   content:
   - toolName: Burp Suite
     startCommand: burpsuite
     favor: true
+    note: Web应用渗透测试工具
+    workDir: ''
     autoStart: false
   - toolName: OWASP ZAP
     startCommand: zaproxy
     favor: false
+    note: OWASP Web代理工具
+    workDir: ''
     autoStart: false
 webSite:
 - type: OSINT
