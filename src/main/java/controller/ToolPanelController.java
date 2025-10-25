@@ -60,7 +60,6 @@ public class ToolPanelController {
         } catch (Exception e) {
             String errorMsg = "加载失败: " + e.getMessage();
             notifyStatusUpdate(errorMsg);
-            logError("加载工具数据失败: " + e.getMessage());
         }
     }
     
@@ -295,7 +294,7 @@ public class ToolPanelController {
         try {
             return ToolController.getInstance().getAllHttpToolCategories();
         } catch (Exception e) {
-            logError("加载分类选项失败: " + e.getMessage());
+            
             // 返回默认分类
             I18nManager i18n = I18nManager.getInstance();
             List<String> defaultCategories = new ArrayList<>();

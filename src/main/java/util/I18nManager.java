@@ -159,7 +159,6 @@ public enum I18nManager {
      */
     public synchronized void setCurrentLanguage(SupportedLanguage language) {
         if (language == null) {
-            logError("语言参数不能为空");
             return;
         }
         
@@ -176,7 +175,6 @@ public enum I18nManager {
         // 通知所有监听器
         notifyLanguageChanged(language);
         
-        logInfo("语言环境已设置为: " + language.getDisplayName());
     }
     
     /**
@@ -214,7 +212,6 @@ public enum I18nManager {
             try {
                 return ResourceBundle.getBundle(BUNDLE_BASE_NAME, lang.getLocale());
             } catch (Exception e) {
-                logError("加载资源包失败: " + lang.getDisplayName() + ", 错误: " + e.getMessage());
                 // 如果加载失败，尝试加载默认的中文资源包
                 if (lang != SupportedLanguage.CHINESE) {
                     try {
@@ -235,14 +232,12 @@ public enum I18nManager {
      */
     public String getText(String key) {
         if (currentBundle == null) {
-            logError("资源包未初始化");
             return key;
         }
         
         try {
             return currentBundle.getString(key);
         } catch (Exception e) {
-            logError("获取国际化文本失败: " + key + ", 错误: " + e.getMessage());
             return key; // 返回键值作为fallback
         }
     }
@@ -263,7 +258,6 @@ public enum I18nManager {
             // 使用MessageFormat处理{0}, {1}格式的占位符
             return MessageFormat.format(text, params);
         } catch (Exception e) {
-            logError("格式化国际化文本失败: " + key + ", 错误: " + e.getMessage());
             return text;
         }
     }
@@ -345,7 +339,6 @@ public enum I18nManager {
             }
         } catch (IOException e) {
             // 文件不存在或读取失败，这是正常的
-            logInfo("语言配置文件不存在或读取失败，将使用默认语言");
         }
         return null;
     }
@@ -363,9 +356,7 @@ public enum I18nManager {
                 props.store(fos, "BpArsenal Language Settings");
             }
             
-            logInfo("语言设置已保存: " + language.getLanguageTag());
         } catch (IOException e) {
-            logError("保存语言设置失败: " + e.getMessage());
         }
     }
     
@@ -376,7 +367,6 @@ public enum I18nManager {
         if (currentLanguage != null) {
             bundleCache.remove(currentLanguage);
             currentBundle = getResourceBundle(currentLanguage);
-            logInfo("资源包已重新加载: " + currentLanguage.getDisplayName());
         }
     }
     
@@ -385,7 +375,6 @@ public enum I18nManager {
      */
     public void clearCache() {
         bundleCache.clear();
-        logInfo("国际化资源包缓存已清理");
     }
     
     /**
@@ -480,7 +469,6 @@ public enum I18nManager {
     public void addLanguageChangeListener(LanguageChangeListener listener) {
         if (listener != null && !listeners.contains(listener)) {
             listeners.add(listener);
-            logInfo("添加语言变更监听器: " + listener.getClass().getSimpleName());
         }
     }
     
@@ -491,7 +479,6 @@ public enum I18nManager {
     public void removeLanguageChangeListener(LanguageChangeListener listener) {
         if (listener != null) {
             listeners.remove(listener);
-            logInfo("移除语言变更监听器: " + listener.getClass().getSimpleName());
         }
     }
     
@@ -504,10 +491,8 @@ public enum I18nManager {
             try {
                 listener.onLanguageChanged(newLanguage);
             } catch (Exception e) {
-                logError("通知语言变更监听器失败: " + e.getMessage());
             }
         }
-        logInfo("已通知 " + listeners.size() + " 个监听器语言变更");
     }
     
     /**
@@ -516,11 +501,7 @@ public enum I18nManager {
      */
     private void logInfo(String message) {
         try {
-            if (ApiManager.getInstance().isInitialized()) {
-                ApiManager.getInstance().getApi().logging().logToOutput("I18nManager: " + message);
-            }
         } catch (Exception e) {
-            System.out.println("I18nManager: " + message);
         }
     }
     
@@ -530,11 +511,7 @@ public enum I18nManager {
      */
     private void logError(String message) {
         try {
-            if (ApiManager.getInstance().isInitialized()) {
-                ApiManager.getInstance().getApi().logging().logToError("I18nManager: " + message);
-            }
         } catch (Exception e) {
-            System.err.println("I18nManager: " + message);
         }
     }
 } 

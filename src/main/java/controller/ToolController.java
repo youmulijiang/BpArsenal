@@ -46,11 +46,9 @@ public class ToolController {
                 }
             }
             
-            logInfo("成功加载 " + tools.size() + " 个工具");
             return tools;
             
         } catch (Exception e) {
-            logError("获取工具列表失败: " + e.getMessage());
             return new ArrayList<>();
         }
     }
@@ -108,11 +106,9 @@ public class ToolController {
                 }
             }
             
-            logInfo("成功加载 " + toolCommands.size() + " 个工具命令");
             return toolCommands;
             
         } catch (Exception e) {
-            logError("获取工具命令列表失败: " + e.getMessage());
             return new ArrayList<>();
         }
     }
@@ -142,11 +138,9 @@ public class ToolController {
             // 保存配置
             saveConfiguration();
             
-            logInfo("成功添加工具: " + tool.getToolName() + " (分类: " + categoryType + ")");
             return true;
             
         } catch (Exception e) {
-            logError("添加工具失败: " + e.getMessage());
             return false;
         }
     }
@@ -167,13 +161,11 @@ public class ToolController {
             boolean result = addTool(newTool, newCategoryType);
             
             if (result) {
-                logInfo("成功更新工具: " + newTool.getToolName());
             }
             
             return result;
             
         } catch (Exception e) {
-            logError("更新工具失败: " + e.getMessage());
             return false;
         }
     }
@@ -198,13 +190,11 @@ public class ToolController {
             
             if (removed) {
                 saveConfiguration();
-                logInfo("成功删除工具: " + tool.getToolName());
             }
             
             return removed;
             
         } catch (Exception e) {
-            logError("删除工具失败: " + e.getMessage());
             return false;
         }
     }
@@ -224,7 +214,6 @@ public class ToolController {
         try {
             HttpTool parentTool = toolCommand.getParentTool();
             if (parentTool == null) {
-                logError("无法更新工具命令：父工具为空");
                 return false;
             }
             
@@ -250,7 +239,6 @@ public class ToolController {
             }
             
             if (configTool == null) {
-                logError("在配置中找不到工具: " + parentTool.getToolName());
                 return false;
             }
             
@@ -286,16 +274,12 @@ public class ToolController {
                 // 保存配置
                 saveConfiguration();
                 
-                logInfo("成功更新工具命令: " + toolCommand.getToolName() + 
-                       " (备注: " + newNote + ", 工作目录: " + newWorkDir + ")");
                 return true;
             } else {
-                logError("命令索引超出范围: " + commandIndex);
                 return false;
             }
             
         } catch (Exception e) {
-            logError("更新工具命令失败: " + e.getMessage());
             return false;
         }
     }
@@ -326,13 +310,11 @@ public class ToolController {
             
             if (updated) {
                 saveConfiguration();
-                logInfo("更新工具收藏状态: " + tool.getToolName() + " -> " + favorite);
             }
             
             return updated;
             
         } catch (Exception e) {
-            logError("更新工具收藏状态失败: " + e.getMessage());
             return false;
         }
     }
@@ -357,7 +339,6 @@ public class ToolController {
                 }
             }
         } catch (Exception e) {
-            logError("获取工具分类失败: " + e.getMessage());
         }
         return "未分类";
     }
@@ -433,11 +414,9 @@ public class ToolController {
                 }
             }
             
-            logInfo("成功加载 " + (categories.size() - 1) + " 个HTTP工具分类");
             return categories;
             
         } catch (Exception e) {
-            logError("获取HTTP工具分类失败: " + e.getMessage());
             // 返回默认分类
             List<String> defaultCategories = new ArrayList<>();
             defaultCategories.add(util.I18nManager.getInstance().getText("filter.all"));
@@ -476,11 +455,9 @@ public class ToolController {
                 }
             }
             
-            logInfo("成功加载 " + (categories.size() - 1) + " 个网站分类");
             return categories;
             
         } catch (Exception e) {
-            logError("获取网站分类失败: " + e.getMessage());
             // 返回默认分类
             List<String> defaultCategories = new ArrayList<>();
             defaultCategories.add(util.I18nManager.getInstance().getText("filter.all"));
@@ -515,11 +492,9 @@ public class ToolController {
                 }
             }
             
-            logInfo("成功加载 " + (categories.size() - 1) + " 个第三方工具分类");
             return categories;
             
         } catch (Exception e) {
-            logError("获取第三方工具分类失败: " + e.getMessage());
             // 返回默认分类
             List<String> defaultCategories = new ArrayList<>();
             defaultCategories.add(util.I18nManager.getInstance().getText("filter.all"));
@@ -546,11 +521,9 @@ public class ToolController {
                 }
             }
             
-            logInfo("成功加载 " + tools.size() + " 个第三方工具");
             return tools;
             
         } catch (Exception e) {
-            logError("获取第三方工具列表失败: " + e.getMessage());
             return new ArrayList<>();
         }
     }
@@ -580,11 +553,9 @@ public class ToolController {
             // 保存配置
             saveConfiguration();
             
-            logInfo("成功添加第三方工具: " + tool.getToolName() + " (分类: " + categoryType + ")");
             return true;
             
         } catch (Exception e) {
-            logError("添加第三方工具失败: " + e.getMessage());
             return false;
         }
     }
@@ -605,13 +576,11 @@ public class ToolController {
             boolean result = addThirdPartyTool(newTool, newCategoryType);
             
             if (result) {
-                logInfo("成功更新第三方工具: " + newTool.getToolName());
             }
             
             return result;
             
         } catch (Exception e) {
-            logError("更新第三方工具失败: " + e.getMessage());
             return false;
         }
     }
@@ -636,13 +605,11 @@ public class ToolController {
             
             if (removed) {
                 saveConfiguration();
-                logInfo("成功删除第三方工具: " + tool.getToolName());
             }
             
             return removed;
             
         } catch (Exception e) {
-            logError("删除第三方工具失败: " + e.getMessage());
             return false;
         }
     }
@@ -673,13 +640,46 @@ public class ToolController {
             
             if (updated) {
                 saveConfiguration();
-                logInfo("更新第三方工具收藏状态: " + tool.getToolName() + " -> " + favorite);
             }
             
             return updated;
             
         } catch (Exception e) {
-            logError("更新第三方工具收藏状态失败: " + e.getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * 更新第三方工具自动启动状态
+     * @param tool 工具对象
+     * @param autoStart 自动启动状态
+     * @return 是否成功
+     */
+    public boolean updateThirdPartyToolAutoStart(ThirdPartyTool tool, boolean autoStart) {
+        try {
+            Config config = ConfigManager.getInstance().getConfig();
+            if (config.getThirtyPart() == null) return false;
+            
+            boolean updated = false;
+            for (Config.ThirdPartyToolCategory category : config.getThirtyPart()) {
+                if (category.getContent() != null) {
+                    for (ThirdPartyTool t : category.getContent()) {
+                        if (t.getToolName().equals(tool.getToolName())) {
+                            t.setAutoStart(autoStart);
+                            updated = true;
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            if (updated) {
+                saveConfiguration();
+            }
+            
+            return updated;
+            
+        } catch (Exception e) {
             return false;
         }
     }
@@ -704,7 +704,6 @@ public class ToolController {
                 }
             }
         } catch (Exception e) {
-            logError("获取第三方工具分类失败: " + e.getMessage());
         }
         return "未分类";
     }
@@ -771,11 +770,9 @@ public class ToolController {
                 }
             }
             
-            logInfo("成功加载 " + websites.size() + " 个网站");
             return websites;
             
         } catch (Exception e) {
-            logError("获取网站列表失败: " + e.getMessage());
             return new ArrayList<>();
         }
     }
@@ -805,11 +802,9 @@ public class ToolController {
             // 保存配置
             saveConfiguration();
             
-            logInfo("成功添加网站: " + website.getDesc() + " (分类: " + categoryType + ")");
             return true;
             
         } catch (Exception e) {
-            logError("添加网站失败: " + e.getMessage());
             return false;
         }
     }
@@ -830,13 +825,11 @@ public class ToolController {
             boolean result = addWebSite(newWebsite, newCategoryType);
             
             if (result) {
-                logInfo("成功更新网站: " + newWebsite.getDesc());
             }
             
             return result;
             
         } catch (Exception e) {
-            logError("更新网站失败: " + e.getMessage());
             return false;
         }
     }
@@ -862,13 +855,11 @@ public class ToolController {
             
             if (removed) {
                 saveConfiguration();
-                logInfo("成功删除网站: " + website.getDesc());
             }
             
             return removed;
             
         } catch (Exception e) {
-            logError("删除网站失败: " + e.getMessage());
             return false;
         }
     }
@@ -900,13 +891,11 @@ public class ToolController {
             
             if (updated) {
                 saveConfiguration();
-                logInfo("更新网站收藏状态: " + website.getDesc() + " -> " + favorite);
             }
             
             return updated;
             
         } catch (Exception e) {
-            logError("更新网站收藏状态失败: " + e.getMessage());
             return false;
         }
     }
@@ -931,7 +920,6 @@ public class ToolController {
                 }
             }
         } catch (Exception e) {
-            logError("获取网站分类失败: " + e.getMessage());
         }
         return "未分类";
     }
@@ -989,9 +977,7 @@ public class ToolController {
     private void saveConfiguration() {
         try {
             ConfigManager.getInstance().saveConfig();
-            logInfo("配置保存成功");
         } catch (Exception e) {
-            logError("配置保存失败: " + e.getMessage());
             throw new RuntimeException("配置保存失败: " + e.getMessage(), e);
         }
     }
@@ -1001,9 +987,6 @@ public class ToolController {
      * @param message 日志消息
      */
     private void logInfo(String message) {
-        if (ApiManager.getInstance().isInitialized()) {
-            ApiManager.getInstance().getApi().logging().logToOutput("ToolController: " + message);
-        }
     }
     
     /**
@@ -1011,8 +994,5 @@ public class ToolController {
      * @param message 错误消息
      */
     private void logError(String message) {
-        if (ApiManager.getInstance().isInitialized()) {
-            ApiManager.getInstance().getApi().logging().logToError("ToolController: " + message);
-        }
     }
 } 

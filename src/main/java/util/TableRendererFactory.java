@@ -154,7 +154,6 @@ public class TableRendererFactory {
             }
             
         } catch (Exception e) {
-            System.err.println("配置表格渲染器失败: " + e.getMessage());
         }
     }
     
@@ -175,7 +174,6 @@ public class TableRendererFactory {
                 table.getColumnModel().getColumn(i).setCellRenderer(null);
             }
         } catch (Exception e) {
-            System.err.println("重置表格渲染器失败: " + e.getMessage());
         }
     }
     
@@ -210,7 +208,6 @@ public class TableRendererFactory {
             }
             
         } catch (Exception e) {
-            System.err.println("应用表格样式失败: " + e.getMessage());
         }
     }
 } 

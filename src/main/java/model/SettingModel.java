@@ -2,6 +2,7 @@ package model;
 
 import util.I18nManager;
 import util.JsonUtil;
+import util.YamlUtil;
 import util.OsUtils;
 
 import java.io.*;
@@ -20,7 +21,7 @@ public class SettingModel {
     
     // 配置文件路径
     private static final String TOOL_CONFIG_FILE = "tool_settings.properties";
-    private static final String CONFIG_FILE_PATH = "src/main/resources/config.json";
+    private static final String CONFIG_FILE_PATH = "src/main/resources/config.yaml";
     
     // 工具设置
     private Properties toolSettings;
@@ -48,7 +49,6 @@ public class SettingModel {
             try (FileInputStream fis = new FileInputStream(settingsFile)) {
                 toolSettings.load(fis);
             } catch (IOException e) {
-                System.err.println("加载工具设置失败: " + e.getMessage());
             }
         }
     }
@@ -164,7 +164,7 @@ public class SettingModel {
     public String backupCurrentConfig() throws IOException {
         Path configPath = Paths.get(CONFIG_FILE_PATH);
         if (Files.exists(configPath)) {
-            String backupFileName = "config_backup_" + System.currentTimeMillis() + ".json";
+            String backupFileName = "config_backup_" + System.currentTimeMillis() + ".yaml";
             Path backupPath = Paths.get("src/main/resources/" + backupFileName);
             Files.copy(configPath, backupPath);
             return backupPath.toString();
@@ -173,34 +173,67 @@ public class SettingModel {
     }
     
     /**
-     * 导入配置文件
+     * 导入配置文件（支持YAML和JSON格式）
      * @param configFilePath 配置文件路径
      * @throws Exception 导入失败异常
      */
     public void importConfiguration(String configFilePath) throws Exception {
         // 读取文件内容
-        String jsonContent = new String(Files.readAllBytes(Paths.get(configFilePath)), StandardCharsets.UTF_8);
+        String content = new String(Files.readAllBytes(Paths.get(configFilePath)), StandardCharsets.UTF_8);
         
-        // 验证JSON格式
-        Config config = JsonUtil.fromJson(jsonContent, Config.class);
+        Config config = null;
         
-        // 写入新配置
+        // 根据文件扩展名判断格式
+        if (configFilePath.endsWith(".yaml") || configFilePath.endsWith(".yml")) {
+            // YAML格式
+            config = YamlUtil.fromYaml(content, Config.class);
+        } else if (configFilePath.endsWith(".json")) {
+            // JSON格式（向后兼容）
+            config = JsonUtil.fromJson(content, Config.class);
+        } else {
+            // 尝试自动检测格式
+            try {
+                config = YamlUtil.fromYaml(content, Config.class);
+            } catch (Exception e) {
+                config = JsonUtil.fromJson(content, Config.class);
+            }
+        }
+        
+        if (config == null) {
+            throw new Exception("配置文件格式无效");
+        }
+        
+        // 转换为YAML格式并写入
+        String yamlContent = YamlUtil.toYaml(config);
         Path configPath = Paths.get(CONFIG_FILE_PATH);
-        Files.write(configPath, jsonContent.getBytes(StandardCharsets.UTF_8));
+        Files.write(configPath, yamlContent.getBytes(StandardCharsets.UTF_8));
     }
     
     /**
-     * 导出配置文件
+     * 导出配置文件（默认YAML格式，支持JSON）
      * @param exportFilePath 导出文件路径
      * @param config 配置对象
      * @throws Exception 导出失败异常
      */
     public void exportConfiguration(String exportFilePath, Config config) throws Exception {
-        // 转换为JSON
-        String jsonContent = JsonUtil.toJson(config);
+        String content;
+        
+        // 根据文件扩展名选择格式
+        if (exportFilePath.endsWith(".json")) {
+            // 导出为JSON格式
+            content = JsonUtil.toJson(config);
+        } else {
+            // 默认导出为YAML格式
+            content = YamlUtil.toYaml(config);
+            
+            // 如果文件名没有扩展名，自动添加.yaml
+            if (!exportFilePath.endsWith(".yaml") && !exportFilePath.endsWith(".yml")) {
+                exportFilePath = exportFilePath + ".yaml";
+            }
+        }
         
         // 写入文件
-        Files.write(Paths.get(exportFilePath), jsonContent.getBytes(StandardCharsets.UTF_8));
+        Files.write(Paths.get(exportFilePath), content.getBytes(StandardCharsets.UTF_8));
     }
     
     /**
@@ -211,10 +244,10 @@ public class SettingModel {
         // 创建默认配置
         Config defaultConfig = createDefaultConfig();
         
-        // 写入默认配置
-        String jsonContent = JsonUtil.toJson(defaultConfig);
+        // 写入默认配置（YAML格式）
+        String yamlContent = YamlUtil.toYaml(defaultConfig);
         Path configPath = Paths.get(CONFIG_FILE_PATH);
-        Files.write(configPath, jsonContent.getBytes(StandardCharsets.UTF_8));
+        Files.write(configPath, yamlContent.getBytes(StandardCharsets.UTF_8));
     }
     
     /**

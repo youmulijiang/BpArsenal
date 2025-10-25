@@ -89,7 +89,6 @@ public class WebSitePanelController {
         } catch (Exception e) {
             String errorMsg = "加载失败: " + e.getMessage();
             updateStatus(errorMsg);
-            logError("加载网站数据失败: " + e.getMessage());
             
             if (listener != null) {
                 listener.onError("数据加载", errorMsg);
@@ -131,7 +130,6 @@ public class WebSitePanelController {
         } catch (Exception e) {
             String errorMsg = "添加网站失败: " + e.getMessage();
             updateStatus(errorMsg);
-            logError(errorMsg);
             if (listener != null) {
                 listener.onError("添加网站", errorMsg);
             }
@@ -186,7 +184,6 @@ public class WebSitePanelController {
         } catch (Exception e) {
             String errorMsg = "编辑网站失败: " + e.getMessage();
             updateStatus(errorMsg);
-            logError(errorMsg);
             if (listener != null) {
                 listener.onError("编辑网站", errorMsg);
             }
@@ -242,7 +239,6 @@ public class WebSitePanelController {
         } catch (Exception e) {
             String errorMsg = "删除网站失败: " + e.getMessage();
             updateStatus(errorMsg);
-            logError(errorMsg);
             if (listener != null) {
                 listener.onError("删除网站", errorMsg);
             }
@@ -291,7 +287,6 @@ public class WebSitePanelController {
         } catch (Exception e) {
             String errorMsg = "切换收藏状态失败: " + e.getMessage();
             updateStatus(errorMsg);
-            logError(errorMsg);
             if (listener != null) {
                 listener.onError("切换收藏", errorMsg);
             }
@@ -321,7 +316,6 @@ public class WebSitePanelController {
         } catch (Exception e) {
             String errorMsg = "打开网站失败: " + e.getMessage();
             updateStatus(errorMsg);
-            logError(errorMsg);
             if (listener != null) {
                 listener.onError("打开网站", errorMsg);
             }
@@ -359,7 +353,6 @@ public class WebSitePanelController {
         } catch (Exception e) {
             String errorMsg = "打开网站失败: " + e.getMessage();
             updateStatus(errorMsg);
-            logError("打开网站失败: " + e.getMessage());
             
             showMessage(parentComponent,
                 "打开网站失败！\n错误: " + e.getMessage() + "\n网站地址: " + website.getUrl(),
@@ -444,7 +437,6 @@ public class WebSitePanelController {
         } catch (Exception e) {
             String errorMsg = "过滤数据失败: " + e.getMessage();
             updateStatus(errorMsg);
-            logError(errorMsg);
             if (listener != null) {
                 listener.onError("数据过滤", errorMsg);
             }
@@ -472,7 +464,6 @@ public class WebSitePanelController {
         } catch (Exception e) {
             String errorMsg = "复制网站地址失败: " + e.getMessage();
             updateStatus(errorMsg);
-            logError(errorMsg);
             if (listener != null) {
                 listener.onError("复制地址", errorMsg);
             }
@@ -554,7 +545,6 @@ public class WebSitePanelController {
         try {
             ArsenalMenuProvider.updateWebsiteMenu();
         } catch (Exception e) {
-            logError("更新菜单失败: " + e.getMessage());
         }
     }
     
@@ -562,9 +552,6 @@ public class WebSitePanelController {
      * 记录错误日志
      * @param message 错误消息
      */
-    private void logError(String message) {
-        System.err.println("WebSitePanelController: " + message);
-    }
     
     /**
      * 视图接口

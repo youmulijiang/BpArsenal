@@ -435,16 +435,12 @@ public class WebsitePanel extends JPanel implements I18nManager.LanguageChangeLi
             categoryFilter.addItem("OSINT");
             categoryFilter.addItem("Recon");
             categoryFilter.addItem(i18n.getText("websites.category.vulnerability.db"));
-            logError("加载分类选项失败: " + e.getMessage());
         }
     }
     
     /**
      * 记录错误日志
      */
-    private void logError(String message) {
-        System.err.println("WebsitePanel: " + message);
-    }
     
     // =========================== 实现WebSitePanelView接口 ===========================
     
@@ -533,7 +529,6 @@ public class WebsitePanel extends JPanel implements I18nManager.LanguageChangeLi
     @Override
     public void onError(String operation, String errorMessage) {
         // 错误处理
-        logError(operation + "失败: " + errorMessage);
     }
     
     // =========================== 实现LanguageChangeListener接口 ===========================

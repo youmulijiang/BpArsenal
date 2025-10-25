@@ -2,6 +2,7 @@ package manager;
 
 import model.Config;
 import util.JsonUtil;
+import util.YamlUtil;
 import java.io.InputStream;
 import java.io.IOException;
 import java.io.BufferedReader;
@@ -21,9 +22,9 @@ import javax.swing.JOptionPane;
 public class ConfigManager {
     private static ConfigManager instance;
     private Config config;
-    private final String RESOURCE_CONFIG_PATH = "/config.json";
+    private final String RESOURCE_CONFIG_PATH = "/config.yaml";
     private final String USER_CONFIG_DIR = System.getProperty("user.home") + File.separator + ".bparsenal";
-    private final String USER_CONFIG_FILE = USER_CONFIG_DIR + File.separator + "config.json";
+    private final String USER_CONFIG_FILE = USER_CONFIG_DIR + File.separator + "config.yaml";
     
     /**
      * 私有构造函数，自动加载配置文件
@@ -77,16 +78,10 @@ public class ConfigManager {
                 loadUserConfig();
             }
             
-            if (ApiManager.getInstance().isInitialized()) {
-                ApiManager.getInstance().getApi().logging().logToOutput("配置文件加载成功: " + USER_CONFIG_FILE);
-            }
             
         } catch (Exception e) {
             String errorMsg = "加载配置文件失败: " + e.getMessage();
             
-            if (ApiManager.getInstance().isInitialized()) {
-                ApiManager.getInstance().getApi().logging().logToError(errorMsg);
-            }
             
             // 创建默认配置
             this.config = createDefaultConfig();
@@ -95,9 +90,6 @@ public class ConfigManager {
             try {
                 saveConfig();
             } catch (Exception saveEx) {
-                if (ApiManager.getInstance().isInitialized()) {
-                    ApiManager.getInstance().getApi().logging().logToError("保存默认配置失败: " + saveEx.getMessage());
-                }
             }
             
             // 显示错误提示
@@ -121,9 +113,6 @@ public class ConfigManager {
                 throw new IOException("无法创建用户配置目录: " + USER_CONFIG_DIR);
             }
             
-            if (ApiManager.getInstance().isInitialized()) {
-                ApiManager.getInstance().getApi().logging().logToOutput("创建用户配置目录: " + USER_CONFIG_DIR);
-            }
         }
     }
     
@@ -137,19 +126,16 @@ public class ConfigManager {
             throw new IOException("默认配置文件不存在: " + RESOURCE_CONFIG_PATH);
         }
         
-        String jsonContent;
+        String yamlContent;
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
-            jsonContent = reader.lines().collect(Collectors.joining("\n"));
+            yamlContent = reader.lines().collect(Collectors.joining("\n"));
         }
         
         // 写入用户配置文件
         try (FileWriter writer = new FileWriter(USER_CONFIG_FILE, StandardCharsets.UTF_8)) {
-            writer.write(jsonContent);
+            writer.write(yamlContent);
         }
         
-        if (ApiManager.getInstance().isInitialized()) {
-            ApiManager.getInstance().getApi().logging().logToOutput("复制默认配置到用户目录: " + USER_CONFIG_FILE);
-        }
     }
     
     /**
@@ -157,17 +143,14 @@ public class ConfigManager {
      * @throws IOException 加载失败
      */
     private void loadUserConfig() throws IOException {
-        String jsonContent;
+        String yamlContent;
         try (FileReader reader = new FileReader(USER_CONFIG_FILE, StandardCharsets.UTF_8);
              BufferedReader bufferedReader = new BufferedReader(reader)) {
-            jsonContent = bufferedReader.lines().collect(Collectors.joining("\n"));
+            yamlContent = bufferedReader.lines().collect(Collectors.joining("\n"));
         }
         
-        this.config = JsonUtil.fromJson(jsonContent, Config.class);
+        this.config = YamlUtil.fromYaml(yamlContent, Config.class);
         
-        if (ApiManager.getInstance().isInitialized()) {
-            ApiManager.getInstance().getApi().logging().logToOutput("从用户目录加载配置: " + USER_CONFIG_FILE);
-        }
     }
     
     /**
@@ -182,17 +165,14 @@ public class ConfigManager {
         // 确保用户配置目录存在
         ensureUserConfigDirectory();
         
-        // 将配置序列化为JSON
-        String jsonContent = JsonUtil.toJson(config);
+        // 将配置序列化为YAML
+        String yamlContent = YamlUtil.toYaml(config);
         
         // 写入用户配置文件
         try (FileWriter writer = new FileWriter(USER_CONFIG_FILE, StandardCharsets.UTF_8)) {
-            writer.write(jsonContent);
+            writer.write(yamlContent);
         }
         
-        if (ApiManager.getInstance().isInitialized()) {
-            ApiManager.getInstance().getApi().logging().logToOutput("配置已保存到用户目录: " + USER_CONFIG_FILE);
-        }
     }
     
     /**
@@ -204,9 +184,6 @@ public class ConfigManager {
         File userConfigFile = new File(USER_CONFIG_FILE);
         if (userConfigFile.exists()) {
             if (!userConfigFile.delete()) {
-                if (ApiManager.getInstance().isInitialized()) {
-                    ApiManager.getInstance().getApi().logging().logToError("无法删除用户配置文件: " + USER_CONFIG_FILE);
-                }
             }
         }
         
@@ -216,41 +193,55 @@ public class ConfigManager {
         // 重新加载配置
         loadUserConfig();
         
-        if (ApiManager.getInstance().isInitialized()) {
-            ApiManager.getInstance().getApi().logging().logToOutput("配置已重置为默认配置");
-        }
     }
     
     /**
-     * 导入配置文件
+     * 导入配置文件（支持YAML和JSON格式）
      * @param configFilePath 配置文件路径
      * @throws IOException 导入失败
      */
     public void importConfig(String configFilePath) throws IOException {
-        String jsonContent;
+        String content;
         try (FileReader reader = new FileReader(configFilePath, StandardCharsets.UTF_8);
              BufferedReader bufferedReader = new BufferedReader(reader)) {
-            jsonContent = bufferedReader.lines().collect(Collectors.joining("\n"));
+            content = bufferedReader.lines().collect(Collectors.joining("\n"));
         }
         
-        // 验证配置文件格式
-        Config importedConfig = JsonUtil.fromJson(jsonContent, Config.class);
+        Config importedConfig = null;
+        
+        // 根据文件扩展名判断格式
+        if (configFilePath.endsWith(".yaml") || configFilePath.endsWith(".yml")) {
+            // YAML格式
+            importedConfig = YamlUtil.fromYaml(content, Config.class);
+        } else if (configFilePath.endsWith(".json")) {
+            // JSON格式（向后兼容）
+            importedConfig = JsonUtil.fromJson(content, Config.class);
+        } else {
+            // 尝试自动检测格式
+            try {
+                importedConfig = YamlUtil.fromYaml(content, Config.class);
+            } catch (Exception e) {
+                try {
+                    importedConfig = JsonUtil.fromJson(content, Config.class);
+                } catch (Exception ex) {
+                    throw new IOException("无法识别配置文件格式，请使用.yaml或.json扩展名");
+                }
+            }
+        }
+        
         if (importedConfig == null) {
             throw new IOException("配置文件格式无效");
         }
         
         this.config = importedConfig;
         
-        // 保存到用户目录
+        // 保存到用户目录（以YAML格式）
         saveConfig();
         
-        if (ApiManager.getInstance().isInitialized()) {
-            ApiManager.getInstance().getApi().logging().logToOutput("配置已从文件导入: " + configFilePath);
-        }
     }
     
     /**
-     * 导出配置文件
+     * 导出配置文件（默认YAML格式，支持JSON）
      * @param targetFilePath 目标文件路径
      * @throws IOException 导出失败
      */
@@ -259,15 +250,26 @@ public class ConfigManager {
             throw new IllegalStateException("配置对象为空，无法导出");
         }
         
-        String jsonContent = JsonUtil.toJson(config);
+        String content;
+        
+        // 根据文件扩展名选择格式
+        if (targetFilePath.endsWith(".json")) {
+            // 导出为JSON格式
+            content = JsonUtil.toJson(config);
+        } else {
+            // 默认导出为YAML格式
+            content = YamlUtil.toYaml(config);
+            
+            // 如果文件名没有扩展名，自动添加.yaml
+            if (!targetFilePath.endsWith(".yaml") && !targetFilePath.endsWith(".yml")) {
+                targetFilePath = targetFilePath + ".yaml";
+            }
+        }
         
         try (FileWriter writer = new FileWriter(targetFilePath, StandardCharsets.UTF_8)) {
-            writer.write(jsonContent);
+            writer.write(content);
         }
         
-        if (ApiManager.getInstance().isInitialized()) {
-            ApiManager.getInstance().getApi().logging().logToOutput("配置已导出到文件: " + targetFilePath);
-        }
     }
     
     /**

@@ -125,7 +125,7 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
             I18nManager.getInstance().getText("settings.config.title"),
             TitledBorder.LEFT,
             TitledBorder.TOP,
-            new Font("微软雅黑", Font.BOLD, 12)
+            UIManager.getFont("TitledBorder.font") != null ? UIManager.getFont("TitledBorder.font").deriveFont(Font.BOLD, 12f) : new Font(Font.SANS_SERIF, Font.BOLD, 12)
         ));
         
         GridBagConstraints gbc = new GridBagConstraints();
@@ -492,8 +492,12 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
      */
     private void importConfiguration() {
         JFileChooser fileChooser = new JFileChooser();
-        fileChooser.setFileFilter(new FileNameExtensionFilter("JSON配置文件 (*.json)", "json"));
-        fileChooser.setDialogTitle("选择要导入的配置文件");
+        I18nManager i18n = I18nManager.getInstance();
+        // 支持yaml和json格式
+        fileChooser.addChoosableFileFilter(new FileNameExtensionFilter(i18n.getText("dialog.config.file.filter.yaml"), "yaml", "yml"));
+        fileChooser.addChoosableFileFilter(new FileNameExtensionFilter(i18n.getText("dialog.config.file.filter.json"), "json"));
+        fileChooser.setFileFilter(fileChooser.getChoosableFileFilters()[0]); // 默认选择yaml
+        fileChooser.setDialogTitle(i18n.getText("dialog.import.config.title"));
         
         int result = fileChooser.showOpenDialog(this);
         if (result == JFileChooser.APPROVE_OPTION) {
@@ -507,17 +511,28 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
      */
     private void exportConfiguration() {
         JFileChooser fileChooser = new JFileChooser();
-        fileChooser.setFileFilter(new FileNameExtensionFilter("JSON配置文件 (*.json)", "json"));
-        fileChooser.setDialogTitle("选择配置文件保存位置");
-        fileChooser.setSelectedFile(new File("bparsenal_config_" + System.currentTimeMillis() + ".json"));
+        I18nManager i18n = I18nManager.getInstance();
+        // 支持yaml和json格式
+        fileChooser.addChoosableFileFilter(new FileNameExtensionFilter(i18n.getText("dialog.config.file.filter.yaml"), "yaml", "yml"));
+        fileChooser.addChoosableFileFilter(new FileNameExtensionFilter(i18n.getText("dialog.config.file.filter.json"), "json"));
+        fileChooser.setFileFilter(fileChooser.getChoosableFileFilters()[0]); // 默认选择yaml
+        fileChooser.setDialogTitle(i18n.getText("dialog.export.config.title"));
+        fileChooser.setSelectedFile(new File("bparsenal_config_" + System.currentTimeMillis() + ".yaml"));
         
         int result = fileChooser.showSaveDialog(this);
         if (result == JFileChooser.APPROVE_OPTION) {
             File selectedFile = fileChooser.getSelectedFile();
             
-            // 确保文件有.json扩展名
-            if (!selectedFile.getName().toLowerCase().endsWith(".json")) {
-                selectedFile = new File(selectedFile.getAbsolutePath() + ".json");
+            // 确保文件有正确的扩展名
+            String fileName = selectedFile.getName().toLowerCase();
+            if (!fileName.endsWith(".yaml") && !fileName.endsWith(".yml") && !fileName.endsWith(".json")) {
+                // 根据选择的过滤器添加扩展名
+                if (fileChooser.getFileFilter().getDescription().contains("YAML") || 
+                    fileChooser.getFileFilter().getDescription().contains("yaml")) {
+                    selectedFile = new File(selectedFile.getAbsolutePath() + ".yaml");
+                } else {
+                    selectedFile = new File(selectedFile.getAbsolutePath() + ".json");
+                }
             }
             
             controller.exportConfiguration(selectedFile.getAbsolutePath());
@@ -537,7 +552,8 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
     private void browseToolDirectory() {
         JFileChooser fileChooser = new JFileChooser();
         fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
-        fileChooser.setDialogTitle("选择工具根目录");
+        I18nManager i18n = I18nManager.getInstance();
+        fileChooser.setDialogTitle(i18n.getText("dialog.choose.tool.directory.title"));
         
         // 设置当前目录
         String currentDirectory = toolDirectoryField.getText().trim();
@@ -577,7 +593,8 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
     private void resetCommandPrefix() {
         String defaultPrefix = settingModel.getDefaultCommandPrefix();
         commandPrefixField.setText(defaultPrefix);
-        updatePrefixStatus("已重置为系统默认: " + defaultPrefix, SettingPanelController.StatusType.INFO);
+            I18nManager i18n = I18nManager.getInstance();
+            updatePrefixStatus(i18n.getText("status.prefix.reset.default") + ": " + defaultPrefix, SettingPanelController.StatusType.INFO);
     }
     
     /**
@@ -634,14 +651,12 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
             repaint();
             
             // 记录成功日志（类似MainPanel的logInfo）
-            logInfo("设置面板刷新完成");
             
             // 可以在这里通知其他需要刷新的组件
             notifyOtherPanelsToRefresh();
             
         } catch (Exception e) {
             // 记录错误日志（类似MainPanel的logError）
-            logError("刷新设置面板失败: " + e.getMessage());
         }
     }
     
@@ -699,7 +714,6 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
      */
     private void logInfo(String message) {
         if (manager.ApiManager.getInstance().isInitialized()) {
-            manager.ApiManager.getInstance().getApi().logging().logToOutput("BpArsenal Setting: " + message);
         }
     }
     
@@ -709,7 +723,6 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
      */
     private void logError(String message) {
         if (manager.ApiManager.getInstance().isInitialized()) {
-            manager.ApiManager.getInstance().getApi().logging().logToError("BpArsenal Setting: " + message);
         }
     }
     
@@ -735,22 +748,18 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
                     // 如果是ToolPanel，调用其loadData方法
                     if (component instanceof ToolPanel && component != this) {
                         ((ToolPanel) component).loadData();
-                        logInfo("已通知工具面板刷新数据");
                     }
                     // 如果是ThirdPartyPanel，调用其loadData方法
                     else if (component instanceof ThirdPartyPanel && component != this) {
                         ((ThirdPartyPanel) component).loadData();
-                        logInfo("已通知第三方工具面板刷新数据");
                     }
                     // 如果是WebsitePanel，调用其loadData方法
                     else if (component instanceof WebsitePanel && component != this) {
                         ((WebsitePanel) component).loadData();
-                        logInfo("已通知网站面板刷新数据");
                     }
                 }
             }
         } catch (Exception e) {
-            logError("通知其他面板刷新失败: " + e.getMessage());
         }
     }
 
@@ -782,10 +791,11 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
     
     @Override
     public boolean confirmImportConfiguration(String fileName) {
+        I18nManager i18n = I18nManager.getInstance();
         int result = JOptionPane.showConfirmDialog(
             this,
-            "确定要导入配置文件吗？\n这将覆盖当前的所有配置！\n\n文件: " + fileName,
-            "确认导入",
+            i18n.getText("confirm.import.config.message", fileName),
+            i18n.getText("confirm.import.config.title"),
             JOptionPane.YES_NO_OPTION,
             JOptionPane.WARNING_MESSAGE
         );
@@ -794,10 +804,11 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
     
     @Override
     public boolean confirmResetConfiguration() {
+        I18nManager i18n = I18nManager.getInstance();
         int result = JOptionPane.showConfirmDialog(
             this,
-            "确定要重置配置文件吗？\n这将恢复所有默认设置，当前配置将丢失！",
-            "确认重置",
+            i18n.getText("confirm.reset.config.message"),
+            i18n.getText("confirm.reset.config.title"),
             JOptionPane.YES_NO_OPTION,
             JOptionPane.WARNING_MESSAGE
         );
@@ -806,10 +817,11 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
     
     @Override
     public boolean confirmCreateDirectory(String directoryPath) {
+        I18nManager i18n = I18nManager.getInstance();
         int result = JOptionPane.showConfirmDialog(
             this,
-            "指定的目录不存在，是否创建？\n路径: " + directoryPath,
-            "目录不存在",
+            i18n.getText("confirm.create.directory.message", directoryPath),
+            i18n.getText("confirm.create.directory.title"),
             JOptionPane.YES_NO_OPTION,
             JOptionPane.QUESTION_MESSAGE
         );
@@ -818,80 +830,94 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
     
     @Override
     public void showImportSuccessMessage(String fileName) {
+        I18nManager i18n = I18nManager.getInstance();
         JOptionPane.showMessageDialog(
             this,
-            "配置导入成功！\n请重启插件以确保所有更改生效。",
-            "导入成功",
+            i18n.getText("success.import.config.message"),
+            i18n.getText("success.import.config.title"),
             JOptionPane.INFORMATION_MESSAGE
         );
     }
     
     @Override
     public void showImportErrorMessage(String errorMessage) {
+        I18nManager i18n = I18nManager.getInstance();
         JOptionPane.showMessageDialog(
             this,
-            "配置导入失败！\n错误: " + errorMessage,
-            "导入失败",
+            i18n.getText("failed.import.config.message", errorMessage),
+            i18n.getText("failed.import.config.title"),
             JOptionPane.ERROR_MESSAGE
         );
     }
     
     @Override
     public void showExportSuccessMessage(String filePath) {
+        I18nManager i18n = I18nManager.getInstance();
+
         JOptionPane.showMessageDialog(
             this,
-            "配置导出成功！\n文件位置: " + filePath,
-            "导出成功",
+            i18n.getText("success.export.config.message", filePath),
+            i18n.getText("success.export.config.title"),
             JOptionPane.INFORMATION_MESSAGE
         );
     }
     
     @Override
     public void showExportErrorMessage(String errorMessage) {
+        I18nManager i18n = I18nManager.getInstance();
+
         JOptionPane.showMessageDialog(
             this,
-            "配置导出失败！\n错误: " + errorMessage,
-            "导出失败",
+            i18n.getText("failed.export.config.message", errorMessage),
+            i18n.getText("failed.export.config.title"),
             JOptionPane.ERROR_MESSAGE
         );
     }
     
     @Override
     public void showResetSuccessMessage() {
+        I18nManager i18n = I18nManager.getInstance();
+
         JOptionPane.showMessageDialog(
             this,
-            "配置重置成功！\n已恢复默认设置。",
-            "重置成功",
+            i18n.getText("success.reset.config.message"),
+            i18n.getText("success.reset.config.title"),
             JOptionPane.INFORMATION_MESSAGE
         );
     }
     
     @Override
     public void showResetErrorMessage(String errorMessage) {
+        I18nManager i18n = I18nManager.getInstance();
+
         JOptionPane.showMessageDialog(
             this,
-            "配置重置失败！\n错误: " + errorMessage,
-            "重置失败",
+            i18n.getText("failed.reset.config.message", errorMessage),
+            i18n.getText("failed.reset.config.title"),
             JOptionPane.ERROR_MESSAGE
         );
     }
     
     @Override
     public void showDirectorySuccessMessage(String directoryPath) {
+        I18nManager i18n = I18nManager.getInstance();
+
         JOptionPane.showMessageDialog(
             this,
-            "工具目录设置成功！\n路径: " + directoryPath,
-            "设置成功",
+            i18n.getText("success.set.directory.message", directoryPath),
+            i18n.getText("success.set.directory.title"),
             JOptionPane.INFORMATION_MESSAGE
         );
     }
     
     @Override
     public void showPrefixSuccessMessage(String prefix) {
+        I18nManager i18n = I18nManager.getInstance();
+        String prefixDisplay = (prefix == null || prefix.trim().isEmpty()) ? i18n.getText("success.set.prefix.default") : prefix;
         JOptionPane.showMessageDialog(
             this,
-            "命令前缀设置成功！\n前缀: " + (prefix == null || prefix.trim().isEmpty() ? "系统默认" : prefix),
-            "设置成功",
+            i18n.getText("success.set.prefix.message", prefixDisplay),
+            i18n.getText("success.set.prefix.title"),
             JOptionPane.INFORMATION_MESSAGE
         );
     }
@@ -931,7 +957,8 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
     @Override
     public void updateConfigStatus(String message, SettingPanelController.StatusType type) {
         if (configStatusLabel != null) {
-            configStatusLabel.setText("配置状态: " + message);
+            I18nManager i18n = I18nManager.getInstance();
+            configStatusLabel.setText(i18n.getText("status.config.status", message));
             configStatusLabel.setForeground(getStatusColor(type));
         }
     }
@@ -939,7 +966,8 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
     @Override
     public void updateDirectoryStatus(String message, SettingPanelController.StatusType type) {
         if (directoryStatusLabel != null) {
-            directoryStatusLabel.setText("目录状态: " + message);
+            I18nManager i18n = I18nManager.getInstance();
+            directoryStatusLabel.setText(i18n.getText("status.directory.status", message));
             directoryStatusLabel.setForeground(getStatusColor(type));
         }
     }
@@ -947,7 +975,8 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
     @Override
     public void updatePrefixStatus(String message, SettingPanelController.StatusType type) {
         if (prefixStatusLabel != null) {
-            prefixStatusLabel.setText("前缀状态: " + message);
+            I18nManager i18n = I18nManager.getInstance();
+            prefixStatusLabel.setText(i18n.getText("status.prefix.status", message));
             prefixStatusLabel.setForeground(getStatusColor(type));
         }
     }
@@ -955,7 +984,8 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
     @Override
     public void updateLanguageStatus(String message, SettingPanelController.StatusType type) {
         if (languageStatusLabel != null) {
-            languageStatusLabel.setText("语言状态: " + message);
+            I18nManager i18n = I18nManager.getInstance();
+            languageStatusLabel.setText(i18n.getText("status.language.status", message));
             languageStatusLabel.setForeground(getStatusColor(type));
         }
     }
@@ -1027,7 +1057,6 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
     @Override
     public void onError(String operation, String errorMessage) {
         // 错误处理
-        System.err.println("SettingPanel错误 - " + operation + ": " + errorMessage);
     }
     
     // =========================== 实现LanguageChangeListener接口 ===========================

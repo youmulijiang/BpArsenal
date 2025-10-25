@@ -11,6 +11,7 @@ import controller.ToolController;
 import executor.ToolExecutor;
 import executor.CommandRenderingStrategy;
 import util.ContextMenuEventHandler;
+import util.I18nManager;
 import util.MenuUtils;
 
 import javax.swing.*;
@@ -32,24 +33,6 @@ public class ArsenalContextMenuProvider implements ContextMenuItemsProvider {
     @Override
     public List<Component> provideMenuItems(ContextMenuEvent event) {
         List<Component> menuItems = new ArrayList<>();
-        
-        // 只在HTTP请求/响应上下文中显示菜单
-//        if (event.invocationType() == InvocationType.MESSAGE_EDITOR_REQUEST ||
-//            event.invocationType() == InvocationType.MESSAGE_EDITOR_RESPONSE ||
-//            event.invocationType() == InvocationType.PROXY_HISTORY ||
-//            event.invocationType() == InvocationType.SITE_MAP_TREE ||
-//            event.invocationType() == InvocationType.SITE_MAP_TABLE) {
-//
-//            // 创建Favorite菜单项
-//            JMenuItem favoriteItem = new JMenuItem("Favorite");
-//            favoriteItem.addActionListener(e -> handleFavoriteAction(event));
-//            menuItems.add(favoriteItem);
-//
-//            // 创建Arsenal菜单项
-//            JMenuItem arsenalItem = new JMenuItem("Arsenal");
-//            arsenalItem.addActionListener(e -> handleArsenalAction(event));
-//            menuItems.add(arsenalItem);
-//        }
 
         // 创建Favorite子菜单
         JMenu favoriteMenu = createFavoriteMenu(event);
@@ -116,7 +99,6 @@ public class ArsenalContextMenuProvider implements ContextMenuItemsProvider {
             return favoriteMenu;
             
         } catch (Exception ex) {
-            ApiManager.getInstance().getApi().logging().logToError("创建收藏菜单失败: " + ex.getMessage());
             return null;
         }
     }
@@ -135,11 +117,6 @@ public class ArsenalContextMenuProvider implements ContextMenuItemsProvider {
             HttpResponse httpResponse = ContextMenuEventHandler.getHttpResponseFromEvent(event);
             List<HttpRequest> allSelectedRequests = ContextMenuEventHandler.getAllSelectedRequests(event);
             
-            // 记录选中的请求数量
-            int selectedCount = ContextMenuEventHandler.getSelectedCount(event);
-            ApiManager.getInstance().getApi().logging().logToOutput(
-                String.format("BpArsenal: 选中了 %d 个HTTP请求", selectedCount)
-            );
 
             if (httpRequest != null) {
                 // 创建并显示Arsenal工具对话框
@@ -157,32 +134,23 @@ public class ArsenalContextMenuProvider implements ContextMenuItemsProvider {
                         // 显示模态对话框
                         dialog.setVisible(true);
 
-                        if (ApiManager.getInstance().isInitialized()) {
-                            ApiManager.getInstance().getApi().logging().logToOutput(
-                                "BpArsenal: Arsenal工具对话框已成功显示"
-                            );
-                        }
 
                     } catch (Exception ex) {
-                        ApiManager.getInstance().getApi().logging().logToError(
-                            "BpArsenal: 创建Arsenal对话框失败: " + ex.getMessage()
-                        );
 
                         // 显示错误提示
+                        I18nManager i18n = I18nManager.getInstance();
                         JOptionPane.showMessageDialog(
                             ApiManager.getInstance().getApi().userInterface().swingUtils().suiteFrame(),
-                            "打开Arsenal对话框失败:\n" + ex.getMessage(),
-                            "错误",
+                            i18n.getText("context.menu.open.arsenal.failed", ex.getMessage()),
+                            i18n.getText("error.title"),
                             JOptionPane.ERROR_MESSAGE
                         );
                     }
                 });
 
             } else {
-                ApiManager.getInstance().getApi().logging().logToError("无法获取HTTP请求数据");
             }
         } catch (Exception ex) {
-            ApiManager.getInstance().getApi().logging().logToError("打开Arsenal对话框失败: " + ex.getMessage());
         }
     }
     
@@ -197,7 +165,8 @@ public class ArsenalContextMenuProvider implements ContextMenuItemsProvider {
         for (HttpToolCommand command : commands) {
             String category = command.getCategory();
             if (category == null || category.trim().isEmpty()) {
-                category = "未分类";
+                I18nManager i18n = I18nManager.getInstance();
+                category = i18n.getText("common.uncategorized");
             }
             
             grouped.computeIfAbsent(category, k -> new ArrayList<>()).add(command);
@@ -237,7 +206,6 @@ public class ArsenalContextMenuProvider implements ContextMenuItemsProvider {
                     .filter(HttpToolCommand::isFavor)
                     .collect(Collectors.toList());
         } catch (Exception e) {
-            ApiManager.getInstance().getApi().logging().logToError("获取收藏工具失败: " + e.getMessage());
             return new ArrayList<>();
         }
     }
@@ -251,17 +219,20 @@ public class ArsenalContextMenuProvider implements ContextMenuItemsProvider {
         try {
             // 记录执行信息
             String toolName = toolCommand.getToolName();
-            ApiManager.getInstance().getApi().logging().logToOutput(
-                "BpArsenal: 执行收藏工具 - " + toolName
-            );
+            
+            // 检查命令是否需要多个请求
+            if (!validateHttpListRequirement(toolCommand)) {
+                return; // 验证失败，已经弹窗提示，直接返回
+            }
             
             // 渲染命令
             String renderedCommand = generateRenderedCommand(toolCommand, httpRequest, httpResponse);
             
             if (renderedCommand == null || renderedCommand.trim().isEmpty()) {
+                I18nManager i18n = I18nManager.getInstance();
                 JOptionPane.showMessageDialog(null, 
-                    "命令渲染失败或为空，无法执行", 
-                    "执行失败", 
+                    i18n.getText("context.menu.command.render.failed"), 
+                    i18n.getText("context.menu.execution.failed"), 
                     JOptionPane.ERROR_MESSAGE);
                 return;
             }
@@ -270,9 +241,65 @@ public class ArsenalContextMenuProvider implements ContextMenuItemsProvider {
             executeToolCommandWithWorkDir(toolCommand, renderedCommand, toolName);
             
         } catch (Exception e) {
-            String errorMsg = "执行工具命令失败: " + e.getMessage();
-            ApiManager.getInstance().getApi().logging().logToError(errorMsg);
-            JOptionPane.showMessageDialog(null, errorMsg, "执行失败", JOptionPane.ERROR_MESSAGE);
+            I18nManager i18n = I18nManager.getInstance();
+            String errorMsg = i18n.getText("context.menu.tool.execution.failed", e.getMessage());
+            JOptionPane.showMessageDialog(null, errorMsg, i18n.getText("context.menu.execution.failed"), JOptionPane.ERROR_MESSAGE);
+        }
+    }
+    
+    /**
+     * 验证命令是否满足httpList要求
+     * 如果命令包含httpList变量，但只选中了单个数据包，则弹窗警告并返回false
+     * 
+     * @param toolCommand 工具命令
+     * @return true表示验证通过，false表示验证失败
+     */
+    private boolean validateHttpListRequirement(HttpToolCommand toolCommand) {
+        try {
+            String command = toolCommand.getCommand();
+            if (command == null || command.trim().isEmpty()) {
+                return true;
+            }
+            
+            // 检查命令是否包含httpList变量（使用正则表达式匹配 %httpList.*%）
+            boolean containsHttpList = command.matches(".*%httpList\\..*%.*");
+            
+            if (!containsHttpList) {
+                // 命令不包含httpList变量，无需验证
+                return true;
+            }
+            
+            // 命令包含httpList变量，检查是否有多个选中的请求
+            ContextMenuEvent currentEvent = getCurrentContextMenuEvent();
+            List<HttpRequest> allSelectedRequests = ContextMenuEventHandler.getAllSelectedRequests(currentEvent);
+            
+            if (allSelectedRequests == null || allSelectedRequests.size() <= 1) {
+                // 只有单个或没有请求，弹窗警告
+                String warningMessage = String.format(
+                    "该命令需要多个HTTP请求才能执行！\n\n" +
+                    "命令: %s\n\n" +
+                    "该命令使用了批量处理变量 (httpList)，但您只选择了单个数据包。\n" +
+                    "请在Burp Suite的HTTP历史记录中选择多个请求后再执行此命令。\n\n" +
+                    "提示：按住Ctrl键可以多选请求。",
+                    toolCommand.getDisplayName()
+                );
+                
+                JOptionPane.showMessageDialog(
+                    ApiManager.getInstance().getApi().userInterface().swingUtils().suiteFrame(),
+                    warningMessage,
+                    "需要多选数据包",
+                    JOptionPane.WARNING_MESSAGE
+                );
+                
+                return false;
+            }
+            
+            // 有多个请求，验证通过
+            return true;
+            
+        } catch (Exception e) {
+            // 验证过程出错，允许继续执行（降级处理）
+            return true;
         }
     }
     
@@ -298,7 +325,6 @@ public class ArsenalContextMenuProvider implements ContextMenuItemsProvider {
             );
             
         } catch (Exception e) {
-            ApiManager.getInstance().getApi().logging().logToError("命令渲染失败: " + e.getMessage());
             return toolCommand.getCommand();
         }
     }
@@ -326,8 +352,8 @@ public class ArsenalContextMenuProvider implements ContextMenuItemsProvider {
             String workDir = toolCommand.getWorkDir();
             ToolExecutor.getInstance().executeCommandSync(command, toolName, workDir);
         } catch (Exception e) {
-            ApiManager.getInstance().getApi().logging().logToError("命令执行失败: " + e.getMessage());
-            throw new RuntimeException("命令执行失败: " + e.getMessage(), e);
+            I18nManager i18n = I18nManager.getInstance();
+            throw new RuntimeException(i18n.getText("context.menu.command.execution.failed", e.getMessage()), e);
         }
     }
 } 

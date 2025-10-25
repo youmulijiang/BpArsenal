@@ -18,7 +18,6 @@ public class LogoPanel extends JPanel {
             logoImage = new ImageIcon(path).getImage();
         } catch (Exception e) {
             logoImage = null;
-            System.err.println("Logo图片加载失败: " + path + ", 错误: " + e.getMessage());
         }
         
         // 设置面板大小

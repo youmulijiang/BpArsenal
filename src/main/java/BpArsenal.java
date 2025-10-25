@@ -3,6 +3,7 @@ import burp.api.montoya.MontoyaApi;
 import burp.api.montoya.extension.ExtensionUnloadingHandler;
 import manager.ApiManager;
 import manager.ConfigManager;
+import util.I18nManager;
 import view.MainPanel;
 import view.menu.ArsenalMenuProvider;
 import view.contextmenu.ArsenalContextMenuProvider;
@@ -17,15 +18,17 @@ public class BpArsenal implements BurpExtension {
     public void initialize(MontoyaApi api) {
         try {
             // 设置扩展名称
-            api.extension().setName("BpArsenal - hunter武器库");
+            I18nManager i18n = I18nManager.getInstance();
+            api.extension().setName(i18n.getText("main.title"));
 
             api.logging().logToOutput(String.format(
-    "[   Pwn The Planet, One HTTP at a Time  ]\n" +
-    "[#] Author: youmulijiang\n" +
-    "[#] Github: https://github.com/youmulijiang/BpArsenal\n" +
-    "[#] Version: 1.0.0\n" +
-    "[#] Desc: Burp Suite Arsenal plugin - one-click convert HTTP requests to CLI tools, launch third-party tools, and access security bookmarks.\n"
-));
+                    "[   Pwn The Planet, One HTTP at a Time  ]\n" +
+                            "[#] Author: youmulijiang\n" +
+                            "[#] Github: https://github.com/youmulijiang/BpArsenal\n" +
+                            "[#] Version: 1.0.0\n" +
+                            "[#] Desc: Burp Suite Arsenal plugin - one-click convert HTTP requests to CLI tools, launch third-party tools, and access security bookmarks.\n"
+            ));
+
 
             // 初始化API管理器
             ApiManager.getInstance().setApi(api);
@@ -39,7 +42,7 @@ public class BpArsenal implements BurpExtension {
             api = ApiManager.getInstance().getApi();
 
             // 注册主面板到Burp Suite
-            api.userInterface().registerSuiteTab("BpArsenal", mainPanel);
+            api.userInterface().registerSuiteTab(i18n.getText("main.title"), mainPanel);
 
             // 注册菜单栏
             try {
@@ -47,12 +50,9 @@ public class BpArsenal implements BurpExtension {
                     ArsenalMenuProvider.createBpArsenalMenu()
                 );
                 
-                // 记录菜单注册成功
-                api.logging().logToOutput("BpArsenal: 菜单栏注册成功");
                 
             } catch (Exception e) {
-                // 菜单注册失败，记录错误但不影响扩展加载
-                api.logging().logToError("BpArsenal: 菜单栏注册失败 - " + e.getMessage());
+                // 菜单注册失败，但不影响扩展加载
             }
 
             // 注册上下文菜单
@@ -61,27 +61,14 @@ public class BpArsenal implements BurpExtension {
                     new ArsenalContextMenuProvider()
                 );
                 
-                // 记录上下文菜单注册成功
-                api.logging().logToOutput("BpArsenal: 上下文菜单注册成功");
                 
             } catch (Exception e) {
-                // 上下文菜单注册失败，记录错误但不影响扩展加载
-                api.logging().logToError("BpArsenal: 上下文菜单注册失败 - " + e.getMessage());
+                // 上下文菜单注册失败，但不影响扩展加载
             }
 
-            // 记录扩展加载成功
-            api.logging().logToOutput("BpArsenal 武器库扩展加载成功！");
-            api.logging().logToOutput("功能: HTTP工具、第三方工具、网站导航、配置管理、快速菜单访问、右键菜单");
 
         } catch (Exception e) {
-            // 记录初始化错误
-            if (ApiManager.getInstance().isInitialized()) {
-                ApiManager.getInstance().getApi().logging().logToError(
-                    "BpArsenal 初始化失败: " + e.getMessage()
-                );
-            } else {
-                System.err.println("BpArsenal 初始化失败: " + e.getMessage());
-            }
+            // 初始化失败，静默处理
             e.printStackTrace();
         }
     }
