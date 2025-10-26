@@ -54,128 +54,179 @@ BpArsenal is a Burp Suite plugin developed based on the Montoya API, designed to
 3. Click "Add" -> "Java" -> Select the JAR file
 4. After the plugin loads successfully, the "BpArsenal" tab will appear in Burp Suite
 
+## 🤖 Smart Config Generator
+
+We provide a smart configuration generator `generator_config.py` that can automatically scan tool directories and generate configuration files.
+
+### Quick Start
+
+```bash
+# 1. View tool directory structure
+python script/generator_config.py tree --dir /path/to/tools
+
+# 2. Generate AI prompt (manually send to ChatGPT, etc.)
+python script/generator_config.py prompt --dir /path/to/tools --type all --output prompt.txt
+
+# 3. Or directly call AI to generate config (requires OpenAI API key)
+python script/generator_config.py generate \
+  --dir /path/to/tools \
+  --api-key sk-xxx \
+  --model gpt-4 \
+  --type all \
+  --output config.yaml
+```
+
+**Detailed Usage**: See [script/README.md](script/README.md)
+
+---
+
 ## 🛠️ Configuration Guide
 
-### config.json Configuration File Structure
+### config.yaml Configuration File Structure
 
-The plugin's core configuration file is `src/main/resources/config.json`, containing three main sections:
+The plugin's core configuration file is `src/main/resources/config.yaml`, containing three main sections:
 
 #### 1. HTTP Tool Configuration (httpTool)
 
-HTTP tools support converting requests from Burp Suite into command-line tool executions:
+HTTP tools support converting requests from Burp Suite into command-line tool executions with powerful DSL expressions:
 
-```json
-{
-  "httpTool": [
-    {
-      "type": "Tool Category Name",
-      "content": [
-        {
-          "toolName": "Tool Name",
-          "commandList": [
-            {
-              "command": "Command Template",
-              "favor": true/false,
-              "note": "Command Description",
-              "workDir": "Working Directory Path"
-            }
-          ]
-        }
-      ]
-    }
-  ]
-}
+```yaml
+httpTool:
+- type: Tool Category Name
+  content:
+  - toolName: Tool Name
+    commandList:
+    - command: Command Template with DSL Variables
+      favor: true/false
+      note: Command Description
+      workDir: Working Directory Path
 ```
 
 **Field Descriptions:**
 
 - `type`: Tool category, such as "SQL Injection", "Directory Scanning", etc.
-- `toolName`: Specific tool name, such as "sqlmap", "dirsearch", etc.
-- `command`: Command template supporting variable replacement
+- `toolName`: Specific tool name, such as "sqlmap", "ffuf", etc.
+- `command`: Command template supporting DSL variable replacement and function calls
 - `favor`: Whether it's a favorite command
 - `note`: Detailed description of the command
 - `workDir`: Working directory for command execution (optional)
 
-**Supported Variables:**
+**DSL Variable Syntax:**
 
-| Variable Name                            | Description           | Example                           |
-| ---------------------------------------- | --------------------- | --------------------------------- |
-| `%http.request.url%`                   | Complete request URL  | `https://example.com/api/login` |
-| `%http.request.protocol%`              | Protocol              | `https`                         |
-| `%http.request.host%`                  | Host name             | `example.com`                   |
-| `%http.request.port%`                  | Port number           | `443`                           |
-| `%http.request.path%`                  | Path                  | `/api/login`                    |
-| `%http.request.method%`                | HTTP method           | `POST`                          |
-| `%http.request.body%`                  | Request body          | `{"user":"admin"}`              |
-| `%http.request.headers.user.agent%`    | User-Agent header     | `Mozilla/5.0...`                |
-| `%http.request.headers.cookies%`       | Cookie header         | `session=abc123`                |
-| `%http.request.headers.authorization%` | Authorization header  | `Bearer token123`               |
-| `%http.request.headers.content.type%`  | Content-Type header   | `application/json`              |
-| `%http.response.status%`               | Response status code  | `200`                           |
-| `%http.response.body%`                 | Response body content | `{"status":"ok"}`               |
+All DSL expressions use `%expression%` format:
+- **Chain Access**: `%http.request.url%`
+- **Function Call**: `%hash(http.request.body, "sha256")%`
+- **Nested Expression**: `%base64(json(http.request.body, "$.token"), "encode")%`
 
-> And many more...
+**Basic HTTP Variables:**
+
+| Variable Name                                  | Description           | Example                           |
+| ---------------------------------------------- | --------------------- | --------------------------------- |
+| `%http.request.url%`                         | Complete request URL  | `https://example.com/api/login` |
+| `%http.request.protocol%`                    | Protocol              | `https`                         |
+| `%http.request.host%`                        | Host name             | `example.com`                   |
+| `%http.request.port%`                        | Port number           | `443`                           |
+| `%http.request.path%`                        | Path                  | `/api/login`                    |
+| `%http.request.method%`                      | HTTP method           | `POST`                          |
+| `%http.request.query%`                       | Query string          | `id=123&type=user`              |
+| `%http.request.body.raw%`                    | Raw request body      | `{"user":"admin"}`              |
+| `%http.request.body.length%`                 | Body length           | `256`                           |
+| `%http.request.body.type%`                   | Body content type     | `json`                          |
+| `%http.request.headers.user.agent%`          | User-Agent header     | `Mozilla/5.0...`                |
+| `%http.request.headers.cookie%`              | Cookie header         | `session=abc123`                |
+| `%http.request.headers.authorization%`       | Authorization header  | `Bearer token123`               |
+| `%http.request.headers.content.type%`        | Content-Type header   | `application/json`              |
+| `%http.request.cookies.sessionid%`           | Specific cookie value | `abc123xyz`                     |
+| `%http.request.params.url.id%`               | URL parameter         | `123`                           |
+| `%http.request.params.body.username%`        | Body parameter        | `admin`                         |
+| `%http.response.status%`                     | Response status code  | `200`                           |
+| `%http.response.body.raw%`                   | Response body content | `{"status":"ok"}`               |
 
 **Batch Processing Variables:**
 
-| Variable Name                 | Description                        |
-| ----------------------------- | ---------------------------------- |
-| `%httpList.requests.urls%`  | List of all selected request URLs  |
-| `%httpList.requests.hosts%` | List of all selected request hosts |
+| Variable Name                             | Description                        |
+| ----------------------------------------- | ---------------------------------- |
+| `%httpList.count%`                      | Number of requests                 |
+| `%httpList.urls%`                       | List of all URLs                   |
+| `%httpList.hosts%`                      | List of all hosts                  |
+| `%httpList.requests[0].request.url%`    | First request URL (indexed)        |
+| `%httpList.requests.first.request.url%` | First request URL (semantic)       |
+| `%httpList.requests.last.request.host%` | Last request host                  |
+| `%httpList.requests.*.request.url%`     | All request URLs (wildcard)        |
+| `%httpList.requests.*.request.host%`    | All request hosts (wildcard)       |
+
+**Built-in DSL Functions:**
+
+| Function                              | Description                    | Example                                                  |
+| ------------------------------------- | ------------------------------ | -------------------------------------------------------- |
+| `hash(data, algorithm)`             | Calculate hash                 | `%hash(http.request.body, "sha256")%`                  |
+| `base64(data, mode)`                | Base64 encode/decode           | `%base64(http.request.body, "encode")%`                |
+| `json(jsonString, path)`            | Extract JSON value             | `%json(http.response.body, "$.data.token")%`           |
+| `regex(text, pattern, group)`       | Regex extraction               | `%regex(http.response.body, "token=([^&]+)", 1)%`      |
+| `urlencode(data)`                   | URL encode                     | `%urlencode(http.request.path)%`                       |
+| `urldecode(data)`                   | URL decode                     | `%urldecode(http.request.query)%`                      |
+| `join(list, delimiter)`             | Join list elements             | `%join(httpList.hosts, ", ")%`                         |
+| `unique(list)`                      | Remove duplicates              | `%unique(httpList.hosts)%`                             |
+| `count(list)`                       | Count elements                 | `%count(httpList.requests)%`                           |
+| `split(input, delimiter)`           | Split string                   | `%split(http.request.url, "/")[2]%`                    |
+| `tmpFile(content, extension)`       | Create temp file               | `%tmpFile(http.request.body.raw, 'txt')%`              |
+| `file(content, filepath)`           | Create persistent file         | `%file(httpList.hosts, 'hosts.txt')%`                  |
+
+**Advanced DSL Examples:**
+
+```bash
+# SQLMap with temp file
+sqlmap -r %tmpFile(http.request.body.raw, 'txt')% --batch
+
+# Batch URL scanning
+nuclei -list %tmpFile(unique(httpList.requests.*.request.url), 'txt')% -t cves/
+
+# Extract and hash JSON field
+echo %hash(json(http.request.body, "$.password"), "sha256")%
+
+# Save unique hosts to file
+nmap -iL %file(unique(httpList.requests.*.request.host), 'hosts.txt')% -p 80,443
+
+# Nested functions
+curl -H "Auth: %base64(json(http.response.body, "$.token"), "encode")%" https://api.example.com
+```
 
 **Configuration Example:**
 
-```json
-{
-  "type": "SQL Injection",
-  "content": [
-    {
-      "toolName": "sqlmap",
-      "commandList": [
-        {
-          "command": "sqlmap -u \"%http.request.url%\" --user-agent=\"%http.request.headers.user.agent%\" --cookie=\"%http.request.headers.cookies%\" --dbs",
-          "favor": true,
-          "note": "Basic SQL injection test",
-          "workDir": "D:\\tools\\sqlmap"
-        },
-        {
-          "command": "sqlmap -u \"%http.request.url%\" --data=\"%http.request.body%\" --batch --risk=3 --level=5",
-          "favor": true,
-          "note": "High-risk SQL injection test",
-          "workDir": ""
-        }
-      ]
-    }
-  ]
-}
+```yaml
+httpTool:
+- type: SQL Injection
+  content:
+  - toolName: sqlmap
+    commandList:
+    - command: sqlmap -u "%http.request.url%" --cookie="%http.request.headers.cookie%" --batch --dbs
+      favor: true
+      note: Basic SQL injection test
+      workDir: ''
+    - command: sqlmap -r %tmpFile(http.request.body.raw, 'txt')% --batch --risk=3 --level=5
+      favor: true
+      note: Deep injection test with request file
+      workDir: ''
+    - command: sqlmap -m %tmpFile(unique(httpList.requests.*.request.url), 'txt')% --batch --threads=5
+      favor: false
+      note: Batch URL injection test
+      workDir: ''
 ```
 
 #### 2. Third-Party Tool Configuration (thirtyPart)
 
 Third-party tools are used to quickly launch commonly used penetration testing tools:
 
-```json
-{
-  "thirtyPart": [
-    {
-      "type":"编辑器",
-      "content":[
-        {
-          "toolName":"VSCode",
-          "startCommand":"code",
-          "favor":true,
-          "autoStart":false
-        },
-        {
-          "toolName":"Notepad++",
-          "startCommand":"notepad++",
-          "favor":false,
-          "autoStart":false
-        }
-      ]
-    }
-  ]
-}
+```yaml
+thirtyPart:
+- type: Tool Category
+  content:
+  - toolName: Tool Display Name
+    startCommand: Launch Command
+    favor: true/false
+    note: Tool Description
+    workDir: Working Directory
+    autoStart: true/false
 ```
 
 **Field Descriptions:**
@@ -183,55 +234,70 @@ Third-party tools are used to quickly launch commonly used penetration testing t
 - `toolName`: Tool display name
 - `startCommand`: Tool launch command (full path or system command)
 - `favor`: Whether it's a favorite tool
+- `note`: Tool description
+- `workDir`: Working directory (optional)
 - `autoStart`: Whether to auto-start when plugin loads
 
 **Configuration Example:**
 
-```json
-{
-  
-}
+```yaml
+thirtyPart:
+- type: Penetration Framework
+  content:
+  - toolName: Metasploit
+    startCommand: msfconsole
+    favor: true
+    note: Powerful penetration testing framework
+    workDir: ''
+    autoStart: false
+  - toolName: Burp Suite
+    startCommand: burpsuite
+    favor: true
+    note: Web application security testing
+    workDir: ''
+    autoStart: false
 ```
 
 #### 3. Website Bookmark Configuration (webSite)
 
 Website bookmarks are used to quickly access commonly used security-related websites:
 
-```json
-{
-  "webSite": [
-    {
-      "type": "Website Category",
-      "content": [
-        {
-          "url": "Website URL",
-          "desc": "Website Description",
-          "favor": true/false
-        }
-      ]
-    }
-  ]
-}
+```yaml
+webSite:
+- type: Website Category
+  content:
+  - url: Website URL
+    desc: Website Description
+    favor: true/false
 ```
+
+**Field Descriptions:**
+
+- `type`: Website category, such as "OSINT", "Vulnerability Database", etc.
+- `url`: Complete website URL
+- `desc`: Website description
+- `favor`: Whether it's a favorite website
 
 **Configuration Example:**
 
-```json
-{
-  "type": "OSINT",
-  "content": [
-    {
-      "url": "https://shodan.io",
-      "desc": "Shodan Search Engine",
-      "favor": true
-    },
-    {
-      "url": "https://www.fofa.com",
-      "desc": "FOFA Cyberspace Search",
-      "favor": true
-    }
-  ]
-}
+```yaml
+webSite:
+- type: OSINT
+  content:
+  - url: https://www.shodan.io
+    desc: Shodan Search Engine
+    favor: true
+  - url: https://www.zoomeye.org
+    desc: ZoomEye Cyberspace Search
+    favor: true
+- type: Vulnerability Database
+  content:
+  - url: https://cve.mitre.org
+    desc: CVE Official Database
+    favor: true
+  - url: https://nvd.nist.gov
+    desc: NVD Vulnerability Database
+    favor: true
 ```
 
 ## 📋 Usage

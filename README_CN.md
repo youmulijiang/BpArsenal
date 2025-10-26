@@ -55,122 +55,179 @@ BpArsenal 是一个基于 Montoya API 开发的 Burp Suite 插件，旨在快速
 3. 点击 "Add" -> "Java" -> 选择 JAR 文件
 4. 插件加载完成后会在 Burp Suite 中出现 "BpArsenal" 标签页
 
+## 🤖 智能配置生成工具
+
+我们提供了一个智能配置生成工具 `generator_config.py`，可以自动扫描工具目录并生成配置文件。
+
+### 快速开始
+
+```bash
+# 1. 查看工具目录结构
+python script/generator_config.py tree --dir /path/to/tools
+
+# 2. 生成AI提示词（手动发送给ChatGPT等）
+python script/generator_config.py prompt --dir /path/to/tools --type all --output prompt.txt
+
+# 3. 或直接调用AI生成配置（需要OpenAI API key）
+python script/generator_config.py generate \
+  --dir /path/to/tools \
+  --api-key sk-xxx \
+  --model gpt-4 \
+  --type all \
+  --output config.yaml
+```
+
+**详细使用说明**: 查看 [script/README.md](script/README.md)
+
+---
+
 ## 🛠️ 配置指南
 
-### config.json 配置文件结构
+### config.yaml 配置文件结构
 
-插件的核心配置文件为 `src/main/resources/config.json`，包含三个主要部分：
+插件的核心配置文件为 `src/main/resources/config.yaml`，包含三个主要部分：
 
 #### 1. HTTP 工具配置 (httpTool)
 
-HTTP 工具支持将 Burp Suite 中的请求转换为命令行工具执行：
+HTTP 工具支持将 Burp Suite 中的请求转换为命令行工具执行，支持强大的 DSL 表达式：
 
-```json
-{
-  "httpTool": [
-    {
-      "type": "工具分类名称",
-      "content": [
-        {
-          "toolName": "工具名称",
-          "commandList": [
-            {
-              "command": "命令模板",
-              "favor": true/false,
-              "note": "命令说明",
-              "workDir": "工作目录路径"
-            }
-          ]
-        }
-      ]
-    }
-  ]
-}
+```yaml
+httpTool:
+- type: 工具分类名称
+  content:
+  - toolName: 工具名称
+    commandList:
+    - command: 支持DSL变量的命令模板
+      favor: true/false
+      note: 命令说明
+      workDir: 工作目录路径
 ```
 
 **字段说明:**
 
 - `type`: 工具分类，如 "SQL注入"、"目录扫描" 等
-- `toolName`: 具体工具名称，如 "sqlmap"、"dirsearch" 等
-- `command`: 命令模板，支持变量替换
+- `toolName`: 具体工具名称，如 "sqlmap"、"ffuf" 等
+- `command`: 命令模板，支持 DSL 变量替换和函数调用
 - `favor`: 是否为收藏命令
 - `note`: 命令的详细说明
 - `workDir`: 命令执行的工作目录（可选）
 
-**支持的变量:**
+**DSL 变量语法:**
 
-| 变量名                                   | 说明            | 示例                              |
-| ---------------------------------------- | --------------- | --------------------------------- |
-| `%http.request.url%`                   | 完整请求URL     | `https://example.com/api/login` |
-| `%http.request.protocol%`              | 协议            | `https`                         |
-| `%http.request.host%`                  | 主机名          | `example.com`                   |
-| `%http.request.port%`                  | 端口号          | `443`                           |
-| `%http.request.path%`                  | 路径            | `/api/login`                    |
-| `%http.request.method%`                | HTTP方法        | `POST`                          |
-| `%http.request.body%`                  | 请求体          | `{"user":"admin"}`              |
-| `%http.request.headers.user.agent%`    | User-Agent头    | `Mozilla/5.0...`                |
-| `%http.request.headers.cookies%`       | Cookie头        | `session=abc123`                |
-| `%http.request.headers.authorization%` | Authorization头 | `Bearer token123`               |
-| `%http.request.headers.content.type%`  | Content-Type头  | `application/json`              |
-| `%http.response.status%`               | 响应状态码      | `200`                           |
-| `%http.response.body%`                 | 响应体内容      | `{"status":"ok"}`               |
+所有 DSL 表达式使用 `%expression%` 格式：
+- **链式访问**: `%http.request.url%`
+- **函数调用**: `%hash(http.request.body, "sha256")%`
+- **嵌套表达式**: `%base64(json(http.request.body, "$.token"), "encode")%`
 
-> 不止这些
+**基础 HTTP 变量:**
+
+| 变量名                                     | 说明            | 示例                              |
+| ------------------------------------------ | --------------- | --------------------------------- |
+| `%http.request.url%`                     | 完整请求URL     | `https://example.com/api/login` |
+| `%http.request.protocol%`                | 协议            | `https`                         |
+| `%http.request.host%`                    | 主机名          | `example.com`                   |
+| `%http.request.port%`                    | 端口号          | `443`                           |
+| `%http.request.path%`                    | 路径            | `/api/login`                    |
+| `%http.request.method%`                  | HTTP方法        | `POST`                          |
+| `%http.request.query%`                   | 查询字符串      | `id=123&type=user`              |
+| `%http.request.body.raw%`                | 原始请求体      | `{"user":"admin"}`              |
+| `%http.request.body.length%`             | 请求体长度      | `256`                           |
+| `%http.request.body.type%`               | 请求体类型      | `json`                          |
+| `%http.request.headers.user.agent%`      | User-Agent头    | `Mozilla/5.0...`                |
+| `%http.request.headers.cookie%`          | Cookie头        | `session=abc123`                |
+| `%http.request.headers.authorization%`   | Authorization头 | `Bearer token123`               |
+| `%http.request.headers.content.type%`    | Content-Type头  | `application/json`              |
+| `%http.request.cookies.sessionid%`       | 特定Cookie值    | `abc123xyz`                     |
+| `%http.request.params.url.id%`           | URL参数         | `123`                           |
+| `%http.request.params.body.username%`    | Body参数        | `admin`                         |
+| `%http.response.status%`                 | 响应状态码      | `200`                           |
+| `%http.response.body.raw%`               | 响应体内容      | `{"status":"ok"}`               |
 
 **批量处理变量:**
 
-| 变量名                        | 说明                   |
-| ----------------------------- | ---------------------- |
-| `%httpList.requests.urls%`  | 所有选中请求的URL列表  |
-| `%httpList.requests.hosts%` | 所有选中请求的主机列表 |
+| 变量名                                  | 说明                     |
+| --------------------------------------- | ------------------------ |
+| `%httpList.count%`                    | 请求数量                 |
+| `%httpList.urls%`                     | 所有URL列表              |
+| `%httpList.hosts%`                    | 所有主机列表             |
+| `%httpList.requests[0].request.url%`  | 第一个请求URL（索引）    |
+| `%httpList.requests.first.request.url%` | 第一个请求URL（语义化）|
+| `%httpList.requests.last.request.host%` | 最后一个请求主机       |
+| `%httpList.requests.*.request.url%`   | 所有请求URL（通配符）    |
+| `%httpList.requests.*.request.host%`  | 所有请求主机（通配符）   |
+
+**内置 DSL 函数:**
+
+| 函数                                  | 说明                    | 示例                                                     |
+| ------------------------------------- | ----------------------- | -------------------------------------------------------- |
+| `hash(data, algorithm)`             | 计算哈希值              | `%hash(http.request.body, "sha256")%`                  |
+| `base64(data, mode)`                | Base64编解码            | `%base64(http.request.body, "encode")%`                |
+| `json(jsonString, path)`            | 提取JSON值              | `%json(http.response.body, "$.data.token")%`           |
+| `regex(text, pattern, group)`       | 正则表达式提取          | `%regex(http.response.body, "token=([^&]+)", 1)%`      |
+| `urlencode(data)`                   | URL编码                 | `%urlencode(http.request.path)%`                       |
+| `urldecode(data)`                   | URL解码                 | `%urldecode(http.request.query)%`                      |
+| `join(list, delimiter)`             | 连接列表元素            | `%join(httpList.hosts, ", ")%`                         |
+| `unique(list)`                      | 去重                    | `%unique(httpList.hosts)%`                             |
+| `count(list)`                       | 计数                    | `%count(httpList.requests)%`                           |
+| `split(input, delimiter)`           | 切割字符串              | `%split(http.request.url, "/")[2]%`                    |
+| `tmpFile(content, extension)`       | 创建临时文件            | `%tmpFile(http.request.body.raw, 'txt')%`              |
+| `file(content, filepath)`           | 创建持久化文件          | `%file(httpList.hosts, 'hosts.txt')%`                  |
+
+**高级 DSL 示例:**
+
+```bash
+# SQLMap 使用临时文件
+sqlmap -r %tmpFile(http.request.body.raw, 'txt')% --batch
+
+# 批量URL扫描
+nuclei -list %tmpFile(unique(httpList.requests.*.request.url), 'txt')% -t cves/
+
+# 提取JSON字段并计算哈希
+echo %hash(json(http.request.body, "$.password"), "sha256")%
+
+# 保存唯一主机到文件
+nmap -iL %file(unique(httpList.requests.*.request.host), 'hosts.txt')% -p 80,443
+
+# 嵌套函数使用
+curl -H "Auth: %base64(json(http.response.body, "$.token"), "encode")%" https://api.example.com
+```
 
 **配置示例:**
 
-```json
-    {
-      "type": "SQL注入",
-      "content": [
-        {
-          "toolName": "sqlmap",
-      "commandList": [
-        {
-          "command": "sqlmap -u \"%http.request.url%\" --user-agent=\"%http.request.headers.user.agent%\" --cookie=\"%http.request.headers.cookies%\" --dbs",
-          "favor": true,
-          "note": "基础SQL注入测试",
-          "workDir": "D:\\tools\\sqlmap"
-        },
-        {
-          "command": "sqlmap -u \"%http.request.url%\" --data=\"%http.request.body%\" --batch --risk=3 --level=5",
-          "favor": true,
-          "note": "高风险SQL注入测试",
-          "workDir": ""
-        }
-      ]
-    }
-  ]
-}
+```yaml
+httpTool:
+- type: SQL注入
+  content:
+  - toolName: sqlmap
+    commandList:
+    - command: sqlmap -u "%http.request.url%" --cookie="%http.request.headers.cookie%" --batch --dbs
+      favor: true
+      note: 基础SQL注入测试
+      workDir: ''
+    - command: sqlmap -r %tmpFile(http.request.body.raw, 'txt')% --batch --risk=3 --level=5
+      favor: true
+      note: 深度注入测试（使用请求文件）
+      workDir: ''
+    - command: sqlmap -m %tmpFile(unique(httpList.requests.*.request.url), 'txt')% --batch --threads=5
+      favor: false
+      note: 批量URL注入测试
+      workDir: ''
 ```
 
 #### 2. 第三方工具配置 (thirtyPart)
 
 第三方工具用于快速启动常用的渗透测试工具：
 
-```json
-{
-  "thirtyPart": [
-    {
-      "type": "工具分类",
-      "content": [
-        {
-          "toolName": "工具名称",
-          "startCommand": "启动命令",
-          "favor": true/false,
-          "autoStart": true/false
-        }
-      ]
-    }
-  ]
-}
+```yaml
+thirtyPart:
+- type: 工具分类
+  content:
+  - toolName: 工具显示名称
+    startCommand: 启动命令
+    favor: true/false
+    note: 工具描述
+    workDir: 工作目录
+    autoStart: true/false
 ```
 
 **字段说明:**
@@ -178,73 +235,70 @@ HTTP 工具支持将 Burp Suite 中的请求转换为命令行工具执行：
 - `toolName`: 工具显示名称
 - `startCommand`: 工具启动命令（完整路径或系统命令）
 - `favor`: 是否为收藏工具
+- `note`: 工具描述说明
+- `workDir`: 工作目录（可选）
 - `autoStart`: 插件加载时是否自动启动
 
 **配置示例:**
 
-```json
-{
-  "thirtyPart": [
-    {
-      "type":"编辑器",
-      "content":[
-        {
-          "toolName":"VSCode",
-          "startCommand":"code",
-          "favor":true,
-          "autoStart":false
-        },
-        {
-          "toolName":"Notepad++",
-          "startCommand":"notepad++",
-          "favor":false,
-          "autoStart":false
-        }
-      ]
-    }
-  ]
-}
+```yaml
+thirtyPart:
+- type: 渗透框架
+  content:
+  - toolName: Metasploit
+    startCommand: msfconsole
+    favor: true
+    note: 强大的渗透测试框架
+    workDir: ''
+    autoStart: false
+  - toolName: Burp Suite
+    startCommand: burpsuite
+    favor: true
+    note: Web应用安全测试工具
+    workDir: ''
+    autoStart: false
 ```
 
 #### 3. 网站收藏配置 (webSite)
 
 网站收藏用于快速访问常用的安全相关网站：
 
-```json
-{
-  "webSite": [
-    {
-      "type": "网站分类",
-      "content": [
-        {
-          "url": "网站URL",
-          "desc": "网站描述",
-          "favor": true/false
-        }
-      ]
-    }
-  ]
-}
+```yaml
+webSite:
+- type: 网站分类
+  content:
+  - url: 网站URL
+    desc: 网站描述
+    favor: true/false
 ```
+
+**字段说明:**
+
+- `type`: 网站分类，如 "OSINT"、"漏洞库" 等
+- `url`: 完整的网站URL
+- `desc`: 网站描述说明
+- `favor`: 是否为收藏网站
 
 **配置示例:**
 
-```json
-{
-  "type": "OSINT",
-  "content": [
-    {
-      "url": "https://shodan.io",
-      "desc": "Shodan搜索引擎",
-      "favor": true
-    },
-    {
-      "url": "https://www.fofa.com",
-      "desc": "FOFA网络空间搜索",
-      "favor": true
-    }
-  ]
-}
+```yaml
+webSite:
+- type: OSINT
+  content:
+  - url: https://www.shodan.io
+    desc: Shodan搜索引擎
+    favor: true
+  - url: https://www.zoomeye.org
+    desc: ZoomEye网络空间搜索
+    favor: true
+- type: 漏洞库
+  content:
+  - url: https://cve.mitre.org
+    desc: CVE官方数据库
+    favor: true
+  - url: https://nvd.nist.gov
+    desc: NVD漏洞数据库
+    favor: true
 ```
 
 ## 📋 使用方法
