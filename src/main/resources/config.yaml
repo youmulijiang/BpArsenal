@@ -8,8 +8,7 @@ httpTool:
       favor: true
       note: 基础数据库枚举
       workDir: ''
-    - command: sqlmap -r %tmpFile(http.request.body.raw, 'txt')% --cookie="%http.request.headers.cookie%"
-        --batch --risk=3 --level=5 --threads=10
+    - command: sqlmap -r %tmpFile(http.request.body.raw, 'txt')%  --batch --risk=3 --level=5 --threads=10
       favor: true
       note: 深度注入测试（使用原始请求文件）
       workDir: ''

@@ -10,14 +10,13 @@
 ![logo](img/logo.png)
 BpArsenal is a Burp Suite plugin developed based on the Montoya API, designed to quickly convert HTTP requests into command-line tool executions, launch third-party tools, and open related websites to improve penetration testing efficiency.
 
-| Interface Name   | Interface Display                               |
-| ---------------- |-------------------------------------------------|
-| http tool        | ![http\_tool](img/http_tool_img.png)            |
-| third-party tool |  ![thirdy_party_tool](img/thirtdy_party_tool_img.png)                                                |
-| website          | ![website](img/website_tool_img.png)            |
-| setting          | ![setting](img/setting_tool_img.png)            |
-| shell\_exec      | ![shell\_exec](img/shell_exec_img.png)          |
-
+| Interface Name   | Interface Display                                        |
+| ---------------- | -------------------------------------------------------- |
+| http tool        | ![http<span data-type=](img/http_tool_img.png)\_tool" />   |
+| third-party tool | ![thirdy_party_tool](img/thirtdy_party_tool_img.png)       |
+| website          | ![website](img/website_tool_img.png)                       |
+| setting          | ![setting](img/setting_tool_img.png)                       |
+| shell\_exec      | ![shell<span data-type=](img/shell_exec_img.png)\_exec" /> |
 
 ## 🚀 Key Features
 
@@ -114,63 +113,64 @@ httpTool:
 **DSL Variable Syntax:**
 
 All DSL expressions use `%expression%` format:
+
 - **Chain Access**: `%http.request.url%`
 - **Function Call**: `%hash(http.request.body, "sha256")%`
 - **Nested Expression**: `%base64(json(http.request.body, "$.token"), "encode")%`
 
 **Basic HTTP Variables:**
 
-| Variable Name                                  | Description           | Example                           |
-| ---------------------------------------------- | --------------------- | --------------------------------- |
-| `%http.request.url%`                         | Complete request URL  | `https://example.com/api/login` |
-| `%http.request.protocol%`                    | Protocol              | `https`                         |
-| `%http.request.host%`                        | Host name             | `example.com`                   |
-| `%http.request.port%`                        | Port number           | `443`                           |
-| `%http.request.path%`                        | Path                  | `/api/login`                    |
-| `%http.request.method%`                      | HTTP method           | `POST`                          |
-| `%http.request.query%`                       | Query string          | `id=123&type=user`              |
-| `%http.request.body.raw%`                    | Raw request body      | `{"user":"admin"}`              |
-| `%http.request.body.length%`                 | Body length           | `256`                           |
-| `%http.request.body.type%`                   | Body content type     | `json`                          |
-| `%http.request.headers.user.agent%`          | User-Agent header     | `Mozilla/5.0...`                |
-| `%http.request.headers.cookie%`              | Cookie header         | `session=abc123`                |
-| `%http.request.headers.authorization%`       | Authorization header  | `Bearer token123`               |
-| `%http.request.headers.content.type%`        | Content-Type header   | `application/json`              |
-| `%http.request.cookies.sessionid%`           | Specific cookie value | `abc123xyz`                     |
-| `%http.request.params.url.id%`               | URL parameter         | `123`                           |
-| `%http.request.params.body.username%`        | Body parameter        | `admin`                         |
-| `%http.response.status%`                     | Response status code  | `200`                           |
-| `%http.response.body.raw%`                   | Response body content | `{"status":"ok"}`               |
+| Variable Name                            | Description           | Example                           |
+| ---------------------------------------- | --------------------- | --------------------------------- |
+| `%http.request.url%`                   | Complete request URL  | `https://example.com/api/login` |
+| `%http.request.protocol%`              | Protocol              | `https`                         |
+| `%http.request.host%`                  | Host name             | `example.com`                   |
+| `%http.request.port%`                  | Port number           | `443`                           |
+| `%http.request.path%`                  | Path                  | `/api/login`                    |
+| `%http.request.method%`                | HTTP method           | `POST`                          |
+| `%http.request.query%`                 | Query string          | `id=123&type=user`              |
+| `%http.request.body.raw%`              | Raw request body      | `{"user":"admin"}`              |
+| `%http.request.body.length%`           | Body length           | `256`                           |
+| `%http.request.body.type%`             | Body content type     | `json`                          |
+| `%http.request.headers.user.agent%`    | User-Agent header     | `Mozilla/5.0...`                |
+| `%http.request.headers.cookie%`        | Cookie header         | `session=abc123`                |
+| `%http.request.headers.authorization%` | Authorization header  | `Bearer token123`               |
+| `%http.request.headers.content.type%`  | Content-Type header   | `application/json`              |
+| `%http.request.cookies.sessionid%`     | Specific cookie value | `abc123xyz`                     |
+| `%http.request.params.url.id%`         | URL parameter         | `123`                           |
+| `%http.request.params.body.username%`  | Body parameter        | `admin`                         |
+| `%http.response.status%`               | Response status code  | `200`                           |
+| `%http.response.body.raw%`             | Response body content | `{"status":"ok"}`               |
 
 **Batch Processing Variables:**
 
-| Variable Name                             | Description                        |
-| ----------------------------------------- | ---------------------------------- |
-| `%httpList.count%`                      | Number of requests                 |
-| `%httpList.urls%`                       | List of all URLs                   |
-| `%httpList.hosts%`                      | List of all hosts                  |
-| `%httpList.requests[0].request.url%`    | First request URL (indexed)        |
-| `%httpList.requests.first.request.url%` | First request URL (semantic)       |
-| `%httpList.requests.last.request.host%` | Last request host                  |
-| `%httpList.requests.*.request.url%`     | All request URLs (wildcard)        |
-| `%httpList.requests.*.request.host%`    | All request hosts (wildcard)       |
+| Variable Name                             | Description                  |
+| ----------------------------------------- | ---------------------------- |
+| `%httpList.count%`                      | Number of requests           |
+| `%httpList.urls%`                       | List of all URLs             |
+| `%httpList.hosts%`                      | List of all hosts            |
+| `%httpList.requests[0].request.url%`    | First request URL (indexed)  |
+| `%httpList.requests.first.request.url%` | First request URL (semantic) |
+| `%httpList.requests.last.request.host%` | Last request host            |
+| `%httpList.requests.*.request.url%`     | All request URLs (wildcard)  |
+| `%httpList.requests.*.request.host%`    | All request hosts (wildcard) |
 
 **Built-in DSL Functions:**
 
-| Function                              | Description                    | Example                                                  |
-| ------------------------------------- | ------------------------------ | -------------------------------------------------------- |
-| `hash(data, algorithm)`             | Calculate hash                 | `%hash(http.request.body, "sha256")%`                  |
-| `base64(data, mode)`                | Base64 encode/decode           | `%base64(http.request.body, "encode")%`                |
-| `json(jsonString, path)`            | Extract JSON value             | `%json(http.response.body, "$.data.token")%`           |
-| `regex(text, pattern, group)`       | Regex extraction               | `%regex(http.response.body, "token=([^&]+)", 1)%`      |
-| `urlencode(data)`                   | URL encode                     | `%urlencode(http.request.path)%`                       |
-| `urldecode(data)`                   | URL decode                     | `%urldecode(http.request.query)%`                      |
-| `join(list, delimiter)`             | Join list elements             | `%join(httpList.hosts, ", ")%`                         |
-| `unique(list)`                      | Remove duplicates              | `%unique(httpList.hosts)%`                             |
-| `count(list)`                       | Count elements                 | `%count(httpList.requests)%`                           |
-| `split(input, delimiter)`           | Split string                   | `%split(http.request.url, "/")[2]%`                    |
-| `tmpFile(content, extension)`       | Create temp file               | `%tmpFile(http.request.body.raw, 'txt')%`              |
-| `file(content, filepath)`           | Create persistent file         | `%file(httpList.hosts, 'hosts.txt')%`                  |
+| Function                        | Description            | Example                                             |
+| ------------------------------- | ---------------------- | --------------------------------------------------- |
+| `hash(data, algorithm)`       | Calculate hash         | `%hash(http.request.body, "sha256")%`             |
+| `base64(data, mode)`          | Base64 encode/decode   | `%base64(http.request.body, "encode")%`           |
+| `json(jsonString, path)`      | Extract JSON value     | `%json(http.response.body, "$.data.token")%`      |
+| `regex(text, pattern, group)` | Regex extraction       | `%regex(http.response.body, "token=([^&]+)", 1)%` |
+| `urlencode(data)`             | URL encode             | `%urlencode(http.request.path)%`                  |
+| `urldecode(data)`             | URL decode             | `%urldecode(http.request.query)%`                 |
+| `join(list, delimiter)`       | Join list elements     | `%join(httpList.hosts, ", ")%`                    |
+| `unique(list)`                | Remove duplicates      | `%unique(httpList.hosts)%`                        |
+| `count(list)`                 | Count elements         | `%count(httpList.requests)%`                      |
+| `split(input, delimiter)`     | Split string           | `%split(http.request.url, "/")[2]%`               |
+| `tmpFile(content, extension)` | Create temp file       | `%tmpFile(http.request.body.raw, 'txt')%`         |
+| `file(content, filepath)`     | Create persistent file | `%file(httpList.hosts, 'hosts.txt')%`             |
 
 **Advanced DSL Examples:**
 
@@ -395,7 +395,7 @@ sqlmap -u "https://example.com/login" --cookie="sessionid=abc123; csrftoken=xyz7
 - **Design Patterns**: Singleton Pattern, Strategy Pattern
 - **UI Framework**: Java Swing
 - **Internationalization**: Multi-language switching support
-- **Configuration Format**: JSON
+- **Configuration Format**: YAML
 
 ## 📝 Changelog
 
@@ -432,7 +432,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 👨‍💻 Author
 
-**youmulijiang** 
+**youmulijiang**
 
 I'm just an ordinary security developer.If this project helps you, please click the ⭐ in the top-right corner.
 youmulijiang loves stars the most! ヾ(≧▽≦*)o*

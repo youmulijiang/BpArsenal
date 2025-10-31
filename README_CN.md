@@ -9,16 +9,13 @@
 ![logo](img/logo.png)
 BpArsenal 是一个基于 Montoya API 开发的 Burp Suite 插件，旨在快速将 HTTP 请求转化为命令行工具执行、启动第三方工具和打开相关网站，提高渗透测试效率。
 
-
-
-| 界面名称                         | 界面展示                                             |
-|------------------------------|--------------------------------------------------|
-| http tool(报文转化工具界面)          | ![http_tool](img/http_tool_img.png)              |
+| 界面名称                            | 界面展示                                           |
+| ----------------------------------- | -------------------------------------------------- |
+| http tool(报文转化工具界面)         | ![http_tool](img/http_tool_img.png)                  |
 | thirdy-party tool  (第三方工具界面) | ![thirdy_party_tool](img/thirtdy_party_tool_img.png) |
-| website (第三方网站面板)            | ![website](img/website_tool_img.png)             |
-| setting (设置界面)               | ![setting](img/setting_tool_img.png)             |               
-| shell_exec(执行命令界面)           |![shell_exec](img/shell_exec_img.png)|
-
+| website (第三方网站面板)            | ![website](img/website_tool_img.png)                 |
+| setting (设置界面)                  | ![setting](img/setting_tool_img.png)                 |
+| shell_exec(执行命令界面)            | ![shell_exec](img/shell_exec_img.png)                |
 
 ## 🚀 主要功能
 
@@ -115,63 +112,64 @@ httpTool:
 **DSL 变量语法:**
 
 所有 DSL 表达式使用 `%expression%` 格式：
+
 - **链式访问**: `%http.request.url%`
 - **函数调用**: `%hash(http.request.body, "sha256")%`
 - **嵌套表达式**: `%base64(json(http.request.body, "$.token"), "encode")%`
 
 **基础 HTTP 变量:**
 
-| 变量名                                     | 说明            | 示例                              |
-| ------------------------------------------ | --------------- | --------------------------------- |
-| `%http.request.url%`                     | 完整请求URL     | `https://example.com/api/login` |
-| `%http.request.protocol%`                | 协议            | `https`                         |
-| `%http.request.host%`                    | 主机名          | `example.com`                   |
-| `%http.request.port%`                    | 端口号          | `443`                           |
-| `%http.request.path%`                    | 路径            | `/api/login`                    |
-| `%http.request.method%`                  | HTTP方法        | `POST`                          |
-| `%http.request.query%`                   | 查询字符串      | `id=123&type=user`              |
-| `%http.request.body.raw%`                | 原始请求体      | `{"user":"admin"}`              |
-| `%http.request.body.length%`             | 请求体长度      | `256`                           |
-| `%http.request.body.type%`               | 请求体类型      | `json`                          |
-| `%http.request.headers.user.agent%`      | User-Agent头    | `Mozilla/5.0...`                |
-| `%http.request.headers.cookie%`          | Cookie头        | `session=abc123`                |
-| `%http.request.headers.authorization%`   | Authorization头 | `Bearer token123`               |
-| `%http.request.headers.content.type%`    | Content-Type头  | `application/json`              |
-| `%http.request.cookies.sessionid%`       | 特定Cookie值    | `abc123xyz`                     |
-| `%http.request.params.url.id%`           | URL参数         | `123`                           |
-| `%http.request.params.body.username%`    | Body参数        | `admin`                         |
-| `%http.response.status%`                 | 响应状态码      | `200`                           |
-| `%http.response.body.raw%`               | 响应体内容      | `{"status":"ok"}`               |
+| 变量名                                   | 说明            | 示例                              |
+| ---------------------------------------- | --------------- | --------------------------------- |
+| `%http.request.url%`                   | 完整请求URL     | `https://example.com/api/login` |
+| `%http.request.protocol%`              | 协议            | `https`                         |
+| `%http.request.host%`                  | 主机名          | `example.com`                   |
+| `%http.request.port%`                  | 端口号          | `443`                           |
+| `%http.request.path%`                  | 路径            | `/api/login`                    |
+| `%http.request.method%`                | HTTP方法        | `POST`                          |
+| `%http.request.query%`                 | 查询字符串      | `id=123&type=user`              |
+| `%http.request.body.raw%`              | 原始请求体      | `{"user":"admin"}`              |
+| `%http.request.body.length%`           | 请求体长度      | `256`                           |
+| `%http.request.body.type%`             | 请求体类型      | `json`                          |
+| `%http.request.headers.user.agent%`    | User-Agent头    | `Mozilla/5.0...`                |
+| `%http.request.headers.cookie%`        | Cookie头        | `session=abc123`                |
+| `%http.request.headers.authorization%` | Authorization头 | `Bearer token123`               |
+| `%http.request.headers.content.type%`  | Content-Type头  | `application/json`              |
+| `%http.request.cookies.sessionid%`     | 特定Cookie值    | `abc123xyz`                     |
+| `%http.request.params.url.id%`         | URL参数         | `123`                           |
+| `%http.request.params.body.username%`  | Body参数        | `admin`                         |
+| `%http.response.status%`               | 响应状态码      | `200`                           |
+| `%http.response.body.raw%`             | 响应体内容      | `{"status":"ok"}`               |
 
 **批量处理变量:**
 
-| 变量名                                  | 说明                     |
-| --------------------------------------- | ------------------------ |
-| `%httpList.count%`                    | 请求数量                 |
-| `%httpList.urls%`                     | 所有URL列表              |
-| `%httpList.hosts%`                    | 所有主机列表             |
-| `%httpList.requests[0].request.url%`  | 第一个请求URL（索引）    |
-| `%httpList.requests.first.request.url%` | 第一个请求URL（语义化）|
-| `%httpList.requests.last.request.host%` | 最后一个请求主机       |
-| `%httpList.requests.*.request.url%`   | 所有请求URL（通配符）    |
-| `%httpList.requests.*.request.host%`  | 所有请求主机（通配符）   |
+| 变量名                                    | 说明                    |
+| ----------------------------------------- | ----------------------- |
+| `%httpList.count%`                      | 请求数量                |
+| `%httpList.urls%`                       | 所有URL列表             |
+| `%httpList.hosts%`                      | 所有主机列表            |
+| `%httpList.requests[0].request.url%`    | 第一个请求URL（索引）   |
+| `%httpList.requests.first.request.url%` | 第一个请求URL（语义化） |
+| `%httpList.requests.last.request.host%` | 最后一个请求主机        |
+| `%httpList.requests.*.request.url%`     | 所有请求URL（通配符）   |
+| `%httpList.requests.*.request.host%`    | 所有请求主机（通配符）  |
 
 **内置 DSL 函数:**
 
-| 函数                                  | 说明                    | 示例                                                     |
-| ------------------------------------- | ----------------------- | -------------------------------------------------------- |
-| `hash(data, algorithm)`             | 计算哈希值              | `%hash(http.request.body, "sha256")%`                  |
-| `base64(data, mode)`                | Base64编解码            | `%base64(http.request.body, "encode")%`                |
-| `json(jsonString, path)`            | 提取JSON值              | `%json(http.response.body, "$.data.token")%`           |
-| `regex(text, pattern, group)`       | 正则表达式提取          | `%regex(http.response.body, "token=([^&]+)", 1)%`      |
-| `urlencode(data)`                   | URL编码                 | `%urlencode(http.request.path)%`                       |
-| `urldecode(data)`                   | URL解码                 | `%urldecode(http.request.query)%`                      |
-| `join(list, delimiter)`             | 连接列表元素            | `%join(httpList.hosts, ", ")%`                         |
-| `unique(list)`                      | 去重                    | `%unique(httpList.hosts)%`                             |
-| `count(list)`                       | 计数                    | `%count(httpList.requests)%`                           |
-| `split(input, delimiter)`           | 切割字符串              | `%split(http.request.url, "/")[2]%`                    |
-| `tmpFile(content, extension)`       | 创建临时文件            | `%tmpFile(http.request.body.raw, 'txt')%`              |
-| `file(content, filepath)`           | 创建持久化文件          | `%file(httpList.hosts, 'hosts.txt')%`                  |
+| 函数                            | 说明           | 示例                                                |
+| ------------------------------- | -------------- | --------------------------------------------------- |
+| `hash(data, algorithm)`       | 计算哈希值     | `%hash(http.request.body, "sha256")%`             |
+| `base64(data, mode)`          | Base64编解码   | `%base64(http.request.body, "encode")%`           |
+| `json(jsonString, path)`      | 提取JSON值     | `%json(http.response.body, "$.data.token")%`      |
+| `regex(text, pattern, group)` | 正则表达式提取 | `%regex(http.response.body, "token=([^&]+)", 1)%` |
+| `urlencode(data)`             | URL编码        | `%urlencode(http.request.path)%`                  |
+| `urldecode(data)`             | URL解码        | `%urldecode(http.request.query)%`                 |
+| `join(list, delimiter)`       | 连接列表元素   | `%join(httpList.hosts, ", ")%`                    |
+| `unique(list)`                | 去重           | `%unique(httpList.hosts)%`                        |
+| `count(list)`                 | 计数           | `%count(httpList.requests)%`                      |
+| `split(input, delimiter)`     | 切割字符串     | `%split(http.request.url, "/")[2]%`               |
+| `tmpFile(content, extension)` | 创建临时文件   | `%tmpFile(http.request.body.raw, 'txt')%`         |
+| `file(content, filepath)`     | 创建持久化文件 | `%file(httpList.hosts, 'hosts.txt')%`             |
 
 **高级 DSL 示例:**
 
@@ -396,7 +394,7 @@ sqlmap -u "https://example.com/login" --cookie="sessionid=abc123; csrftoken=xyz7
 - **设计模式**: 单例模式、策略模式
 - **UI框架**: Java Swing
 - **国际化**: 支持多语言切换
-- **配置格式**: JSON
+- **配置格式**: YAML
 
 ## 📝 更新日志
 
@@ -433,7 +431,7 @@ sqlmap -u "https://example.com/login" --cookie="sessionid=abc123; csrftoken=xyz7
 
 ## 👨‍💻 作者
 
-**youmulijiang** 
+**youmulijiang**
 
 作者是一个普通的安全开发成员，如果这个项目对你有帮助的话，请点击右上角的⭐
 
