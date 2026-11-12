@@ -110,7 +110,15 @@ public class HttpRequestContext {
     public Map<String, String> getCookies() { return cookies; }
     public ParameterContext getParams() { return params; }
     public BodyContext getBody() { return body; }
-    
+
+    /**
+     * 直接作为变量值时输出请求URL
+     */
+    @Override
+    public String toString() {
+        return url != null ? url : "";
+    }
+
     /**
      * 获取属性（用于反射和动态访问）
      */

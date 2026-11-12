@@ -172,6 +172,7 @@ public class ToolController {
     
     /**
      * 删除工具
+     * 按对象身份匹配，避免误删其他同名工具
      * @param tool 要删除的工具
      * @return 是否成功
      */
@@ -179,28 +180,48 @@ public class ToolController {
         try {
             Config config = ConfigManager.getInstance().getConfig();
             if (config.getHttpTool() == null) return false;
-            
+
             boolean removed = false;
             for (Config.HttpToolCategory category : config.getHttpTool()) {
                 if (category.getContent() != null) {
-                    removed = category.getContent().removeIf(t -> 
-                        t.getToolName().equals(tool.getToolName())) || removed;
+                    removed = category.getContent().removeIf(t -> t == tool) || removed;
                 }
             }
-            
+
             if (removed) {
                 saveConfiguration();
             }
-            
+
             return removed;
-            
+
         } catch (Exception e) {
             return false;
         }
     }
-    
+
+    /**
+     * 根据对象身份在配置中查找工具所在的分类
+     * @param config 配置对象
+     * @param parentTool 工具对象（配置中的同一实例）
+     * @return 所在分类，未找到返回null
+     */
+    private Config.HttpToolCategory findCategoryOfTool(Config config, HttpTool parentTool) {
+        for (Config.HttpToolCategory category : config.getHttpTool()) {
+            if (category.getContent() == null) {
+                continue;
+            }
+            for (HttpTool tool : category.getContent()) {
+                if (tool == parentTool) {
+                    return category;
+                }
+            }
+        }
+        return null;
+    }
+
     /**
      * 更新工具命令的详细信息（包括note和workDir）
+     * 通过updateCommandData直接写回底层结构，确保修改被持久化
      * @param toolCommand 要更新的工具命令
      * @param newCommand 新的命令字符串
      * @param newNote 新的备注
@@ -209,60 +230,48 @@ public class ToolController {
      * @param newCategory 新的分类
      * @return 是否成功
      */
-    public boolean updateToolCommand(HttpToolCommand toolCommand, String newCommand, String newNote, 
+    public boolean updateToolCommand(HttpToolCommand toolCommand, String newCommand, String newNote,
                                    String newWorkDir, boolean newFavor, String newCategory) {
         try {
             HttpTool parentTool = toolCommand.getParentTool();
             if (parentTool == null) {
                 return false;
             }
-            
-            // 查找工具在配置中的位置
+
             Config config = ConfigManager.getInstance().getConfig();
             if (config.getHttpTool() == null) return false;
-            
-            HttpTool configTool = null;
-            Config.HttpToolCategory currentCategory = null;
-            
-            // 找到工具所在的分类和工具对象
-            for (Config.HttpToolCategory category : config.getHttpTool()) {
-                if (category.getContent() != null) {
-                    for (HttpTool tool : category.getContent()) {
-                        if (tool.getToolName().equals(parentTool.getToolName())) {
-                            configTool = tool;
-                            currentCategory = category;
-                            break;
-                        }
-                    }
-                    if (configTool != null) break;
-                }
-            }
-            
-            if (configTool == null) {
+
+            // 按对象身份定位配置中的工具，避免同名工具误改
+            Config.HttpToolCategory currentCategory = findCategoryOfTool(config, parentTool);
+            if (currentCategory == null) {
                 return false;
             }
-            
-            // 更新命令数据
+            HttpTool configTool = parentTool;
+
+            // 旧格式（仅command字段）先迁移为commandList，统一读写路径
+            configTool.migrateToCommandList();
+
             List<HttpTool.HttpToolCommandData> commandDataList = configTool.getCommandDataList();
             int commandIndex = toolCommand.getCommandIndex();
-            
+
             if (commandIndex >= 0 && commandIndex < commandDataList.size()) {
-                HttpTool.HttpToolCommandData cmdData = commandDataList.get(commandIndex);
-                cmdData.setCommand(newCommand);
-                cmdData.setNote(newNote);
-                cmdData.setWorkDir(newWorkDir);
-                cmdData.setFavor(newFavor);
-                
+                HttpTool.HttpToolCommandData updated = new HttpTool.HttpToolCommandData(
+                        newCommand, newFavor, newNote, newWorkDir);
+
+                if (!configTool.updateCommandData(commandIndex, updated)) {
+                    return false;
+                }
+
                 // 同时更新工具的基本信息
                 configTool.setToolName(toolCommand.getToolName());
                 configTool.setCommand(newCommand); // 保持向后兼容
                 configTool.setFavor(newFavor);
-                
+
                 // 如果分类发生变化，需要移动工具
-                if (!currentCategory.getType().equals(newCategory)) {
+                if (newCategory != null && !currentCategory.getType().equals(newCategory)) {
                     // 从当前分类中移除
                     currentCategory.getContent().remove(configTool);
-                    
+
                     // 添加到新分类
                     Config.HttpToolCategory targetCategory = findOrCreateCategory(config, newCategory);
                     if (targetCategory.getContent() == null) {
@@ -270,15 +279,58 @@ public class ToolController {
                     }
                     targetCategory.getContent().add(configTool);
                 }
-                
+
                 // 保存配置
                 saveConfiguration();
-                
+
                 return true;
             } else {
                 return false;
             }
-            
+
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /**
+     * 更新单个命令的收藏状态（同时同步工具级收藏）
+     * @param toolCommand 工具命令
+     * @param favorite 收藏状态
+     * @return 是否成功
+     */
+    public boolean updateToolCommandFavorite(HttpToolCommand toolCommand, boolean favorite) {
+        try {
+            HttpTool parentTool = toolCommand.getParentTool();
+            if (parentTool == null) {
+                return false;
+            }
+
+            Config config = ConfigManager.getInstance().getConfig();
+            if (config.getHttpTool() == null) return false;
+
+            Config.HttpToolCategory currentCategory = findCategoryOfTool(config, parentTool);
+            if (currentCategory == null) {
+                return false;
+            }
+
+            parentTool.migrateToCommandList();
+
+            int commandIndex = toolCommand.getCommandIndex();
+            List<HttpTool.HttpToolCommandData> commandDataList = parentTool.getCommandDataList();
+            if (commandIndex >= 0 && commandIndex < commandDataList.size()) {
+                HttpTool.HttpToolCommandData original = commandDataList.get(commandIndex);
+                HttpTool.HttpToolCommandData updated = new HttpTool.HttpToolCommandData(
+                        original.getCommand(), favorite, original.getNote(), original.getWorkDir());
+                if (!parentTool.updateCommandData(commandIndex, updated)) {
+                    return false;
+                }
+            }
+
+            parentTool.setFavor(favorite);
+            saveConfiguration();
+            return true;
+
         } catch (Exception e) {
             return false;
         }
@@ -286,6 +338,7 @@ public class ToolController {
     
     /**
      * 更新工具收藏状态
+     * 按对象身份匹配，避免误改其他同名工具
      * @param tool 工具对象
      * @param favorite 收藏状态
      * @return 是否成功
@@ -294,31 +347,56 @@ public class ToolController {
         try {
             Config config = ConfigManager.getInstance().getConfig();
             if (config.getHttpTool() == null) return false;
-            
+
             boolean updated = false;
+            outer:
             for (Config.HttpToolCategory category : config.getHttpTool()) {
                 if (category.getContent() != null) {
                     for (HttpTool t : category.getContent()) {
-                        if (t.getToolName().equals(tool.getToolName())) {
+                        if (t == tool) {
                             t.setFavor(favorite);
                             updated = true;
-                            break;
+                            break outer;
                         }
                     }
                 }
             }
-            
+
             if (updated) {
                 saveConfiguration();
             }
-            
+
             return updated;
-            
+
         } catch (Exception e) {
             return false;
         }
     }
-    
+
+    /**
+     * 根据工具名称获取原始分类类型（不经过显示名转换）
+     * @param toolName 工具名称
+     * @return 分类类型，未找到返回null
+     */
+    public String getToolCategoryType(String toolName) {
+        try {
+            Config config = ConfigManager.getInstance().getConfig();
+            if (config.getHttpTool() != null) {
+                for (Config.HttpToolCategory category : config.getHttpTool()) {
+                    if (category.getContent() != null) {
+                        for (HttpTool tool : category.getContent()) {
+                            if (tool.getToolName() != null && tool.getToolName().equals(toolName)) {
+                                return category.getType();
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+        }
+        return null;
+    }
+
     /**
      * 根据工具名称获取分类
      * @param toolName 工具名称
@@ -587,6 +665,7 @@ public class ToolController {
     
     /**
      * 删除第三方工具
+     * 按对象身份匹配，避免误删其他同名工具
      * @param tool 要删除的工具
      * @return 是否成功
      */
@@ -594,28 +673,28 @@ public class ToolController {
         try {
             Config config = ConfigManager.getInstance().getConfig();
             if (config.getThirtyPart() == null) return false;
-            
+
             boolean removed = false;
             for (Config.ThirdPartyToolCategory category : config.getThirtyPart()) {
                 if (category.getContent() != null) {
-                    removed = category.getContent().removeIf(t -> 
-                        t.getToolName().equals(tool.getToolName())) || removed;
+                    removed = category.getContent().removeIf(t -> t == tool) || removed;
                 }
             }
-            
+
             if (removed) {
                 saveConfiguration();
             }
-            
+
             return removed;
-            
+
         } catch (Exception e) {
             return false;
         }
     }
-    
+
     /**
      * 更新第三方工具收藏状态
+     * 按对象身份匹配，避免误改其他同名工具
      * @param tool 工具对象
      * @param favorite 收藏状态
      * @return 是否成功
@@ -624,33 +703,35 @@ public class ToolController {
         try {
             Config config = ConfigManager.getInstance().getConfig();
             if (config.getThirtyPart() == null) return false;
-            
+
             boolean updated = false;
+            outer:
             for (Config.ThirdPartyToolCategory category : config.getThirtyPart()) {
                 if (category.getContent() != null) {
                     for (ThirdPartyTool t : category.getContent()) {
-                        if (t.getToolName().equals(tool.getToolName())) {
+                        if (t == tool) {
                             t.setFavor(favorite);
                             updated = true;
-                            break;
+                            break outer;
                         }
                     }
                 }
             }
-            
+
             if (updated) {
                 saveConfiguration();
             }
-            
+
             return updated;
-            
+
         } catch (Exception e) {
             return false;
         }
     }
-    
+
     /**
      * 更新第三方工具自动启动状态
+     * 按对象身份匹配，避免误改其他同名工具
      * @param tool 工具对象
      * @param autoStart 自动启动状态
      * @return 是否成功
@@ -659,31 +740,56 @@ public class ToolController {
         try {
             Config config = ConfigManager.getInstance().getConfig();
             if (config.getThirtyPart() == null) return false;
-            
+
             boolean updated = false;
+            outer:
             for (Config.ThirdPartyToolCategory category : config.getThirtyPart()) {
                 if (category.getContent() != null) {
                     for (ThirdPartyTool t : category.getContent()) {
-                        if (t.getToolName().equals(tool.getToolName())) {
+                        if (t == tool) {
                             t.setAutoStart(autoStart);
                             updated = true;
-                            break;
+                            break outer;
                         }
                     }
                 }
             }
-            
+
             if (updated) {
                 saveConfiguration();
             }
-            
+
             return updated;
-            
+
         } catch (Exception e) {
             return false;
         }
     }
-    
+
+    /**
+     * 根据工具名称获取第三方工具的原始分类类型（不经过显示名转换）
+     * @param toolName 工具名称
+     * @return 分类类型，未找到返回null
+     */
+    public String getThirdPartyToolCategoryType(String toolName) {
+        try {
+            Config config = ConfigManager.getInstance().getConfig();
+            if (config.getThirtyPart() != null) {
+                for (Config.ThirdPartyToolCategory category : config.getThirtyPart()) {
+                    if (category.getContent() != null) {
+                        for (ThirdPartyTool tool : category.getContent()) {
+                            if (tool.getToolName() != null && tool.getToolName().equals(toolName)) {
+                                return category.getType();
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+        }
+        return null;
+    }
+
     /**
      * 根据工具名称获取第三方工具分类
      * @param toolName 工具名称
@@ -836,6 +942,7 @@ public class ToolController {
     
     /**
      * 删除网站
+     * 按对象身份匹配，避免desc为null时的NPE以及误删其他同名网站
      * @param website 要删除的网站
      * @return 是否成功
      */
@@ -843,29 +950,28 @@ public class ToolController {
         try {
             Config config = ConfigManager.getInstance().getConfig();
             if (config.getWebSite() == null) return false;
-            
+
             boolean removed = false;
             for (Config.WebSiteCategory category : config.getWebSite()) {
                 if (category.getContent() != null) {
-                    removed = category.getContent().removeIf(w -> 
-                        w.getUrl().equals(website.getUrl()) && 
-                        w.getDesc().equals(website.getDesc())) || removed;
+                    removed = category.getContent().removeIf(w -> w == website) || removed;
                 }
             }
-            
+
             if (removed) {
                 saveConfiguration();
             }
-            
+
             return removed;
-            
+
         } catch (Exception e) {
             return false;
         }
     }
-    
+
     /**
      * 更新网站收藏状态
+     * 按对象身份匹配
      * @param website 网站对象
      * @param favorite 收藏状态
      * @return 是否成功
@@ -874,32 +980,56 @@ public class ToolController {
         try {
             Config config = ConfigManager.getInstance().getConfig();
             if (config.getWebSite() == null) return false;
-            
+
             boolean updated = false;
+            outer:
             for (Config.WebSiteCategory category : config.getWebSite()) {
                 if (category.getContent() != null) {
                     for (WebSite w : category.getContent()) {
-                        if (w.getUrl().equals(website.getUrl()) && 
-                            w.getDesc().equals(website.getDesc())) {
+                        if (w == website) {
                             w.setFavor(favorite);
                             updated = true;
-                            break;
+                            break outer;
                         }
                     }
                 }
             }
-            
+
             if (updated) {
                 saveConfiguration();
             }
-            
+
             return updated;
-            
+
         } catch (Exception e) {
             return false;
         }
     }
-    
+
+    /**
+     * 根据网站描述获取原始分类类型（不经过显示名转换）
+     * @param websiteDesc 网站描述
+     * @return 分类类型，未找到返回null
+     */
+    public String getWebSiteCategoryType(String websiteDesc) {
+        try {
+            Config config = ConfigManager.getInstance().getConfig();
+            if (config.getWebSite() != null) {
+                for (Config.WebSiteCategory category : config.getWebSite()) {
+                    if (category.getContent() != null) {
+                        for (WebSite website : category.getContent()) {
+                            if (website.getDesc() != null && website.getDesc().equals(websiteDesc)) {
+                                return category.getType();
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+        }
+        return null;
+    }
+
     /**
      * 根据网站描述获取分类
      * @param websiteDesc 网站描述

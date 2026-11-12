@@ -18,7 +18,11 @@ public class DslExpressionParser {
     
     // 函数调用模式: function_name(arg1, arg2, ...)
     private static final Pattern FUNCTION_PATTERN = Pattern.compile("^([a-zA-Z_][a-zA-Z0-9_]*)\\((.*)\\)$");
-    
+
+    // 函数调用+索引模式: function_name(arg1, ...)[N]，如 split(http.request.url, "/")[2]
+    private static final Pattern FUNCTION_WITH_INDEX_PATTERN =
+            Pattern.compile("^([a-zA-Z_][a-zA-Z0-9_]*)\\((.*)\\)\\[(\\d+)\\]$");
+
     // 链式访问模式: path.to.property[index]
     private static final Pattern CHAIN_PATTERN = Pattern.compile("^[a-zA-Z0-9._\\[\\]\\*]+$");
     
@@ -40,7 +44,17 @@ public class DslExpressionParser {
         }
         
         expression = expression.trim();
-        
+
+        // 0. 尝试匹配 函数调用[索引]，如 split(http.request.url, "/")[2]
+        Matcher functionIndexMatcher = FUNCTION_WITH_INDEX_PATTERN.matcher(expression);
+        if (functionIndexMatcher.matches()) {
+            return evaluateFunctionWithIndex(
+                    functionIndexMatcher.group(1),
+                    functionIndexMatcher.group(2),
+                    Integer.parseInt(functionIndexMatcher.group(3)),
+                    context);
+        }
+
         // 1. 尝试匹配函数调用
         Matcher functionMatcher = FUNCTION_PATTERN.matcher(expression);
         if (functionMatcher.matches()) {
@@ -48,14 +62,32 @@ public class DslExpressionParser {
             String argsString = functionMatcher.group(2);
             return evaluateFunction(functionName, argsString, context);
         }
-        
+
         // 2. 尝试匹配链式访问
         if (CHAIN_PATTERN.matcher(expression).matches()) {
             return chainAccessor.navigate(expression, context);
         }
-        
+
         // 3. 不匹配任何模式，返回原值
         return expression;
+    }
+
+    /**
+     * 执行函数调用并对结果取索引
+     * 结果为List时取元素，为String时取字符
+     */
+    private Object evaluateFunctionWithIndex(String functionName, String argsString, int index, HttpContext context) {
+        Object result = evaluateFunction(functionName, argsString, context);
+
+        if (result instanceof List) {
+            List<?> list = (List<?>) result;
+            return index < list.size() ? list.get(index) : null;
+        }
+        if (result instanceof String) {
+            String text = (String) result;
+            return (index >= 0 && index < text.length()) ? String.valueOf(text.charAt(index)) : null;
+        }
+        return result;
     }
     
     /**

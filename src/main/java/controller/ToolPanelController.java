@@ -167,24 +167,45 @@ public class ToolPanelController {
     
     /**
      * 切换收藏状态
+     * 以命令行的收藏为准，并通过updateToolCommandFavorite持久化到commandList，
+     * 避免重启后收藏状态回退
      */
     public void toggleFavorite(int selectedRow, List<HttpToolCommand> currentData) {
         if (selectedRow == -1) {
             notifyShowMessage("请先选择工具", "提示", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
-        
+
         HttpToolCommand toolCommand = currentData.get(selectedRow);
         HttpTool tool = toolCommand.getParentTool();
-        boolean newFavoriteState = !tool.isFavor();
-        
-        if (ToolController.getInstance().updateToolFavorite(tool, newFavoriteState)) {
-            tool.setFavor(newFavoriteState);
+        boolean newFavoriteState = !toolCommand.isFavor();
+
+        if (ToolController.getInstance().updateToolCommandFavorite(toolCommand, newFavoriteState)) {
             toolCommand.setFavor(newFavoriteState);
-            
-            String status = tool.isFavor() ? "已收藏" : "已取消收藏";
-            notifyStatusUpdate(status + ": " + tool.getToolName());
+            if (tool != null) {
+                tool.setFavor(newFavoriteState);
+            }
+
+            String status = newFavoriteState ? "已收藏" : "已取消收藏";
+            notifyStatusUpdate(status + ": " + toolCommand.getToolName());
             notifyDataChanged();
+        } else {
+            notifyStatusUpdate("更新收藏状态失败");
+        }
+    }
+
+    /**
+     * 表格收藏复选框被直接编辑时持久化
+     */
+    public void handleCommandFavoriteToggled(HttpToolCommand toolCommand) {
+        if (toolCommand == null) {
+            return;
+        }
+        if (ToolController.getInstance().updateToolCommandFavorite(toolCommand, toolCommand.isFavor())) {
+            if (toolCommand.getParentTool() != null) {
+                toolCommand.getParentTool().setFavor(toolCommand.isFavor());
+            }
+            notifyStatusUpdate((toolCommand.isFavor() ? "已收藏" : "已取消收藏") + ": " + toolCommand.getToolName());
         } else {
             notifyStatusUpdate("更新收藏状态失败");
         }
@@ -250,10 +271,11 @@ public class ToolPanelController {
      */
     private boolean checkCategoryMatch(HttpToolCommand toolCommand, String selectedCategory) {
         I18nManager i18n = I18nManager.getInstance();
-        if (selectedCategory.equals(i18n.getText("filter.all"))) {
+        if (selectedCategory == null || selectedCategory.equals(i18n.getText("filter.all"))) {
             return true;
         } else {
-            return toolCommand.getCategory().equals(selectedCategory);
+            return toolCommand.getCategory() != null
+                    && toolCommand.getCategory().equals(selectedCategory);
         }
     }
     
@@ -280,7 +302,7 @@ public class ToolPanelController {
         }
         
         I18nManager i18n = I18nManager.getInstance();
-        if (!selectedCategory.equals(i18n.getText("filter.all"))) {
+        if (selectedCategory != null && !selectedCategory.equals(i18n.getText("filter.all"))) {
             statusMsg += " | 分类: " + selectedCategory;
         }
         

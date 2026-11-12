@@ -37,7 +37,10 @@ public class WebsitePanel extends JPanel implements I18nManager.LanguageChangeLi
     
     // 控制器
     private WebSitePanelController controller;
-    
+
+    // 最近一次编辑对话框选择的分类
+    private String lastDialogCategory;
+
     // 列索引常量
     private static final int FAVORITE_COLUMN_INDEX = 2;
     private static final int URL_COLUMN_INDEX = 1;
@@ -448,28 +451,31 @@ public class WebsitePanel extends JPanel implements I18nManager.LanguageChangeLi
     public WebSite showAddWebSiteDialog(Component parentComponent) {
         WebSiteEditDialog dialog = new WebSiteEditDialog(SwingUtilities.getWindowAncestor(parentComponent), null);
         dialog.setVisible(true);
-        
+
         if (dialog.isConfirmed()) {
+            lastDialogCategory = dialog.getSelectedCategory();
             return dialog.getWebSite();
         }
+        lastDialogCategory = null;
         return null;
     }
-    
+
     @Override
     public WebSite showEditWebSiteDialog(Component parentComponent, WebSite website) {
         WebSiteEditDialog dialog = new WebSiteEditDialog(SwingUtilities.getWindowAncestor(parentComponent), website);
         dialog.setVisible(true);
-        
+
         if (dialog.isConfirmed()) {
+            lastDialogCategory = dialog.getSelectedCategory();
             return dialog.getWebSite();
         }
+        lastDialogCategory = null;
         return null;
     }
-    
+
     @Override
     public String getSelectedCategory() {
-        // 这里需要从对话框中获取选中的分类，暂时返回默认值
-        return "OSINT";
+        return lastDialogCategory;
     }
     
     @Override

@@ -1,8 +1,11 @@
 import burp.api.montoya.BurpExtension;
 import burp.api.montoya.MontoyaApi;
 import burp.api.montoya.extension.ExtensionUnloadingHandler;
+import controller.ToolController;
+import executor.ToolExecutor;
 import manager.ApiManager;
 import manager.ConfigManager;
+import model.ThirdPartyTool;
 import util.I18nManager;
 import view.MainPanel;
 import view.menu.ArsenalMenuProvider;
@@ -60,10 +63,21 @@ public class BpArsenal implements BurpExtension {
                 api.userInterface().registerContextMenuItemsProvider(
                     new ArsenalContextMenuProvider()
                 );
-                
-                
+
+
             } catch (Exception e) {
                 // 上下文菜单注册失败，但不影响扩展加载
+            }
+
+            // 自动启动配置了autoStart的第三方工具（executeThirdPartyTool内部为异步执行）
+            try {
+                for (ThirdPartyTool tool : ToolController.getInstance().getAllThirdPartyTools()) {
+                    if (tool.isAutoStart()) {
+                        ToolExecutor.getInstance().executeThirdPartyTool(tool);
+                    }
+                }
+            } catch (Exception e) {
+                // 自启动失败不影响扩展加载
             }
 
 

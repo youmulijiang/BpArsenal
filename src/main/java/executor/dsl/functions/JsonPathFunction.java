@@ -66,7 +66,17 @@ public class JsonPathFunction implements FunctionHandler {
             if (part.contains("[")) {
                 int bracketIndex = part.indexOf('[');
                 String fieldName = part.substring(0, bracketIndex);
-                String indexStr = part.substring(bracketIndex + 1, part.indexOf(']'));
+                int closeIndex = part.indexOf(']');
+                if (closeIndex < 0) {
+                    // 缺少右括号，按普通字段处理，避免StringIndexOutOfBoundsException
+                    if (!fieldName.isEmpty() && current.isJsonObject()) {
+                        current = current.getAsJsonObject().get(fieldName);
+                    } else {
+                        return null;
+                    }
+                    continue;
+                }
+                String indexStr = part.substring(bracketIndex + 1, closeIndex);
                 int index = Integer.parseInt(indexStr);
                 
                 // 先获取字段

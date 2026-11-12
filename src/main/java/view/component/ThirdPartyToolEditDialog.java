@@ -1,6 +1,7 @@
 package view.component;
 
 import model.ThirdPartyTool;
+import controller.ToolController;
 import util.I18nManager;
 import javax.swing.*;
 import javax.swing.border.TitledBorder;
@@ -13,7 +14,7 @@ import java.awt.event.ActionListener;
  * 用于添加和编辑第三方工具
  */
 public class ThirdPartyToolEditDialog extends JDialog implements I18nManager.LanguageChangeListener {
-    
+
     private JTextField toolNameField;
     private JTextField startCommandField;
     private JTextField noteField;
@@ -24,23 +25,36 @@ public class ThirdPartyToolEditDialog extends JDialog implements I18nManager.Lan
     private JComboBox<String> categoryCombo;
     private JButton confirmButton;
     private JButton cancelButton;
-    
+
     private ThirdPartyTool tool;
     private boolean confirmed = false;
     private boolean isEditing = false;
-    
+
+    // 编辑时的真实分类；用户未主动修改分类下拉框时保持该值，避免编辑时被错误归类
+    private String originalCategory;
+    private boolean categoryChangedByUser = false;
+    private boolean suppressCategoryEvents = false;
+
     public ThirdPartyToolEditDialog(Window parent, ThirdPartyTool tool) {
         super(parent);
         this.tool = tool;
         this.isEditing = (tool != null);
-        
+
         // 注册语言变更监听器
         I18nManager.getInstance().addLanguageChangeListener(this);
-        
+
+        // 关闭时移除监听器，避免监听器泄漏
+        addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override
+            public void windowClosed(java.awt.event.WindowEvent e) {
+                I18nManager.getInstance().removeLanguageChangeListener(ThirdPartyToolEditDialog.this);
+            }
+        });
+
         initializeUI();
         setupEventHandlers();
         loadData();
-        
+
         pack();
         setLocationRelativeTo(parent);
         setResizable(false);
@@ -311,7 +325,16 @@ public class ThirdPartyToolEditDialog extends JDialog implements I18nManager.Lan
                 dispose();
             }
         });
-        
+
+        // 用户主动修改分类时记录标记（程序性 setSelectedItem 会被 suppressCategoryEvents 抑制）
+        if (categoryCombo != null) {
+            categoryCombo.addActionListener(e -> {
+                if (!suppressCategoryEvents) {
+                    categoryChangedByUser = true;
+                }
+            });
+        }
+
         // ESC键取消
         getRootPane().registerKeyboardAction(
             e -> {
@@ -334,15 +357,11 @@ public class ThirdPartyToolEditDialog extends JDialog implements I18nManager.Lan
             workDirField.setText(tool.getWorkDir() != null ? tool.getWorkDir() : "");
             favorCheckBox.setSelected(tool.isFavor());
             autoStartCheckBox.setSelected(tool.isAutoStart());
-            
-            // 设置分类
-            String category = getCategoryDisplayName(tool);
-            for (int i = 0; i < categoryCombo.getItemCount(); i++) {
-                if (categoryCombo.getItemAt(i).equals(category)) {
-                    categoryCombo.setSelectedIndex(i);
-                    break;
-                }
-            }
+
+            // 设置真实分类（按工具名查询原始type值，避免硬编码导致编辑后分类漂移）
+            String category = ToolController.getInstance().getThirdPartyToolCategoryType(tool.getToolName());
+            selectCategorySilently(category);
+            originalCategory = category;
         } else {
             // 默认值
             noteField.setText("");
@@ -411,17 +430,45 @@ public class ThirdPartyToolEditDialog extends JDialog implements I18nManager.Lan
      * 获取分类显示名称
      * @param tool 工具对象
      * @return 分类名称
+     * @deprecated 已改用ToolController按工具名查询真实分类
      */
+    @Deprecated
     private String getCategoryDisplayName(ThirdPartyTool tool) {
         // 这里可以根据工具来源获取分类，暂时返回默认值
         return "渗透工具";
     }
-    
+
+    /**
+     * 静默设置分类下拉框选中项（匹配原始type值或对应的内部分类代码）
+     * @param category 真实分类类型
+     */
+    private void selectCategorySilently(String category) {
+        if (category == null || categoryCombo == null) {
+            return;
+        }
+        suppressCategoryEvents = true;
+        try {
+            for (int i = 0; i < categoryCombo.getItemCount(); i++) {
+                String item = categoryCombo.getItemAt(i);
+                if (item.equals(category) || getCategoryCode(item).equals(category)) {
+                    categoryCombo.setSelectedIndex(i);
+                    return;
+                }
+            }
+        } finally {
+            suppressCategoryEvents = false;
+        }
+    }
+
     /**
      * 获取选中的分类
+     * 编辑已有工具且用户未主动修改分类时，返回原分类，避免编辑操作把工具静默移到错误分类
      * @return 分类类型
      */
     public String getSelectedCategory() {
+        if (!categoryChangedByUser && originalCategory != null) {
+            return originalCategory;
+        }
         String displayName = (String) categoryCombo.getSelectedItem();
         return getCategoryCode(displayName);
     }
@@ -528,16 +575,21 @@ public class ThirdPartyToolEditDialog extends JDialog implements I18nManager.Lan
         if (categoryCombo != null) {
             I18nManager i18n = I18nManager.getInstance();
             Object selectedItem = categoryCombo.getSelectedItem();
-            categoryCombo.removeAllItems();
-            categoryCombo.addItem(i18n.getText("thirdparty.category.penetration"));
-            categoryCombo.addItem(i18n.getText("thirdparty.category.editor"));
-            categoryCombo.addItem(i18n.getText("thirdparty.category.network"));
-            categoryCombo.addItem(i18n.getText("thirdparty.category.analysis"));
-            categoryCombo.addItem(i18n.getText("thirdparty.category.other"));
-            
-            // 尝试恢复选择
-            if (selectedItem != null) {
-                categoryCombo.setSelectedItem(selectedItem);
+            suppressCategoryEvents = true;
+            try {
+                categoryCombo.removeAllItems();
+                categoryCombo.addItem(i18n.getText("thirdparty.category.penetration"));
+                categoryCombo.addItem(i18n.getText("thirdparty.category.editor"));
+                categoryCombo.addItem(i18n.getText("thirdparty.category.network"));
+                categoryCombo.addItem(i18n.getText("thirdparty.category.analysis"));
+                categoryCombo.addItem(i18n.getText("thirdparty.category.other"));
+
+                // 尝试恢复选择
+                if (selectedItem != null) {
+                    categoryCombo.setSelectedItem(selectedItem);
+                }
+            } finally {
+                suppressCategoryEvents = false;
             }
         }
     }

@@ -9,6 +9,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * tmpFile函数实现 - 生成临时文件
@@ -108,18 +109,19 @@ public class TmpFileFunction implements FunctionHandler {
     private File createTempFile(String extension) throws IOException {
         // 获取临时目录
         String tempDir = System.getProperty("java.io.tmpdir");
-        
-        // 创建唯一的临时文件名
-        String fileName = TEMP_PREFIX + System.currentTimeMillis() + "_" + 
-                         Thread.currentThread().getId() + extension;
-        
+
+        // 创建唯一的临时文件名（UUID保证同一条命令内多次调用也不会冲突）
+        String fileName = TEMP_PREFIX + System.currentTimeMillis() + "_" +
+                         UUID.randomUUID().toString().substring(0, 8) + extension;
+
         File tempFile = new File(tempDir, fileName);
-        
-        // 确保文件不存在
-        if (tempFile.exists()) {
-            tempFile.delete();
+
+        // 确保目录存在
+        File parentDir = tempFile.getParentFile();
+        if (parentDir != null && !parentDir.exists()) {
+            parentDir.mkdirs();
         }
-        
+
         return tempFile;
     }
     

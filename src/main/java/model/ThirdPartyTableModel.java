@@ -67,7 +67,7 @@ public class ThirdPartyTableModel extends AbstractTableModel {
             case 2: return tool.isFavor();
             case 3: return tool.getNote() != null ? tool.getNote() : "";
             case 4: return tool.getWorkDir() != null ? tool.getWorkDir() : "";
-            case 5: return ToolController.getInstance().getThirdPartyToolCategory(tool.getToolName());
+            case 5: return ToolController.getInstance().getThirdPartyToolCategoryType(tool.getToolName());
             case 6: return tool.isAutoStart();
             default: return null;
         }
@@ -263,8 +263,8 @@ public class ThirdPartyTableModel extends AbstractTableModel {
     public List<ThirdPartyTool> getToolsByCategory(String category) {
         List<ThirdPartyTool> categoryTools = new ArrayList<>();
         for (ThirdPartyTool tool : tools) {
-            String toolCategory = ToolController.getInstance().getThirdPartyToolCategory(tool.getToolName());
-            if (toolCategory.equals(category)) {
+            String toolCategory = ToolController.getInstance().getThirdPartyToolCategoryType(tool.getToolName());
+            if (category.equals(toolCategory)) {
                 categoryTools.add(tool);
             }
         }

@@ -62,7 +62,7 @@ public class WebSiteTableModel extends AbstractTableModel {
             case 0: return website.getDesc();
             case 1: return website.getUrl();
             case 2: return website.isFavor();
-            case 3: return ToolController.getInstance().getWebSiteCategory(website.getDesc());
+            case 3: return ToolController.getInstance().getWebSiteCategoryType(website.getDesc());
             default: return null;
         }
     }
@@ -249,8 +249,8 @@ public class WebSiteTableModel extends AbstractTableModel {
     public List<WebSite> getWebSitesByCategory(String category) {
         List<WebSite> categoryWebSites = new ArrayList<>();
         for (WebSite website : websites) {
-            String websiteCategory = ToolController.getInstance().getWebSiteCategory(website.getDesc());
-            if (websiteCategory.equals(category)) {
+            String websiteCategory = ToolController.getInstance().getWebSiteCategoryType(website.getDesc());
+            if (category.equals(websiteCategory)) {
                 categoryWebSites.add(website);
             }
         }
@@ -280,8 +280,8 @@ public class WebSiteTableModel extends AbstractTableModel {
                 matches = true;
             }
             if (searchInCategory) {
-                String category = ToolController.getInstance().getWebSiteCategory(website.getDesc());
-                if (category.toLowerCase().contains(searchLower)) {
+                String category = ToolController.getInstance().getWebSiteCategoryType(website.getDesc());
+                if (category != null && category.toLowerCase().contains(searchLower)) {
                     matches = true;
                 }
             }

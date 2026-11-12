@@ -37,9 +37,18 @@ public class ChainAccessor {
             if (current == null) {
                 return null;
             }
-            
+
+            // Map键中含'.'的情况（如headers存储键为"user.agent"），
+            // 优先用剩余路径拼接成完整键查找（长键优先）
+            if (current instanceof Map) {
+                Object joinedValue = getJoinedMapValue((Map<?, ?>) current, parts, i);
+                if (joinedValue != null) {
+                    return joinedValue;
+                }
+            }
+
             String part = parts[i];
-            
+
             // 处理数组索引: requests[0]
             if (part.contains("[")) {
                 current = handleIndexAccess(current, part);
@@ -54,10 +63,44 @@ public class ChainAccessor {
                 current = getProperty(current, part);
             }
         }
-        
+
         return current;
     }
-    
+
+    /**
+     * 在Map中按剩余路径拼接的完整键查找值
+     * 依次尝试 "a.b.c"、"a.b"、"a"（最长优先），支持headers.user.agent这类键
+     * @param map 目标Map
+     * @param parts 完整路径分段
+     * @param startIndex 当前段索引
+     * @return 找到的值，未找到返回null
+     */
+    private Object getJoinedMapValue(Map<?, ?> map, String[] parts, int startIndex) {
+        for (int end = parts.length; end > startIndex; end--) {
+            String joined = String.join(".", Arrays.copyOfRange(parts, startIndex, end));
+            Object value = lookupInMap(map, joined);
+            if (value != null) {
+                return value;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 在Map中查找键（尝试原样、小写、点替换为下划线）
+     */
+    private Object lookupInMap(Map<?, ?> map, String key) {
+        Object value = map.get(key);
+        if (value != null) {
+            return value;
+        }
+        value = map.get(key.toLowerCase());
+        if (value != null) {
+            return value;
+        }
+        return map.get(key.replace(".", "_"));
+    }
+
     /**
      * 处理索引访问
      * 支持: [0], [1], first, last
@@ -65,7 +108,12 @@ public class ChainAccessor {
     private Object handleIndexAccess(Object obj, String expression) {
         int bracketIndex = expression.indexOf('[');
         String propertyName = expression.substring(0, bracketIndex);
-        String indexStr = expression.substring(bracketIndex + 1, expression.indexOf(']'));
+        int closeIndex = expression.indexOf(']');
+        if (closeIndex < 0) {
+            // 缺少右括号，按普通属性处理，避免StringIndexOutOfBoundsException
+            return propertyName.isEmpty() ? obj : getProperty(obj, propertyName);
+        }
+        String indexStr = expression.substring(bracketIndex + 1, closeIndex);
         
         // 先获取集合属性
         Object collection = propertyName.isEmpty() ? obj : getProperty(obj, propertyName);
@@ -130,19 +178,28 @@ public class ChainAccessor {
     private Object navigateFromObject(Object obj, String path) {
         String[] parts = path.split("\\.");
         Object current = obj;
-        
-        for (String part : parts) {
+
+        for (int i = 0; i < parts.length; i++) {
             if (current == null) {
                 return null;
             }
-            
+
+            // Map键中含'.'的情况，优先用剩余路径拼接的完整键查找
+            if (current instanceof Map) {
+                Object joinedValue = getJoinedMapValue((Map<?, ?>) current, parts, i);
+                if (joinedValue != null) {
+                    return joinedValue;
+                }
+            }
+
+            String part = parts[i];
             if (part.contains("[")) {
                 current = handleIndexAccess(current, part);
             } else {
                 current = getProperty(current, part);
             }
         }
-        
+
         return current;
     }
     
@@ -175,19 +232,7 @@ public class ChainAccessor {
         
         // Map类型
         if (obj instanceof Map) {
-            Map<?, ?> map = (Map<?, ?>) obj;
-            // 尝试直接获取
-            Object value = map.get(propertyName);
-            if (value != null) {
-                return value;
-            }
-            // 尝试小写
-            value = map.get(propertyName.toLowerCase());
-            if (value != null) {
-                return value;
-            }
-            // 尝试替换点号为下划线
-            return map.get(propertyName.replace(".", "_"));
+            return lookupInMap((Map<?, ?>) obj, propertyName);
         }
         
         // List类型（处理语义化索引）

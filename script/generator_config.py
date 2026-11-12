@@ -61,9 +61,9 @@ class DirectoryTree:
     def get_tool_info(self) -> Dict:
         """获取工具目录信息"""
         tools = []
-        
+
         if not self.root_path.exists():
-            return {"tools": [], "total": 0}
+            return {"tools": [], "total": 0, "root": str(self.root_path)}
         
         for item in self.root_path.iterdir():
             if item.is_dir():
@@ -268,37 +268,43 @@ class AIConfigGenerator:
         self.model = model
     
     def generate_config(self, prompt: str) -> str:
-        """调用AI生成配置"""
+        """调用AI生成配置（兼容 openai >= 1.0 与旧版本SDK）"""
         try:
             import openai
         except ImportError:
             print("错误: 需要安装openai库。运行: pip install openai", file=sys.stderr)
             sys.exit(1)
-        
+
+        messages = [
+            {"role": "system", "content": "你是一个安全测试工具配置专家，精通各种渗透测试工具的使用。"},
+            {"role": "user", "content": prompt}
+        ]
+
+        print(f"🤖 正在调用 {self.model} 生成配置...")
+
         try:
-            # 设置API密钥
-            openai.api_key = self.api_key
-            
-            print(f"🤖 正在调用 {self.model} 生成配置...")
-            
-            # 调用OpenAI API
-            response = openai.ChatCompletion.create(
+            # openai >= 1.0：使用Client实例
+            client = openai.OpenAI(api_key=self.api_key)
+            response = client.chat.completions.create(
                 model=self.model,
-                messages=[
-                    {"role": "system", "content": "你是一个安全测试工具配置专家，精通各种渗透测试工具的使用。"},
-                    {"role": "user", "content": prompt}
-                ],
+                messages=messages,
                 temperature=0.7,
                 max_tokens=4000
             )
-            
             config = response.choices[0].message.content.strip()
-            print("✅ 配置生成成功！")
-            return config
-            
-        except Exception as e:
-            print(f"❌ AI生成失败: {str(e)}", file=sys.stderr)
-            sys.exit(1)
+        except AttributeError:
+            # openai < 1.0：旧版全局API
+            openai.api_key = self.api_key
+            response = openai.ChatCompletion.create(
+                model=self.model,
+                messages=messages,
+                temperature=0.7,
+                max_tokens=4000
+            )
+            config = response.choices[0].message.content.strip()
+
+        print("✅ 配置生成成功！")
+        return config
 
 
 def main():

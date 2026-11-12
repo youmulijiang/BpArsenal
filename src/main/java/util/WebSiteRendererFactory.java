@@ -155,7 +155,7 @@ public class WebSiteRendererFactory {
                 
                 // 如果URL太长，截断显示
                 if (url.length() > 100) {
-                    setText(url.substring(0, 57) + "...");
+                    setText(url.substring(0, 97) + "...");
                 } else {
                     setText(url);
                 }

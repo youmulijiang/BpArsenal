@@ -237,12 +237,23 @@ public class ToolPanel extends JPanel implements
     private void setupTable() {
         // 应用基本样式
         TableRendererFactory.applyTableStyle(toolTable);
-        
+
         // 设置列宽
         setupColumnWidths();
-        
+
         // 配置渲染器
         TableRendererFactory.configureTableRenderers(toolTable, FAVORITE_COLUMN_INDEX, COMMAND_COLUMN_INDEX);
+
+        // 收藏复选框被直接编辑时持久化到配置（只响应单列更新，忽略整表刷新）
+        tableModel.addTableModelListener(e -> {
+            if (e.getType() == javax.swing.event.TableModelEvent.UPDATE
+                    && e.getColumn() == FAVORITE_COLUMN_INDEX && e.getFirstRow() >= 0) {
+                HttpToolCommand command = tableModel.getToolCommandAt(e.getFirstRow());
+                if (command != null) {
+                    controller.handleCommandFavoriteToggled(command);
+                }
+            }
+        });
     }
     
     /**
@@ -358,16 +369,19 @@ public class ToolPanel extends JPanel implements
     
     /**
      * 初始化搜索范围下拉框选项
+     * 6项顺序必须与ToolPanelController.checkSearchMatch的switch一致
      */
     private void initializeSearchColumnFilter() {
         if (searchColumnFilter != null) {
             I18nManager i18n = I18nManager.getInstance();
-            
+
             searchColumnFilter.addItem(i18n.getText("filter.all"));
             searchColumnFilter.addItem(i18n.getText("tools.tool.name"));
             searchColumnFilter.addItem(i18n.getText("tools.command"));
+            searchColumnFilter.addItem(i18n.getText("tools.note"));
+            searchColumnFilter.addItem(i18n.getText("tools.work.dir"));
             searchColumnFilter.addItem(i18n.getText("label.category"));
-            
+
             searchColumnFilter.setSelectedIndex(0);
         }
     }

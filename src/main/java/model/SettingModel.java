@@ -1,15 +1,12 @@
 package model;
 
 import util.I18nManager;
-import util.JsonUtil;
-import util.YamlUtil;
 import util.OsUtils;
 
-import java.io.*;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.Properties;
 import java.util.Locale;
 
@@ -18,11 +15,13 @@ import java.util.Locale;
  * 负责管理插件设置数据和配置文件操作
  */
 public class SettingModel {
-    
-    // 配置文件路径
-    private static final String TOOL_CONFIG_FILE = "tool_settings.properties";
-    private static final String CONFIG_FILE_PATH = "src/main/resources/config.yaml";
-    
+
+    // 配置文件目录（用户主目录，避免依赖Burp进程工作目录）
+    private static final String USER_SETTINGS_DIR =
+            System.getProperty("user.home") + File.separator + ".bparsenal";
+    private static final String TOOL_CONFIG_FILE =
+            USER_SETTINGS_DIR + File.separator + "tool_settings.properties";
+
     // 工具设置
     private Properties toolSettings;
     
@@ -44,7 +43,7 @@ public class SettingModel {
     public void loadToolSettings() {
         toolSettings = new Properties();
         File settingsFile = new File(TOOL_CONFIG_FILE);
-        
+
         if (settingsFile.exists()) {
             try (FileInputStream fis = new FileInputStream(settingsFile)) {
                 toolSettings.load(fis);
@@ -52,13 +51,19 @@ public class SettingModel {
             }
         }
     }
-    
+
     /**
      * 保存工具设置
      * @throws IOException 保存失败异常
      */
     public void saveToolSettings() throws IOException {
-        try (FileOutputStream fos = new FileOutputStream(TOOL_CONFIG_FILE)) {
+        File settingsFile = new File(TOOL_CONFIG_FILE);
+        File parentDir = settingsFile.getParentFile();
+        if (parentDir != null && !parentDir.exists() && !parentDir.mkdirs()) {
+            throw new IOException("无法创建设置目录: " + USER_SETTINGS_DIR);
+        }
+
+        try (FileOutputStream fos = new FileOutputStream(settingsFile)) {
             toolSettings.store(fos, "BpArsenal Tool Settings");
         }
     }
@@ -153,115 +158,12 @@ public class SettingModel {
      * @throws IOException 创建失败异常
      */
     public void createDirectory(String directoryPath) throws IOException {
-        Files.createDirectories(Paths.get(directoryPath));
-    }
-    
-    /**
-     * 备份当前配置文件
-     * @return 备份文件路径
-     * @throws IOException 备份失败异常
-     */
-    public String backupCurrentConfig() throws IOException {
-        Path configPath = Paths.get(CONFIG_FILE_PATH);
-        if (Files.exists(configPath)) {
-            String backupFileName = "config_backup_" + System.currentTimeMillis() + ".yaml";
-            Path backupPath = Paths.get("src/main/resources/" + backupFileName);
-            Files.copy(configPath, backupPath);
-            return backupPath.toString();
+        File directory = new File(directoryPath);
+        if (!directory.exists() && !directory.mkdirs()) {
+            throw new IOException("无法创建目录: " + directoryPath);
         }
-        return null;
     }
-    
-    /**
-     * 导入配置文件（支持YAML和JSON格式）
-     * @param configFilePath 配置文件路径
-     * @throws Exception 导入失败异常
-     */
-    public void importConfiguration(String configFilePath) throws Exception {
-        // 读取文件内容
-        String content = new String(Files.readAllBytes(Paths.get(configFilePath)), StandardCharsets.UTF_8);
-        
-        Config config = null;
-        
-        // 根据文件扩展名判断格式
-        if (configFilePath.endsWith(".yaml") || configFilePath.endsWith(".yml")) {
-            // YAML格式
-            config = YamlUtil.fromYaml(content, Config.class);
-        } else if (configFilePath.endsWith(".json")) {
-            // JSON格式（向后兼容）
-            config = JsonUtil.fromJson(content, Config.class);
-        } else {
-            // 尝试自动检测格式
-            try {
-                config = YamlUtil.fromYaml(content, Config.class);
-            } catch (Exception e) {
-                config = JsonUtil.fromJson(content, Config.class);
-            }
-        }
-        
-        if (config == null) {
-            throw new Exception("配置文件格式无效");
-        }
-        
-        // 转换为YAML格式并写入
-        String yamlContent = YamlUtil.toYaml(config);
-        Path configPath = Paths.get(CONFIG_FILE_PATH);
-        Files.write(configPath, yamlContent.getBytes(StandardCharsets.UTF_8));
-    }
-    
-    /**
-     * 导出配置文件（默认YAML格式，支持JSON）
-     * @param exportFilePath 导出文件路径
-     * @param config 配置对象
-     * @throws Exception 导出失败异常
-     */
-    public void exportConfiguration(String exportFilePath, Config config) throws Exception {
-        String content;
-        
-        // 根据文件扩展名选择格式
-        if (exportFilePath.endsWith(".json")) {
-            // 导出为JSON格式
-            content = JsonUtil.toJson(config);
-        } else {
-            // 默认导出为YAML格式
-            content = YamlUtil.toYaml(config);
-            
-            // 如果文件名没有扩展名，自动添加.yaml
-            if (!exportFilePath.endsWith(".yaml") && !exportFilePath.endsWith(".yml")) {
-                exportFilePath = exportFilePath + ".yaml";
-            }
-        }
-        
-        // 写入文件
-        Files.write(Paths.get(exportFilePath), content.getBytes(StandardCharsets.UTF_8));
-    }
-    
-    /**
-     * 重置配置文件
-     * @throws Exception 重置失败异常
-     */
-    public void resetConfiguration() throws Exception {
-        // 创建默认配置
-        Config defaultConfig = createDefaultConfig();
-        
-        // 写入默认配置（YAML格式）
-        String yamlContent = YamlUtil.toYaml(defaultConfig);
-        Path configPath = Paths.get(CONFIG_FILE_PATH);
-        Files.write(configPath, yamlContent.getBytes(StandardCharsets.UTF_8));
-    }
-    
-    /**
-     * 创建默认配置
-     * @return 默认配置对象
-     */
-    private Config createDefaultConfig() {
-        Config config = new Config();
-        config.setHttpTool(new java.util.ArrayList<>());
-        config.setThirtyPart(new java.util.ArrayList<>());
-        config.setWebSite(new java.util.ArrayList<>());
-        return config;
-    }
-    
+
     /**
      * 自动检测系统语言
      * @return 推荐的语言设置

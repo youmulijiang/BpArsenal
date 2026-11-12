@@ -133,18 +133,21 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
         gbc.anchor = GridBagConstraints.WEST;
         
         I18nManager i18n = I18nManager.getInstance();
-        
-        // 按钮行
+
+        // 按钮行（监听器直接绑定到按钮实例，语言切换后依然有效）
         gbc.gridx = 0; gbc.gridy = 0;
         importConfigButton = createStyledButton(i18n.getText("settings.config.import"), new Color(46, 125, 50));
+        importConfigButton.addActionListener(e -> importConfiguration());
         configPanel.add(importConfigButton, gbc);
-        
+
         gbc.gridx = 1; gbc.gridy = 0;
         exportConfigButton = createStyledButton(i18n.getText("settings.config.export"), new Color(25, 118, 210));
+        exportConfigButton.addActionListener(e -> exportConfiguration());
         configPanel.add(exportConfigButton, gbc);
-        
+
         gbc.gridx = 2; gbc.gridy = 0;
         resetConfigButton = createStyledButton(i18n.getText("settings.config.reset"), new Color(211, 47, 47));
+        resetConfigButton.addActionListener(e -> resetConfiguration());
         configPanel.add(resetConfigButton, gbc);
         
         // 状态标签
@@ -207,11 +210,13 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
         gbc.weightx = 0;
         browseDirectoryButton = createStyledButton(I18nManager.getInstance().getText("button.browse"), new Color(255, 152, 0));
         browseDirectoryButton.setPreferredSize(new Dimension(70, 25));
+        browseDirectoryButton.addActionListener(e -> browseToolDirectory());
         directoryPanel.add(browseDirectoryButton, gbc);
-        
+
         gbc.gridx = 3; gbc.gridy = 0;
         applyDirectoryButton = createStyledButton(I18nManager.getInstance().getText("button.apply"), new Color(46, 125, 50));
         applyDirectoryButton.setPreferredSize(new Dimension(70, 25));
+        applyDirectoryButton.addActionListener(e -> applyToolDirectory());
         directoryPanel.add(applyDirectoryButton, gbc);
         
         // 状态行
@@ -285,11 +290,13 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
         gbc.weightx = 0;
         resetPrefixButton = createStyledButton(I18nManager.getInstance().getText("button.reset"), new Color(255, 152, 0));
         resetPrefixButton.setPreferredSize(new Dimension(70, 25));
+        resetPrefixButton.addActionListener(e -> resetCommandPrefix());
         prefixPanel.add(resetPrefixButton, gbc);
-        
+
         gbc.gridx = 3; gbc.gridy = 1;
         applyPrefixButton = createStyledButton(I18nManager.getInstance().getText("button.apply"), new Color(46, 125, 50));
         applyPrefixButton.setPreferredSize(new Dimension(70, 25));
+        applyPrefixButton.addActionListener(e -> applyCommandPrefix());
         prefixPanel.add(applyPrefixButton, gbc);
         
         // 状态行
@@ -454,37 +461,8 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
         button.setForeground(Color.WHITE);
         button.setFocusPainted(false);
         button.setBorder(BorderFactory.createRaisedBevelBorder());
-        
-        // 添加事件监听器
-        button.addActionListener(createButtonActionListener(text));
-        
+
         return button;
-    }
-    
-    /**
-     * 创建按钮事件监听器
-     */
-    private ActionListener createButtonActionListener(String buttonText) {
-        I18nManager i18n = I18nManager.getInstance();
-        return e -> {
-            if (buttonText.equals(i18n.getText("settings.config.import"))) {
-                importConfiguration();
-            } else if (buttonText.equals(i18n.getText("settings.config.export"))) {
-                exportConfiguration();
-            } else if (buttonText.equals(i18n.getText("settings.config.reset"))) {
-                resetConfiguration();
-            } else if (buttonText.equals(i18n.getText("button.browse"))) {
-                browseToolDirectory();
-            } else if (buttonText.equals(i18n.getText("button.apply"))) {
-                if (e.getSource() == applyDirectoryButton) {
-                    applyToolDirectory();
-                } else if (e.getSource() == applyPrefixButton) {
-                    applyCommandPrefix();
-                }
-            } else if (buttonText.equals(i18n.getText("button.reset"))) {
-                resetCommandPrefix();
-            }
-        };
     }
     
     /**
@@ -494,18 +472,22 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
         JFileChooser fileChooser = new JFileChooser();
         I18nManager i18n = I18nManager.getInstance();
         // 支持yaml和json格式
-        fileChooser.addChoosableFileFilter(new FileNameExtensionFilter(i18n.getText("dialog.config.file.filter.yaml"), "yaml", "yml"));
-        fileChooser.addChoosableFileFilter(new FileNameExtensionFilter(i18n.getText("dialog.config.file.filter.json"), "json"));
-        fileChooser.setFileFilter(fileChooser.getChoosableFileFilters()[0]); // 默认选择yaml
+        FileNameExtensionFilter yamlFilter =
+                new FileNameExtensionFilter(i18n.getText("dialog.config.file.filter.yaml"), "yaml", "yml");
+        FileNameExtensionFilter jsonFilter =
+                new FileNameExtensionFilter(i18n.getText("dialog.config.file.filter.json"), "json");
+        fileChooser.addChoosableFileFilter(yamlFilter);
+        fileChooser.addChoosableFileFilter(jsonFilter);
+        fileChooser.setFileFilter(yamlFilter); // 默认选择yaml
         fileChooser.setDialogTitle(i18n.getText("dialog.import.config.title"));
-        
+
         int result = fileChooser.showOpenDialog(this);
         if (result == JFileChooser.APPROVE_OPTION) {
             File selectedFile = fileChooser.getSelectedFile();
             controller.importConfiguration(selectedFile.getAbsolutePath(), this);
         }
     }
-    
+
     /**
      * 导出配置文件
      */
@@ -513,28 +495,31 @@ public class SettingPanel extends JPanel implements I18nManager.LanguageChangeLi
         JFileChooser fileChooser = new JFileChooser();
         I18nManager i18n = I18nManager.getInstance();
         // 支持yaml和json格式
-        fileChooser.addChoosableFileFilter(new FileNameExtensionFilter(i18n.getText("dialog.config.file.filter.yaml"), "yaml", "yml"));
-        fileChooser.addChoosableFileFilter(new FileNameExtensionFilter(i18n.getText("dialog.config.file.filter.json"), "json"));
-        fileChooser.setFileFilter(fileChooser.getChoosableFileFilters()[0]); // 默认选择yaml
+        FileNameExtensionFilter yamlFilter =
+                new FileNameExtensionFilter(i18n.getText("dialog.config.file.filter.yaml"), "yaml", "yml");
+        FileNameExtensionFilter jsonFilter =
+                new FileNameExtensionFilter(i18n.getText("dialog.config.file.filter.json"), "json");
+        fileChooser.addChoosableFileFilter(yamlFilter);
+        fileChooser.addChoosableFileFilter(jsonFilter);
+        fileChooser.setFileFilter(yamlFilter); // 默认选择yaml
         fileChooser.setDialogTitle(i18n.getText("dialog.export.config.title"));
         fileChooser.setSelectedFile(new File("bparsenal_config_" + System.currentTimeMillis() + ".yaml"));
-        
+
         int result = fileChooser.showSaveDialog(this);
         if (result == JFileChooser.APPROVE_OPTION) {
             File selectedFile = fileChooser.getSelectedFile();
-            
+
             // 确保文件有正确的扩展名
             String fileName = selectedFile.getName().toLowerCase();
             if (!fileName.endsWith(".yaml") && !fileName.endsWith(".yml") && !fileName.endsWith(".json")) {
                 // 根据选择的过滤器添加扩展名
-                if (fileChooser.getFileFilter().getDescription().contains("YAML") || 
-                    fileChooser.getFileFilter().getDescription().contains("yaml")) {
-                    selectedFile = new File(selectedFile.getAbsolutePath() + ".yaml");
-                } else {
+                if (fileChooser.getFileFilter() == jsonFilter) {
                     selectedFile = new File(selectedFile.getAbsolutePath() + ".json");
+                } else {
+                    selectedFile = new File(selectedFile.getAbsolutePath() + ".yaml");
                 }
             }
-            
+
             controller.exportConfiguration(selectedFile.getAbsolutePath());
         }
     }

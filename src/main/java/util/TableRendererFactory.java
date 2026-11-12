@@ -90,7 +90,7 @@ public class TableRendererFactory {
                 
                 // 如果文本太长，进行截断显示
                 if (text.length() > 130) {
-                    setText(text.substring(0, 87) + "...");
+                    setText(text.substring(0, 127) + "...");
                 } else {
                     setText(text);
                 }

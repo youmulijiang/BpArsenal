@@ -2,6 +2,7 @@ package view.component;
 
 import model.HttpTool;
 import model.HttpToolCommand;
+import controller.ToolController;
 import util.I18nManager;
 import util.PlaceholderDocumentation;
 
@@ -17,11 +18,16 @@ import java.awt.event.MouseEvent;
  * 用于添加和编辑HTTP工具配置
  */
 public class ToolEditDialog extends JDialog implements I18nManager.LanguageChangeListener {
-    
+
     private HttpTool tool;
     private HttpToolCommand toolCommand;  // 当前编辑的具体命令
     private boolean confirmed = false;
-    
+
+    // 编辑时的真实分类；用户未主动修改分类下拉框时保持该值，避免编辑时被错误归类
+    private String originalCategory;
+    private boolean categoryChangedByUser = false;
+    private boolean suppressCategoryEvents = false;
+
     private JTextField nameField;
     private JTextArea commandArea;
     private JTextField noteField;
@@ -76,6 +82,43 @@ public class ToolEditDialog extends JDialog implements I18nManager.LanguageChang
         
         // 设置默认按钮
         getRootPane().setDefaultButton(okButton);
+
+        // 用户主动修改分类时记录标记（程序性 setSelectedItem 会被 suppressCategoryEvents 抑制）
+        categoryComboBox.addActionListener(e -> {
+            if (!suppressCategoryEvents) {
+                categoryChangedByUser = true;
+            }
+        });
+
+        // 关闭时移除语言监听器，避免监听器泄漏（注册在构造函数中）
+        addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override
+            public void windowClosed(java.awt.event.WindowEvent e) {
+                I18nManager.getInstance().removeLanguageChangeListener(ToolEditDialog.this);
+            }
+        });
+    }
+
+    /**
+     * 静默设置分类下拉框选中项（匹配原始type值或对应的内部分类代码）
+     * @param category 真实分类类型
+     */
+    private void selectCategorySilently(String category) {
+        if (category == null || categoryComboBox == null) {
+            return;
+        }
+        suppressCategoryEvents = true;
+        try {
+            for (int i = 0; i < categoryComboBox.getItemCount(); i++) {
+                String item = categoryComboBox.getItemAt(i);
+                if (item.equals(category) || getCategoryCode(item).equals(category)) {
+                    categoryComboBox.setSelectedIndex(i);
+                    return;
+                }
+            }
+        } finally {
+            suppressCategoryEvents = false;
+        }
     }
     
     /**
@@ -441,15 +484,18 @@ public class ToolEditDialog extends JDialog implements I18nManager.LanguageChang
                 workDirField.setText("");
             }
             
-            // 如果工具已有分类，使用现有分类；否则根据工具名称推断分类
+            // 优先使用真实分类（命令对象或按工具名查询），推断仅作兜底展示
             String category;
-            if (tool.getToolName() != null && !tool.getToolName().isEmpty()) {
-                // 假设存在一个获取工具分类的方法，如果没有则推断
-                category = inferCategory(tool.getToolName().toLowerCase());
+            if (toolCommand != null && toolCommand.getCategory() != null) {
+                category = toolCommand.getCategory();
+            } else if (tool != null && tool.getToolName() != null && !tool.getToolName().isEmpty()) {
+                String type = ToolController.getInstance().getToolCategoryType(tool.getToolName());
+                category = type != null ? type : inferCategory(tool.getToolName().toLowerCase());
             } else {
                 category = inferCategory("");
             }
-            categoryComboBox.setSelectedItem(category);
+            selectCategorySilently(category);
+            originalCategory = category;
         } else {
             // 设置默认值
             favorCheckBox.setSelected(true);
@@ -596,9 +642,13 @@ public class ToolEditDialog extends JDialog implements I18nManager.LanguageChang
     
     /**
      * 获取选中的分类
+     * 编辑已有工具且用户未主动修改分类时，返回原分类，避免编辑操作把工具静默移到错误分类
      * @return 分类字符串
      */
     public String getSelectedCategory() {
+        if (!categoryChangedByUser && originalCategory != null) {
+            return originalCategory;
+        }
         String localizedCategory = (String) categoryComboBox.getSelectedItem();
         return getCategoryCode(localizedCategory);
     }
@@ -667,17 +717,22 @@ public class ToolEditDialog extends JDialog implements I18nManager.LanguageChang
         // 更新下拉框选项
         if (categoryComboBox != null) {
             Object selectedItem = categoryComboBox.getSelectedItem();
-            categoryComboBox.removeAllItems();
-            categoryComboBox.addItem(i18n.getText("tool.edit.category.sql.inject"));
-            categoryComboBox.addItem(i18n.getText("tool.edit.category.xss"));
-            categoryComboBox.addItem(i18n.getText("tool.edit.category.scanner"));
-            categoryComboBox.addItem(i18n.getText("tool.edit.category.brute.force"));
-            categoryComboBox.addItem(i18n.getText("tool.edit.category.exploit"));
-            categoryComboBox.addItem(i18n.getText("tool.edit.category.other"));
-            
-            // 尝试恢复原来的选择
-            if (selectedItem != null) {
-                categoryComboBox.setSelectedItem(selectedItem);
+            suppressCategoryEvents = true;
+            try {
+                categoryComboBox.removeAllItems();
+                categoryComboBox.addItem(i18n.getText("tool.edit.category.sql.inject"));
+                categoryComboBox.addItem(i18n.getText("tool.edit.category.xss"));
+                categoryComboBox.addItem(i18n.getText("tool.edit.category.scanner"));
+                categoryComboBox.addItem(i18n.getText("tool.edit.category.brute.force"));
+                categoryComboBox.addItem(i18n.getText("tool.edit.category.exploit"));
+                categoryComboBox.addItem(i18n.getText("tool.edit.category.other"));
+
+                // 尝试恢复原来的选择
+                if (selectedItem != null) {
+                    categoryComboBox.setSelectedItem(selectedItem);
+                }
+            } finally {
+                suppressCategoryEvents = false;
             }
         }
         

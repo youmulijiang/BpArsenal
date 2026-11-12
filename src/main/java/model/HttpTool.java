@@ -2,6 +2,7 @@ package model;
 
 import java.util.List;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
@@ -151,7 +152,66 @@ public class HttpTool {
     public void setCommands(List<String> commands) {
         this.command = commands;
     }
-    
+
+    /**
+     * 更新指定索引的命令数据，直接写回底层结构
+     * 底层commandList可能是YAML反序列化得到的List<Map>，
+     * 必须写回Map而不是修改副本，否则保存配置时会丢失修改
+     * @param index 命令索引
+     * @param data 新的命令数据
+     * @return 是否成功
+     */
+    @SuppressWarnings("unchecked")
+    public boolean updateCommandData(int index, HttpToolCommandData data) {
+        if (data == null || !(commandList instanceof List)) {
+            return false;
+        }
+
+        List<Object> rawList = (List<Object>) commandList;
+        if (index < 0 || index >= rawList.size()) {
+            return false;
+        }
+
+        Object current = rawList.get(index);
+        Map<String, Object> entry;
+        if (current instanceof Map) {
+            entry = (Map<String, Object>) current;
+        } else {
+            entry = new LinkedHashMap<>();
+            rawList.set(index, entry);
+        }
+
+        entry.put("command", data.getCommand());
+        entry.put("favor", data.isFavor());
+        entry.put("note", data.getNote());
+        entry.put("workDir", data.getWorkDir());
+        return true;
+    }
+
+    /**
+     * 将旧格式（command字符串或List<String>）迁移为commandList格式
+     * 用于编辑旧格式工具时统一读写路径
+     */
+    public void migrateToCommandList() {
+        if (commandList instanceof List && !((List<?>) commandList).isEmpty()) {
+            return;
+        }
+
+        List<Map<String, Object>> newList = new ArrayList<>();
+        for (String cmd : getCommands()) {
+            Map<String, Object> entry = new LinkedHashMap<>();
+            entry.put("command", cmd);
+            entry.put("favor", isFavor());
+            entry.put("note", "");
+            entry.put("workDir", "");
+            newList.add(entry);
+        }
+
+        if (!newList.isEmpty()) {
+            this.commandList = newList;
+        }
+    }
+
     /**
      * 获取命令数量
      * @return 命令数量

@@ -63,7 +63,15 @@ public class HttpResponseContext {
     public Map<String, String> getHeaders() { return headers; }
     public Map<String, String> getCookies() { return cookies; }
     public BodyContext getBody() { return body; }
-    
+
+    /**
+     * 直接作为变量值时输出响应体内容（如%http.response.body%）
+     */
+    @Override
+    public String toString() {
+        return body != null ? body.toString() : "";
+    }
+
     /**
      * 获取属性（用于反射和动态访问）
      */

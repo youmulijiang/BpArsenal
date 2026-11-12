@@ -102,6 +102,23 @@ public class ToolExecutor {
     }
     
     /**
+     * 获取用户自定义命令前缀
+     * @return 前缀参数数组，未设置时返回null（使用内置行为）
+     */
+    private String[] getCustomCommandPrefix() {
+        try {
+            if (settingModel != null) {
+                String prefix = settingModel.getCommandPrefix();
+                if (prefix != null && !prefix.trim().isEmpty()) {
+                    return prefix.trim().split("\\s+");
+                }
+            }
+        } catch (Exception e) {
+        }
+        return null;
+    }
+
+    /**
      * 初始化脚本目录
      */
     private void initializeScriptDirectory() {
@@ -109,19 +126,21 @@ public class ToolExecutor {
             // 获取插件路径
             if (ApiManager.getInstance().isInitialized()) {
                 extensionPath = ApiManager.getInstance().getApi().extension().filename();
-                
+
                 // 获取插件所在目录
                 File extensionFile = new File(extensionPath);
                 String extensionDir = extensionFile.getParent();
-                
-                // 创建临时脚本目录
-//                tempScriptDir = extensionDir + File.separator + "temp_scripts";
-//                File scriptDir = new File(tempScriptDir);
-//                if (!scriptDir.exists()) {
-//                    scriptDir.mkdirs();
-//                }
-                
-                } else {
+
+                // 使用插件目录（不可用时回退系统临时目录），避免tempScriptDir为null
+                String baseDir = (extensionDir != null && !extensionDir.isEmpty())
+                        ? extensionDir
+                        : System.getProperty("java.io.tmpdir");
+                tempScriptDir = baseDir + File.separator + "bparsenal_scripts";
+                File scriptDir = new File(tempScriptDir);
+                if (!scriptDir.exists()) {
+                    scriptDir.mkdirs();
+                }
+            } else {
                 // 如果API未初始化，使用系统临时目录
                 tempScriptDir = System.getProperty("java.io.tmpdir") + File.separator + "bparsenal_scripts";
                 File scriptDir = new File(tempScriptDir);
@@ -189,24 +208,50 @@ public class ToolExecutor {
      */
     private void executeCommandDirectly(String command, String toolName, String workDir) throws IOException {
         ProcessBuilder processBuilder;
-        
+
+        // 用户自定义命令前缀（设置面板中配置，未设置时使用内置行为）
+        String[] customPrefix = getCustomCommandPrefix();
+
         // 根据操作系统选择合适的命令执行方式
         if (isWindows()) {
             // Windows: 在新的命令窗口中执行
-            processBuilder = new ProcessBuilder("cmd", "/c", "start", "\"" + toolName + "\"", "cmd", "/k", command + " & pause");
+            java.util.List<String> cmdArgs = new java.util.ArrayList<>();
+            cmdArgs.add("cmd");
+            cmdArgs.add("/c");
+            cmdArgs.add("start");
+            cmdArgs.add("\"" + toolName + "\"");
+            cmdArgs.add("cmd");
+            cmdArgs.add("/k");
+            if (customPrefix != null) {
+                cmdArgs.addAll(java.util.Arrays.asList(customPrefix));
+            }
+            cmdArgs.add(command + " & pause");
+            processBuilder = new ProcessBuilder(cmdArgs);
         } else {
             // Linux/Unix: 在终端中执行
             if (isMac()) {
                 // macOS: 使用Terminal.app
+                String effectiveCommand = customPrefix != null
+                        ? String.join(" ", java.util.Arrays.asList(customPrefix)) + " " + command
+                        : command;
                 String applescript = String.format(
                     "tell application \"Terminal\" to do script \"%s; echo 'Press Enter to continue...'; read\"",
-                    command.replace("\"", "\\\"")
+                    effectiveCommand.replace("\"", "\\\"")
                 );
                 processBuilder = new ProcessBuilder("osascript", "-e", applescript);
             } else {
                 // Linux: 使用x-terminal-emulator
-                processBuilder = new ProcessBuilder("x-terminal-emulator", "-e", "bash", "-c", 
-                    command + "; echo 'Press Enter to continue...'; read");
+                java.util.List<String> args = new java.util.ArrayList<>();
+                args.add("x-terminal-emulator");
+                args.add("-e");
+                if (customPrefix != null) {
+                    args.addAll(java.util.Arrays.asList(customPrefix));
+                } else {
+                    args.add("bash");
+                    args.add("-c");
+                }
+                args.add(command + "; echo 'Press Enter to continue...'; read");
+                processBuilder = new ProcessBuilder(args);
             }
         }
         

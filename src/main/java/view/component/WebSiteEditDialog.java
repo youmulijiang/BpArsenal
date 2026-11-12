@@ -1,6 +1,7 @@
 package view.component;
 
 import model.WebSite;
+import controller.ToolController;
 import util.I18nManager;
 import javax.swing.*;
 import javax.swing.border.TitledBorder;
@@ -14,7 +15,7 @@ import java.net.URL;
  * 用于添加和编辑网站
  */
 public class WebSiteEditDialog extends JDialog implements I18nManager.LanguageChangeListener {
-    
+
     private JTextField urlField;
     private JTextField descField;
     private JCheckBox favorCheckBox;
@@ -22,23 +23,36 @@ public class WebSiteEditDialog extends JDialog implements I18nManager.LanguageCh
     private JButton confirmButton;
     private JButton cancelButton;
     private JButton testButton;
-    
+
     private WebSite website;
     private boolean confirmed = false;
     private boolean isEditing = false;
-    
+
+    // 编辑时的真实分类；用户未主动修改分类下拉框时保持该值，避免编辑时被错误归类
+    private String originalCategory;
+    private boolean categoryChangedByUser = false;
+    private boolean suppressCategoryEvents = false;
+
     public WebSiteEditDialog(Window parent, WebSite website) {
         super(parent);
         this.website = website;
         this.isEditing = (website != null);
-        
+
         // 注册语言变更监听器
         I18nManager.getInstance().addLanguageChangeListener(this);
-        
+
+        // 关闭时移除监听器，避免监听器泄漏
+        addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override
+            public void windowClosed(java.awt.event.WindowEvent e) {
+                I18nManager.getInstance().removeLanguageChangeListener(WebSiteEditDialog.this);
+            }
+        });
+
         initializeUI();
         setupEventHandlers();
         loadData();
-        
+
         pack();
         setLocationRelativeTo(parent);
         setResizable(false);
@@ -257,7 +271,16 @@ public class WebSiteEditDialog extends JDialog implements I18nManager.LanguageCh
                 dispose();
             }
         });
-        
+
+        // 用户主动修改分类时记录标记（程序性 setSelectedItem 会被 suppressCategoryEvents 抑制）
+        if (categoryCombo != null) {
+            categoryCombo.addActionListener(e -> {
+                if (!suppressCategoryEvents) {
+                    categoryChangedByUser = true;
+                }
+            });
+        }
+
         testButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -284,15 +307,11 @@ public class WebSiteEditDialog extends JDialog implements I18nManager.LanguageCh
             descField.setText(website.getDesc());
             urlField.setText(website.getUrl());
             favorCheckBox.setSelected(website.isFavor());
-            
-            // 设置分类
-            String category = getCategoryDisplayName(website);
-            for (int i = 0; i < categoryCombo.getItemCount(); i++) {
-                if (categoryCombo.getItemAt(i).equals(category)) {
-                    categoryCombo.setSelectedIndex(i);
-                    break;
-                }
-            }
+
+            // 设置真实分类（按描述查询原始type值，避免硬编码导致编辑后分类漂移）
+            String category = ToolController.getInstance().getWebSiteCategoryType(website.getDesc());
+            selectCategorySilently(category);
+            originalCategory = category;
         } else {
             // 默认值
             favorCheckBox.setSelected(false);
@@ -421,17 +440,45 @@ public class WebSiteEditDialog extends JDialog implements I18nManager.LanguageCh
      * 获取分类显示名称
      * @param website 网站对象
      * @return 分类名称
+     * @deprecated 已改用ToolController按描述查询真实分类
      */
+    @Deprecated
     private String getCategoryDisplayName(WebSite website) {
         // 这里可以根据网站来源获取分类，暂时返回默认值
         return "OSINT";
     }
-    
+
+    /**
+     * 静默设置分类下拉框选中项（匹配原始type值或对应的内部分类代码）
+     * @param category 真实分类类型
+     */
+    private void selectCategorySilently(String category) {
+        if (category == null || categoryCombo == null) {
+            return;
+        }
+        suppressCategoryEvents = true;
+        try {
+            for (int i = 0; i < categoryCombo.getItemCount(); i++) {
+                String item = categoryCombo.getItemAt(i);
+                if (item.equals(category) || getCategoryCode(item).equals(category)) {
+                    categoryCombo.setSelectedIndex(i);
+                    return;
+                }
+            }
+        } finally {
+            suppressCategoryEvents = false;
+        }
+    }
+
     /**
      * 获取选中的分类
+     * 编辑已有网站且用户未主动修改分类时，返回原分类，避免编辑操作把网站静默移到错误分类
      * @return 分类类型
      */
     public String getSelectedCategory() {
+        if (!categoryChangedByUser && originalCategory != null) {
+            return originalCategory;
+        }
         String displayName = (String) categoryCombo.getSelectedItem();
         return getCategoryCode(displayName);
     }
@@ -563,17 +610,22 @@ public class WebSiteEditDialog extends JDialog implements I18nManager.LanguageCh
         if (categoryCombo != null) {
             I18nManager i18n = I18nManager.getInstance();
             Object selectedItem = categoryCombo.getSelectedItem();
-            categoryCombo.removeAllItems();
-            categoryCombo.addItem(i18n.getText("website.category.osint"));
-            categoryCombo.addItem(i18n.getText("website.category.recon"));
-            categoryCombo.addItem(i18n.getText("website.category.vulnerability.db"));
-            categoryCombo.addItem(i18n.getText("website.category.online.tools"));
-            categoryCombo.addItem(i18n.getText("website.category.learning"));
-            categoryCombo.addItem(i18n.getText("website.category.other"));
-            
-            // 尝试恢复选择
-            if (selectedItem != null) {
-                categoryCombo.setSelectedItem(selectedItem);
+            suppressCategoryEvents = true;
+            try {
+                categoryCombo.removeAllItems();
+                categoryCombo.addItem(i18n.getText("website.category.osint"));
+                categoryCombo.addItem(i18n.getText("website.category.recon"));
+                categoryCombo.addItem(i18n.getText("website.category.vulnerability.db"));
+                categoryCombo.addItem(i18n.getText("website.category.online.tools"));
+                categoryCombo.addItem(i18n.getText("website.category.learning"));
+                categoryCombo.addItem(i18n.getText("website.category.other"));
+
+                // 尝试恢复选择
+                if (selectedItem != null) {
+                    categoryCombo.setSelectedItem(selectedItem);
+                }
+            } finally {
+                suppressCategoryEvents = false;
             }
         }
     }

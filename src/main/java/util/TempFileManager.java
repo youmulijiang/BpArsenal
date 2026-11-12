@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * 临时文件管理工具类
@@ -62,8 +63,9 @@ public class TempFileManager {
             // 获取临时目录
             String tempDir = getTempDirectory();
             
-            // 创建临时文件
-            String fileName = TEMP_FILE_PREFIX + category + System.currentTimeMillis() + suffix;
+            // 创建临时文件（UUID避免同一毫秒内创建同类文件时同名覆盖）
+            String fileName = TEMP_FILE_PREFIX + category + System.currentTimeMillis()
+                    + "_" + UUID.randomUUID().toString().substring(0, 8) + suffix;
             File tempFile = new File(tempDir, fileName);
             
             // 写入数据

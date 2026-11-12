@@ -74,7 +74,15 @@ public class BodyContext {
     public int getLength() { return length; }
     public String getType() { return type; }
     public JsonElement getJson() { return json; }
-    
+
+    /**
+     * 直接作为变量值时输出原始内容（如%http.response.body%）
+     */
+    @Override
+    public String toString() {
+        return raw != null ? raw : "";
+    }
+
     /**
      * 获取属性（用于反射和动态访问）
      */

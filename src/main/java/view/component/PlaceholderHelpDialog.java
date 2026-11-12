@@ -18,13 +18,21 @@ public class PlaceholderHelpDialog extends JDialog implements I18nManager.Langua
     
     public PlaceholderHelpDialog(Window parent) {
         super(parent);
-        
+
         // 注册语言变更监听器
         I18nManager.getInstance().addLanguageChangeListener(this);
-        
+
+        // 关闭时移除监听器，避免监听器泄漏
+        addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override
+            public void windowClosed(java.awt.event.WindowEvent e) {
+                I18nManager.getInstance().removeLanguageChangeListener(PlaceholderHelpDialog.this);
+            }
+        });
+
         initializeUI();
         setupEventHandlers();
-        
+
         pack();
         setLocationRelativeTo(parent);
     }
@@ -41,6 +49,8 @@ public class PlaceholderHelpDialog extends JDialog implements I18nManager.Langua
         setLayout(new BorderLayout(10, 10));
         setSize(900, 700);
         setResizable(true);
+        // 关闭时销毁窗口，确保windowClosed触发以清理语言监听器
+        setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
         
         // 创建主面板
         JPanel mainPanel = createMainPanel();

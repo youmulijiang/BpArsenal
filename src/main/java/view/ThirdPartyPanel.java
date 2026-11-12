@@ -37,7 +37,10 @@ public class ThirdPartyPanel extends JPanel implements I18nManager.LanguageChang
     
     // 控制器
     private ThirdPartyPanelController controller;
-    
+
+    // 最近一次编辑对话框选择的分类
+    private String lastDialogCategory;
+
     // 列索引常量
     private static final int TOOL_NAME_COLUMN_INDEX = 0;
     private static final int COMMAND_COLUMN_INDEX = 1;
@@ -497,28 +500,31 @@ public class ThirdPartyPanel extends JPanel implements I18nManager.LanguageChang
     public ThirdPartyTool showAddToolDialog(Component parentComponent) {
         ThirdPartyToolEditDialog dialog = new ThirdPartyToolEditDialog(SwingUtilities.getWindowAncestor(parentComponent), null);
         dialog.setVisible(true);
-        
+
         if (dialog.isConfirmed()) {
+            lastDialogCategory = dialog.getSelectedCategory();
             return dialog.getTool();
         }
+        lastDialogCategory = null;
         return null;
     }
-    
+
     @Override
     public ThirdPartyTool showEditToolDialog(Component parentComponent, ThirdPartyTool tool) {
         ThirdPartyToolEditDialog dialog = new ThirdPartyToolEditDialog(SwingUtilities.getWindowAncestor(parentComponent), tool);
         dialog.setVisible(true);
-        
+
         if (dialog.isConfirmed()) {
+            lastDialogCategory = dialog.getSelectedCategory();
             return dialog.getTool();
         }
+        lastDialogCategory = null;
         return null;
     }
-    
+
     @Override
     public String getSelectedCategory() {
-        // 这里需要从对话框中获取选中的分类，暂时返回默认值
-        return "exploit";
+        return lastDialogCategory;
     }
     
     @Override

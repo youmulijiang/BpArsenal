@@ -1,6 +1,7 @@
 package util;
 
 import manager.ApiManager;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -117,8 +118,10 @@ public enum I18nManager {
         }
     }
     
-    // 语言设置文件
-    private static final String LANGUAGE_CONFIG_FILE = "language_settings.properties";
+    // 语言设置文件（用户主目录，避免依赖Burp进程工作目录）
+    private static final String LANGUAGE_CONFIG_FILE =
+            System.getProperty("user.home") + File.separator + ".bparsenal"
+                    + File.separator + "language_settings.properties";
     private static final String LANGUAGE_SETTING_KEY = "current.language";
     
     // 资源包基础名称
@@ -349,13 +352,19 @@ public enum I18nManager {
      */
     private void saveLanguageSetting(SupportedLanguage language) {
         try {
+            File configFile = new File(LANGUAGE_CONFIG_FILE);
+            File parentDir = configFile.getParentFile();
+            if (parentDir != null && !parentDir.exists() && !parentDir.mkdirs()) {
+                return;
+            }
+
             Properties props = new Properties();
             props.setProperty(LANGUAGE_SETTING_KEY, language.getLanguageTag());
-            
-            try (FileOutputStream fos = new FileOutputStream(LANGUAGE_CONFIG_FILE)) {
+
+            try (FileOutputStream fos = new FileOutputStream(configFile)) {
                 props.store(fos, "BpArsenal Language Settings");
             }
-            
+
         } catch (IOException e) {
         }
     }

@@ -380,19 +380,21 @@ public class WebSitePanelController {
             for (WebSite website : allWebSites) {
                 boolean matchesSearch = false;
                 boolean matchesCategory = false;
-                
+
+                // 网站的原始分类类型（与分类下拉框中的原始type值一致）
+                String websiteCategoryType = ToolController.getInstance().getWebSiteCategoryType(website.getDesc());
+
                 // 检查搜索条件
                 if (searchText == null || searchText.trim().isEmpty()) {
                     matchesSearch = true;
                 } else {
                     String searchLower = searchText.toLowerCase().trim();
-                    String websiteCategory = ToolController.getInstance().getWebSiteCategory(website.getDesc());
-                    
+
                     switch (searchColumnIndex) {
                         case 0: // 全部
                             matchesSearch = website.getDesc().toLowerCase().contains(searchLower) ||
                                            website.getUrl().toLowerCase().contains(searchLower) ||
-                                           websiteCategory.toLowerCase().contains(searchLower);
+                                           (websiteCategoryType != null && websiteCategoryType.toLowerCase().contains(searchLower));
                             break;
                         case 1: // 网站名称
                             matchesSearch = website.getDesc().toLowerCase().contains(searchLower);
@@ -401,23 +403,22 @@ public class WebSitePanelController {
                             matchesSearch = website.getUrl().toLowerCase().contains(searchLower);
                             break;
                         case 3: // 分类
-                            matchesSearch = websiteCategory.toLowerCase().contains(searchLower);
+                            matchesSearch = websiteCategoryType != null && websiteCategoryType.toLowerCase().contains(searchLower);
                             break;
                         default:
                             matchesSearch = true;
                             break;
                     }
                 }
-                
-                // 检查分类过滤条件
+
+                // 检查分类过滤条件（下拉框中是原始type值，按原始值比较）
                 I18nManager i18n = I18nManager.getInstance();
                 if (selectedCategory == null || selectedCategory.equals(i18n.getText("filter.all"))) {
                     matchesCategory = true;
                 } else {
-                    String websiteCategory = ToolController.getInstance().getWebSiteCategory(website.getDesc());
-                    matchesCategory = websiteCategory.equals(selectedCategory);
+                    matchesCategory = selectedCategory.equals(websiteCategoryType);
                 }
-                
+
                 // 同时满足搜索和分类条件的记录才会被显示
                 if (matchesSearch && matchesCategory) {
                     filteredSites.add(website);

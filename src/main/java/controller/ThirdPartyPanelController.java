@@ -347,19 +347,22 @@ public class ThirdPartyPanelController {
             for (ThirdPartyTool tool : allTools) {
                 boolean matchesSearch = false;
                 boolean matchesCategory = false;
-                
+
+                // 工具的原始分类类型（与分类下拉框中的原始type值一致）
+                String toolCategoryType = ToolController.getInstance().getThirdPartyToolCategoryType(tool.getToolName());
+
                 // 检查搜索条件
                 if (searchText == null || searchText.trim().isEmpty()) {
                     matchesSearch = true;
                 } else {
                     String searchLower = searchText.toLowerCase().trim();
-                    String toolCategory = ToolController.getInstance().getThirdPartyToolCategory(tool.getToolName());
-                    
+
                     switch (searchColumnIndex) {
                         case 0: // 全部
                             matchesSearch = tool.getToolName().toLowerCase().contains(searchLower) ||
                                            tool.getStartCommand().toLowerCase().contains(searchLower) ||
-                                           toolCategory.toLowerCase().contains(searchLower);
+                                           (tool.getNote() != null && tool.getNote().toLowerCase().contains(searchLower)) ||
+                                           (toolCategoryType != null && toolCategoryType.toLowerCase().contains(searchLower));
                             break;
                         case 1: // 工具名称
                             matchesSearch = tool.getToolName().toLowerCase().contains(searchLower);
@@ -367,24 +370,26 @@ public class ThirdPartyPanelController {
                         case 2: // 启动命令
                             matchesSearch = tool.getStartCommand().toLowerCase().contains(searchLower);
                             break;
-                        case 3: // 分类
-                            matchesSearch = toolCategory.toLowerCase().contains(searchLower);
+                        case 3: // 备注
+                            matchesSearch = tool.getNote() != null && tool.getNote().toLowerCase().contains(searchLower);
+                            break;
+                        case 4: // 分类
+                            matchesSearch = toolCategoryType != null && toolCategoryType.toLowerCase().contains(searchLower);
                             break;
                         default:
                             matchesSearch = true;
                             break;
                     }
                 }
-                
-                // 检查分类过滤条件
+
+                // 检查分类过滤条件（下拉框中是原始type值，按原始值比较）
                 I18nManager i18n = I18nManager.getInstance();
                 if (selectedCategory == null || selectedCategory.equals(i18n.getText("filter.all"))) {
                     matchesCategory = true;
                 } else {
-                    String toolCategory = ToolController.getInstance().getThirdPartyToolCategory(tool.getToolName());
-                    matchesCategory = toolCategory.equals(selectedCategory);
+                    matchesCategory = selectedCategory.equals(toolCategoryType);
                 }
-                
+
                 // 同时满足搜索和分类条件的记录才会被显示
                 if (matchesSearch && matchesCategory) {
                     filteredTools.add(tool);
@@ -491,8 +496,8 @@ public class ThirdPartyPanelController {
         String statusMsg = String.format("显示 %d/%d 个工具", filteredSize, totalSize);
         
         if (searchText != null && !searchText.trim().isEmpty()) {
-            String[] searchScopes = {"全部", "工具名称", "启动命令", "分类"};
-            String searchScope = (searchColumnIndex >= 0 && searchColumnIndex < searchScopes.length) ? 
+            String[] searchScopes = {"全部", "工具名称", "启动命令", "备注", "分类"};
+            String searchScope = (searchColumnIndex >= 0 && searchColumnIndex < searchScopes.length) ?
                 searchScopes[searchColumnIndex] : "全部";
             statusMsg += " | 搜索: " + searchText + " (范围: " + searchScope + ")";
         }

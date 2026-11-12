@@ -135,7 +135,15 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
         setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
         setModal(true);
 //        setModal(false); // 非模态对话框
-        
+
+        // 关闭时移除语言监听器，避免每次打开对话框都累积监听器
+        addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override
+            public void windowClosed(java.awt.event.WindowEvent e) {
+                I18nManager.getInstance().removeLanguageChangeListener(ArsenalDialog.this);
+            }
+        });
+
         // 设置图标
         try {
             setIconImage(new ImageIcon(getClass().getResource("/icon.png")).getImage());
@@ -1091,17 +1099,17 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
      * @param e 异常对象
      */
     private void handleExecutionError(CommandExecutionContext context, Exception e) {
-        addExecutionLogEntry(context.i18n.getText("arsenal.dialog.execution.script.exception"), context.toolName, 
+        addExecutionLogEntry(context.i18n.getText("arsenal.dialog.execution.script.exception"), context.toolName,
             context.i18n.getText("arsenal.dialog.execution.error"), e.getMessage());
-        
+
             // 恢复按钮状态
             runButton.setEnabled(true);
         runButton.setText(context.i18n.getText("arsenal.dialog.button.run"));
-            
+
             // 显示错误对话框
-            JOptionPane.showMessageDialog(this, 
-            context.i18n.getText("arsenal.dialog.copy.failed.pattern", e.getMessage()), 
-            context.i18n.getText("dialog.title.error"), 
+            JOptionPane.showMessageDialog(this,
+            context.i18n.getText("arsenal.dialog.execution.failed", e.getMessage()),
+            context.i18n.getText("dialog.title.error"),
                 JOptionPane.ERROR_MESSAGE);
         }
     
@@ -1143,16 +1151,16 @@ public class ArsenalDialog extends JDialog implements I18nManager.LanguageChange
             
         } catch (Exception e) {
             I18nManager scriptExecI18n = I18nManager.getInstance();
-            addExecutionLogEntry(scriptExecI18n.getText("arsenal.dialog.execution.script.exception"), toolName, 
+            addExecutionLogEntry(scriptExecI18n.getText("arsenal.dialog.execution.script.exception"), toolName,
                 scriptExecI18n.getText("arsenal.dialog.execution.error"), e.getMessage());
             // 恢复按钮状态
             runButton.setEnabled(true);
             runButton.setText(scriptExecI18n.getText("arsenal.dialog.button.run"));
-            
+
             // 显示错误对话框
-            JOptionPane.showMessageDialog(this, 
-                scriptExecI18n.getText("arsenal.dialog.copy.failed.pattern", e.getMessage()), 
-                scriptExecI18n.getText("dialog.title.error"), 
+            JOptionPane.showMessageDialog(this,
+                scriptExecI18n.getText("arsenal.dialog.execution.failed", e.getMessage()),
+                scriptExecI18n.getText("dialog.title.error"),
                 JOptionPane.ERROR_MESSAGE);
         }
     }
